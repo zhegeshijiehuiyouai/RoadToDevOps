@@ -14,10 +14,14 @@
 DIR=`pwd`
 #端口
 PORT=3308
+#解压后的名字
+FILE=mysql-5.7.26-linux-glibc2.12-x86_64
+#mysql二进制包名字
+Archive=${FILE}.tar.gz
 
 #解压
 echo "解压中，请稍等..."
-tar -zxf mysql-5.7.26-linux-glibc2.12-x86_64.tar.gz >/dev/null 2>&1
+tar -zxf ${Archive} >/dev/null 2>&1
 if [ $? -eq 0 ];then
     echo "解压完毕"
 else
@@ -25,7 +29,7 @@ else
 fi
 
 #做软连接，方便以后升级
-ln -s mysql-5.7.26-linux-glibc2.12-x86_64 mysql
+ln -s ${FILE} mysql
 
 #创建mysql用户
 if id -g mysql >/dev/null 2>&1; then
