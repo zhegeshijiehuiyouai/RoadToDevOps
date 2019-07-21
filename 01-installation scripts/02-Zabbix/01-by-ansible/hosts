@@ -1,0 +1,62 @@
+# This is the default ansible 'hosts' file.
+#
+# It should live in /etc/ansible/hosts
+#
+#   - Comments begin with the '#' character
+#   - Blank lines are ignored
+#   - Groups of hosts are delimited by [header] elements
+#   - You can enter hostnames or ip addresses
+#   - A hostname/ip can be a member of multiple groups
+
+# Ex 1: Ungrouped hosts, specify before any group headers.
+
+#----------------------------------------
+#|  The server names are PINYIN of ECSs  |
+#----------------------------------------
+## green.example.com
+## blue.example.com
+## 192.168.100.1
+## 192.168.100.10
+
+# Ex 2: A collection of hosts belonging to the 'webservers' group
+
+## [webservers]
+## alpha.example.org
+## beta.example.org
+## 192.168.1.100
+## 192.168.1.110
+
+# If you have multiple hosts following a pattern you can specify
+# them like this:
+
+## www[001:006].example.com
+
+# Ex 3: A collection of database servers in the 'dbservers' group
+
+## [dbservers]
+## 
+## db01.intranet.mydomain.net
+## db02.intranet.mydomain.net
+## 10.25.1.56
+## 10.25.1.57
+
+# Here's another example of host ranges, this time there are no
+# leading 0s:
+
+## db-[99:101]-node.example.com
+
+
+#本地连接需要专门添加
+[local]
+127.0.0.1 ansible_connection=local
+#示例而已，ip、账号、密码都是假的
+[shouhuoxianshangfuwuqi]
+47.100.49.111 ansible_ssh_user=root ansible_ssh_pass=OneD@y#001
+#做了免密登录可以不用添加账号密码
+[qianduankaifahuanjing]
+47.100.49.112
+
+#设置组
+#[backend]
+47.100.49.111
+47.100.49.112
