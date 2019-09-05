@@ -19,18 +19,21 @@ color=32
 
 # 定义删除函数
 clean_index(){
-  ### 这里是单引号，所以不能使用【keep_days】变量，手动输入
+cat > this_is_a_temp_file.sh << EOF
   curl -H'Content-Type:application/json' -d'{
       "query": {
           "range": {
               "@timestamp": {
-                  "lt": "now-3d",
+                  "lt": "now-${keep_days}d",
                   "format": "epoch_millis"
               }
           }
       }
   }
   ' -XPOST "http://${http_es}/$1*/_delete_by_query?pretty"
+EOF
+sh this_is_a_temp_file.sh
+rm -f this_is_a_temp_file.sh
 }
 
 # 删除操作
