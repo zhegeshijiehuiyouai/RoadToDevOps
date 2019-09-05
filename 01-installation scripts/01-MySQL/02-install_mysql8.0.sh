@@ -132,15 +132,23 @@ mysql控制命令：
     重启：systemctl restart mysql
     停止：systemctl stop mysql
 EOF
-    echo -e "\n\n请输入命令：mysql，进入MySQL修改密码"
+    echo -e "\n请输入命令：mysql，进入MySQL修改密码"
     echo -e "首先将密码置空："
     echo -e "\033[32mmysql> use mysql;\033[0m"
     echo -e "\033[32mmysql> update user set authentication_string = '' where user = 'root';\033[0m"
     echo -e "\033[32mmysql> flush privileges;\033[0m"
-    echo -e "\n请务必在修改密码后将/etc/my.cnf的skip-grant-tables注释掉并重启mysql"
+    echo -e "请务必在修改密码后将/etc/my.cnf的skip-grant-tables注释掉并重启mysql"
     echo "然后修改密码，不修改将无法操作"
-    echo -e "\n\033[32mmysql> ALTER USER 'root'@'localhost' IDENTIFIED BY '123456' PASSWORD EXPIRE NEVER; \033[0m"
+    echo -e "\033[32mmysql> ALTER USER 'root'@'localhost' IDENTIFIED BY '123456' PASSWORD EXPIRE NEVER; \033[0m"
     echo -e "\033[32mmysql> flush privileges;\033[0m"
-    echo -e "\n\033[31m再次重启mysql\033[0m\n"
+    echo -e "\n再次重启mysql"
+    echo -e "\033[34m"
+    cat << EOF
+mysql8.0后不能使用grant创建用户了，并且设置密码时需要指定 GRANT OPTION，所以远程登录请这么设置
+mysql> CREATE USER 'root'@'%' IDENTIFIED BY 'root';
+mysql> ALTER USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY '123456';
+
+EOF
+    echo -e "\033[0m"
 fi
 
