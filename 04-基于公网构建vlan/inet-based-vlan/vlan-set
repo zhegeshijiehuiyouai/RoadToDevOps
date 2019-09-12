@@ -1,0 +1,198 @@
+#!/bin/bash
+#********************************************************************
+# 
+# 请以root账号在CentOS 7 系列服务器上运行
+#
+# 防火墙ip白名单配置
+#
+#*********************************************************************
+
+# 设定工作路径
+WORKDIR=/root/BashShell/inet-based-vlan
+[[ -d ${WORKDIR} ]] || mkdir -p ${WORKDIR}
+cd ${WORKDIR}
+
+# 添加服务器IP到white-list
+add_ip_to_white_list() {
+    echo $1 >> ${WORKDIR}/white-list
+}
+
+# 从white-list中删除服务器IP
+remove_ip_from_white_list() {
+    grep $1 ${WORKDIR}/white-list &> /dev/null
+    if [ $? -eq 0 ]; then
+        sed -i /$1/d ${WORKDIR}/white-list
+    # 如果white-list中本来就没有ip，则什么也不做，所以直接fi
+    fi
+}
+
+# 防火墙中添加一个允许访问的ip
+add_ip() {
+    # 添加前检查防火墙中是否已有该ip的规则
+    iptables -nL | grep $1 &> /dev/null
+    if [ $? -eq 0 ]; then
+        echo -e "防火墙中\033[32m已有 $1\033[0m ，无需添加"
+        # 防火墙中有ip，但white-list中无ip的情况
+        grep $1 ${WORKDIR}/white-list > /dev/null
+        if [ $? -ne 0 ]; then
+            echo "但检查${WORKDIR}/white-list中无该ip，需要添加进文件"
+            add_ip_to_white_list $1
+        fi
+    else
+        iptables -I INPUT -s $1 -j ACCEPT &> /dev/null
+        echo -e "\033[32m$1\033[0m 已添加进防火墙"
+    fi
+}
+
+# 从防火墙中移除一个ip
+remove_ip() {
+    # 移除前检查防火墙中有没有该ip的规则
+    iptables -nL | grep $1 &> /dev/null
+    if [ $? -eq 0 ]; then
+        iptables -D INPUT -s $1 -j ACCEPT &> /dev/null
+        echo -e "\033[32m$1\033[0m 已从防火墙移除"
+    else
+        echo -e "防火墙中\033[32m没有 $1\033[0m 的规则，无需移除"
+    fi
+}
+
+# 添加一个服务器到内网中
+add_one_srv() {
+    read -p "请输入新增服务器的ip：" ADD_IN_SRV_IP
+    # 判断是否是ip
+    [[ $ADD_IN_SRV_IP =~ ^((2[0-4][[:digit:]]|25[0-5]|[01]?[[:digit:]][[:digit:]]?)\.){3}(2[0-4][[:digit:]]|25[0-5]|[01]?[[:digit:]][[:digit:]]?)$ ]]
+    if [ $? -eq 0 ]; then
+        add_ip ${ADD_IN_SRV_IP}
+    else
+        echo -e "\033[32m${ADD_IN_SRV_IP}\033[0m 不是ip，请重新操作"
+        exit
+    fi
+}
+
+# 从内网中移除一个服务器
+remove_one_srv() {
+    read -p "请输入要移除的服务器的ip：" GG_SRV_IP
+    # 判断是否是ip
+    [[ $GG_SRV_IP =~ ^((2[0-4][[:digit:]]|25[0-5]|[01]?[[:digit:]][[:digit:]]?)\.){3}(2[0-4][[:digit:]]|25[0-5]|[01]?[[:digit:]][[:digit:]]?)$ ]]
+    if [ $? -eq 0 ]; then
+        remove_ip ${GG_SRV_IP}
+    else
+        echo -e "\033[32m${ADD_IN_SRV_IP}\033[0m 不是ip，请重新操作"
+        exit
+    fi
+}
+
+# 判断white-list是否存在，不存在就创建
+exist_white_list() {
+    if [[ -f white-list ]]; then
+        return 0
+    else
+        cat > white-list << EOF
+# 此处ip主要为批量增加、删除服务器用，每行一个ip
+EOF
+        echo -e "创建用于构建vlan的服务器清单文件：\033[32m${WORKDIR}/white-list\033[0m"
+        return 1
+    fi
+}
+
+# 批量删除white-list中的ip到vlan
+remove_vlan() {
+    local WL_IP=""
+    while read WL_IP;do
+        if [[ $WL_IP =~ ^# ]]; then
+	    continue
+	else
+            remove_ip ${WL_IP}
+        fi
+    done < white-list
+}
+
+# 批量添加white-list中的ip到vlan
+build_vlan() {
+    local WL_IP=""
+    while read WL_IP;do
+        if [[ $WL_IP =~ ^# ]]; then
+            continue
+        else
+            add_ip ${WL_IP}
+        fi
+    done < white-list
+}
+
+
+#=======================================
+
+# 直接读取配置文件添加IP（传递参数1）
+if [ $1 -eq 1 ]; then
+    exist_white_list
+    # 判断名单里是否有ip
+    grep -E "^((2[0-4][[:digit:]]|25[0-5]|[01]?[[:digit:]][[:digit:]]?)\.){3}(2[0-4][[:digit:]]|25[0-5]|[01]?[[:digit:]][[:digit:]]?)$" white-list &> /dev/null
+    if [[ $? -ne 0 ]]; then
+        echo "由于服务器列表为空，操作无法进行，请先添加服务器IP"
+        exit
+    fi
+    build_vlan
+    exit
+# 直接读取配置文件删除IP（传递参数2）
+elif [ $1 -eq 2 ]; then
+    exist_white_list
+    # 判断名单里是否有ip
+    grep -E "^((2[0-4][[:digit:]]|25[0-5]|[01]?[[:digit:]][[:digit:]]?)\.){3}(2[0-4][[:digit:]]|25[0-5]|[01]?[[:digit:]][[:digit:]]?)$" white-list &> /dev/null
+    if [[ $? -ne 0 ]]; then
+        echo "由于服务器列表为空，操作无法进行，请先添加服务器IP"
+        exit
+    fi
+    remove_vlan
+    exit
+fi
+
+
+#======================================
+# 功能选择菜单
+cat << EOF
+*********************************
+  1）新增一个服务器IP到VLAN
+  2）移除VLAN中一个服务器IP
+  3）从white-list构建VLAN
+  4）从white-list拆除VLAN
+*********************************
+EOF
+
+read -p "请输入对应数字进行选择：" FUN_CHOICE
+
+case $FUN_CHOICE in
+1)
+    exist_white_list
+    add_one_srv
+    add_ip_to_white_list $ADD_IN_SRV_IP
+    ;;
+2)
+    remove_one_srv
+    # 如果有white-list，那么就从white-list中删除ip，正常情况肯定是有名单的，但万一哪个手痒呢
+    [ -f ${WORKDIR}/white-list ] && remove_ip_from_white_list $GG_SRV_IP
+    ;;
+3)
+    exist_white_list
+    # 判断名单里是否有ip
+    grep -E "^((2[0-4][[:digit:]]|25[0-5]|[01]?[[:digit:]][[:digit:]]?)\.){3}(2[0-4][[:digit:]]|25[0-5]|[01]?[[:digit:]][[:digit:]]?)$" white-list &> /dev/null
+    if [[ $? -ne 0 ]]; then
+        echo "由于服务器列表为空，操作无法进行，请先添加服务器IP"
+        exit
+    fi
+    build_vlan
+    ;;
+4)
+    exist_white_list
+    # 判断名单里是否有ip
+    grep -E "^((2[0-4][[:digit:]]|25[0-5]|[01]?[[:digit:]][[:digit:]]?)\.){3}(2[0-4][[:digit:]]|25[0-5]|[01]?[[:digit:]][[:digit:]]?)$" white-list &> /dev/null
+    if [[ $? -ne 0 ]]; then
+        echo "由于服务器列表为空，操作无法进行，请先添加服务器IP"
+        exit
+    fi
+    remove_vlan
+    ;;
+*)
+    echo '天啦，我们不提供你输入的服务 \(//∇//)\'
+    ;;
+esac
+

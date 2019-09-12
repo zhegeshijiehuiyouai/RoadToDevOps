@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# 功能选择菜单
+cat << EOF
+*********************************
+  1) 查看本地iptables INPUT规则
+  2）IP操作
+  3）端口操作
+*********************************
+EOF
+
+read -p "请输入对应数字进行选择：" FUN_CHOICE
+
+case $FUN_CHOICE in
+1)
+    echo
+    iptables -nL | awk '/^Chain INPUT/,/^[[:space:]]*$/{print}'
+    ;;
+2)
+    ./vlan-set
+    ;;
+3)
+    ./port-set
+    ;;
+*)
+    echo '天啦，我们不提供你输入的服务 \(//∇//)\'
+    ;;
+esac
+

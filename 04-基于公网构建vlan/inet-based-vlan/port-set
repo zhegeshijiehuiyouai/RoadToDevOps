@@ -1,0 +1,198 @@
+#!/bin/bash
+#********************************************************************
+# 
+# 请以root账号在CentOS 7 系列服务器上运行
+#
+# 防火墙端口黑名单配置
+#
+#*********************************************************************
+
+# 设定工作路径
+WORKDIR=/root/BashShell/inet-based-vlan
+[[ -d ${WORKDIR} ]] || mkdir -p ${WORKDIR}
+cd ${WORKDIR}
+
+# 添加限制端口
+add_ban_port() {
+    # 添加前检查防火墙中是否已有该port的规则
+    iptables -nL | grep ":$1\>" &> /dev/null
+    if [ $? -eq 0 ]; then
+        echo -e "防火墙中\033[32m已有 $1 端口\033[0m，无需添加"
+        # 防火墙中有端口，但ban-ports中无端口的情况
+        grep $1 ${WORKDIR}/ban-ports > /dev/null
+        if [ $? -ne 0 ]; then
+            echo "但检查${WORKDIR}/ban-ports中无该端口，需要添加进文件"
+            add_ip_to_ban_ports $1
+        fi
+    else
+        iptables -A INPUT -p tcp --dport $1 -j DROP
+        echo -e "端口 \033[32m$1\033[0m 已添加进防火墙"
+    fi
+}
+
+# 移除限制端口
+remove_ban_port() {
+    # 移除前检查防火墙中有没有该端口的规则
+    iptables -nL | grep ":$1\>" &> /dev/null
+    if [ $? -eq 0 ]; then
+        iptables -D INPUT -p tcp --dport $1 -j DROP
+        echo -e "端口 \033[32m$1\033[0m 已移出防火墙"
+    else
+        echo -e "防火墙中\033[32m没有端口 $1\033[0m 的规则，无需移除"
+    fi
+}
+
+
+# 判断ban-ports是否存在，不存在就创建
+exist_ban_ports() {
+    if [[ -f ban-ports ]]; then
+        return 0
+    else
+        cat > ban-ports << EOF
+# 限制端口，每行一个，格式为
+# 8080 表示单个端口
+# 8080:8090 表示连续端口
+EOF
+        echo -e "创建限制端口列表：\033[32m${WORKDIR}/ban-ports\033[0m"
+        return 1
+    fi
+}
+
+# 添加端口到ban-ports中
+add_port_to_ban_ports() {
+    echo $1 >> ${WORKDIR}/ban-ports
+}
+
+# 删除ban-ports中的端口
+remove_port_from_ban_ports() {
+    grep $1 ${WORKDIR}/ban-ports &> /dev/null
+    if [ $? -eq 0 ]; then
+        sed -i /$1/d ${WORKDIR}/ban-ports
+    # 如果ban-ports中本来就没有端口，则什么也不做，所以直接fi
+    fi
+
+}
+
+# 批量删除ban-ports中的端口到vlan
+remove_ports_from_file() {
+    local BAN_PORT=""
+    while read BAN_PORT;do
+        if [[ $BAN_PORT =~ ^# ]]; then
+	    continue
+	else
+            remove_ban_port ${BAN_PORT}
+        fi
+    done < ban-ports
+}
+
+# 批量添加ban-ports中的端口到vlan
+add_ports_from_file() {
+    local BAN_PORT=""
+    while read BAN_PORT;do
+        if [[ $BAN_PORT =~ ^# ]]; then
+            continue
+        else
+            add_ban_port ${BAN_PORT}
+        fi
+    done < ban-ports
+}
+
+## 判断输入的是不是端口
+#is_port() {
+#    # 判断是否是8080:8090这种格式
+#    (echo $1 | grep ":" &> /dev/null) && [ 2 == $(echo $1 | awk -F":" '{print NF}') ]
+#    # 是连续端口
+#    if [ $? -eq 0 ]; then
+#        return 20
+#    else
+#        # 判断是不是单个端口
+#        [[ $1 =~ ^[0-9]*$ ]]
+#        if [ $? -ne 0 ]; then
+#            echo "您输入的既不是单个端口，也不是连续端口，退出"
+#            exit
+#        else
+#            # 自定义返回值，10表示输入的是单个端口
+#            return 10
+#        fi
+#    fi
+#}
+
+#=======================================
+
+# 直接读取配置文件添加限制端口（传递参数1）
+if [ $1 -eq 1 ]; then
+    exist_ban_ports
+    # 判断名单里是否有端口
+    grep -E "^[[:digit:]]*(:[[:digit:]]*)?$" ban-ports &> /dev/null
+    if [[ $? -ne 0 ]]; then
+        echo "由于限制端口列表为空，操作无法进行，请先添加限制端口"
+        exit
+    fi
+    add_ports_from_file
+    exit
+# 直接读取配置文件删除限制端口（传递参数2）
+elif [ $1 -eq 2 ]; then
+    exist_ban_ports
+    # 判断名单里是否有端口
+    grep -E "^[[:digit:]]*(:[[:digit:]]*)?$" ban-ports &> /dev/null
+    if [[ $? -ne 0 ]]; then
+        echo "由于限制端口列表为空，操作无法进行，请先添加限制端口"
+        exit
+    fi
+    remove_ports_from_file
+    exit
+fi
+
+
+
+#=======================================
+# 功能选择菜单
+cat << EOF
+******************************************
+  1）新增一个(#)或一段连续的(#:#)限制端口
+  2）解除一个(#)或一段连续的(#:#)限制端口
+  3）从ban-ports中添加限制端口
+  4）从ban-ports中解除限制端口
+******************************************
+EOF
+
+read -p "请输入对应数字进行选择：" FUN_CHOICE
+
+case $FUN_CHOICE in
+1)
+    exist_ban_ports
+    read -p "请输入新增的端口：" INPUT_PORT
+    add_ban_port $INPUT_PORT
+    add_port_to_ban_ports $INPUT_PORT
+    ;;
+2)
+    read -p "请输入要删除的端口：" INPUT_DEL_PORT
+    remove_ban_port $INPUT_DEL_PORT
+    # 如果有ban-ports，那么就从ban-ports中删除ip，正常情况肯定是有名单的，但万一哪个手痒呢
+    [ -f ${WORKDIR}/ban-ports ] && remove_port_from_ban_ports $INPUT_DEL_PORT
+    ;;
+3)
+    exist_ban_ports
+    # 判断名单里是否有端口
+    grep -E "^[[:digit:]]*(:[[:digit:]]*)?$" ban-ports &> /dev/null
+    if [[ $? -ne 0 ]]; then
+        echo "由于限制端口列表为空，操作无法进行，请先添加限制端口"
+        exit
+    fi
+    add_ports_from_file
+    ;;
+4)
+    exist_ban_ports
+    # 判断名单里是否有端口
+    grep -E "^[[:digit:]]*(:[[:digit:]]*)?$" ban-ports &> /dev/null
+    if [[ $? -ne 0 ]]; then
+        echo "由于限制端口列表为空，操作无法进行，请先添加限制端口"
+        exit
+    fi
+    remove_ports_from_file
+    ;;
+*)
+    echo '天啦，我们不提供你输入的服务 \(//∇//)\'
+    ;;
+esac
+
