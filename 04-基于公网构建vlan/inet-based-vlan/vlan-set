@@ -142,6 +142,8 @@ elif [ $1 -eq 2 ]; then
         echo "由于服务器列表为空，操作无法进行，请先添加服务器IP"
         exit
     fi
+    # 移除IP前先解除禁用端口
+    ./port-set 2
     remove_vlan
     exit
 fi
@@ -189,6 +191,8 @@ case $FUN_CHOICE in
         echo "由于服务器列表为空，操作无法进行，请先添加服务器IP"
         exit
     fi
+    # 移除IP前先解除禁用端口
+    ./port-set 2
     remove_vlan
     ;;
 *)
