@@ -1,0 +1,80 @@
+#!/bin/bash
+# 要操作的服务器
+HOST=all
+
+add() {
+  # 拷贝
+  ansible $HOST -m copy -a "src=/root/BashShell/inet-based-vlan dest=/root/BashShell/" > /dev/null
+  ansible $HOST -m shell -a "chmod +x /root/BashShell/inet-based-vlan/{nettovlan,port-set,vlan-set}" > /dev/null
+  # 创建VLAN
+  ansible $HOST -m script -a "/root/BashShell/set-vlan/scripts/add.sh" > /dev/null
+  # 添加开机启动
+  ansible $HOST -m script -a "/root/BashShell/set-vlan/scripts/add-autostart.sh" > /dev/null
+}
+
+remove() {
+  # 拆除VLAN
+  ansible $HOST -m script -a "/root/BashShell/set-vlan/scripts/remove.sh" &> /dev/null
+  # 删除开机启动
+  ansible $HOST -m script -a "/root/BashShell/set-vlan/scripts/remove-autostart.sh" > /dev/null
+}
+
+
+cat << EOF
+  1）创建VLAN
+  2）删除VLAN
+  3）显示是否创建了VLAN
+EOF
+
+read -p "请输入序号选择：" CHOICE
+case $CHOICE in
+1)
+  # 0表示没有创建VLAN
+  grep "0" /root/BashShell/set-vlan/isadd &> /dev/null
+  if [ $? -eq 0 ]; then
+    mv /etc/ansible/hosts /etc/ansible/hosts_bak && cp /root/BashShell/set-vlan/hosts /etc/ansible/hosts
+    echo "VLAN创建中，这可能需要一点时间，请耐心等待..."
+    # 创建VLAN
+    add
+    # 添加本地的访问控制
+    /root/BashShell/set-vlan/scripts/add.sh
+    /root/BashShell/set-vlan/scripts/add-autostart.sh
+    echo "VLAN已创建"
+    rm -f /etc/ansible/hosts && mv /etc/ansible/hosts_bak /etc/ansible/hosts
+    # 设置标识，表示已经创建了VLAN
+    echo "1" > /root/BashShell/set-vlan/isadd
+  else
+    echo "VLAN已创建，要重新创建请先删除VLAN"
+  fi
+  ;;
+2)
+  # 1表示已创建VLAN
+  grep "1" /root/BashShell/set-vlan/isadd &> /dev/null
+  if [ $? -eq 0 ]; then
+    mv /etc/ansible/hosts /etc/ansible/hosts_bak && cp /root/BashShell/set-vlan/hosts /etc/ansible/hosts
+    echo "VLAN删除中，这可能需要一点时间，请耐心等待..."
+    # 删除VLAN
+    remove
+    # 删除本地的访问控制
+    /root/BashShell/set-vlan/scripts/remove.sh
+    /root/BashShell/set-vlan/scripts/remove-autostart.sh
+    echo "VLAN已删除"
+    rm -f /etc/ansible/hosts && mv /etc/ansible/hosts_bak /etc/ansible/hosts
+    # 设置标识，表示已经创建了VLAN
+    echo "0" > /root/BashShell/set-vlan/isadd
+  else
+    echo "VLAN尚未创建"
+  fi
+  ;;
+3)
+  grep "0" /root/BashShell/set-vlan/isadd &> /dev/null
+  if [ $? -eq 0 ]; then
+    echo "VLAN尚未创建"
+  else
+    echo "VLAN已创建"
+  fi
+  ;;
+*)
+  echo '天啦，我们不提供你输入的服务 \(//∇//)\'
+  ;;
+esac
