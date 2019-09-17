@@ -50,7 +50,7 @@ else
     echo "+++创建mysql用户"
 fi
 
-echoa "初始化mysql..."
+echo "初始化mysql..."
 
 mkdir -p ${DIR}/mysql/data
 chown -R mysql:mysql ${DIR}/mysql/
