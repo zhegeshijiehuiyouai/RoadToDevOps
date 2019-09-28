@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# 根据日期删除es索引
+# 针对es索引是单个的情况（相较于xx.log-2019.09.28这种格式来说），根据日期删除es索引
 # Author：zhegeshijiehuoyouai
 # Date：2019.9.2
 #
