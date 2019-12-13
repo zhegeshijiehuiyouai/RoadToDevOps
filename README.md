@@ -5,20 +5,12 @@
 .
 ├── 01-installation-scripts
 │   ├── 01-MySQL
-│   │   ├── 01-install-mysql5.7.sh
-│   │   └── 02-install-mysql8.0.sh
 │   ├── 02-Zabbix
-│   │   └── 01-by-ansible
-│   ├── 03-Create-Swap
-│   │   └── 01-create-swap.sh
-│   ├── 04-Jumpserver
-│   │   └── 01-install-jumpserver.sh
-│   └── 05-Docker
-│       └── 01-install-docker.sh
-├── 02-tools
-│   ├── 01-check-package-manager.sh
-│   ├── 02-clean-single-es-index-by-date.sh
-│   └── 03-clean-date-format-es-index-by-date.sh
+│   ├── 03-Jumpserver
+│   └── 04-Docker
+├── 02-elasticsearch-tools
+│   ├── 01-clean-single-es-index-by-date.sh
+│   └── 02-clean-date-format-es-index-by-date.sh
 ├── 03-Dockerfile
 │   ├── 01-nacos
 │   ├── 02-feely-sys
@@ -26,6 +18,11 @@
 ├── 04-基于公网的访问控制
 │   ├── inet-based-vlan
 │   └── set-vlan
+├── 05-disk-tools
+│   ├── 01-Create-Swap
+│   └── 02-Create-LVM
+├── 06-system-tools
+│   └── 01-check-package-manager.sh
 └── README.md
 
 ```
