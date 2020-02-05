@@ -19,7 +19,7 @@ Archive=${FILE}.tar.gz
 
 # 判断是否存在压缩包，没有的话就下载网易镜像站的mysql压缩包
 ls ${Archive} &> /dev/null
-[ $? -eq 0 ] || wget http://mirrors.163.com/mysql/Downloads/MySQL-8.0/${Archive}
+[ $? -eq 0 ] || wget http://mirrors.sohu.com/mysql/MySQL-8.0/${Archive}
 
 # 解压
 echo "解压中，请稍候..."

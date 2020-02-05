@@ -22,7 +22,7 @@ Archive=${FILE}.tar.gz
 
 # 判断压缩包是否存在，如果不存在就下载
 ls ${Archive} &> /dev/null
-[ $? -eq 0 ] || wget http://ftp.ntu.edu.tw/MySQL/Downloads/MySQL-5.7/${Archive}
+[ $? -eq 0 ] || wget http://mirrors.sohu.com/mysql/MySQL-5.7/${Archive}
 
 # 解压
 echo "解压中，请稍候..."
