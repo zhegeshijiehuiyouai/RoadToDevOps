@@ -20,7 +20,7 @@ mkdir -p /etc/docker
 cd /etc/docker
 cat > daemon.json << EOF
 {
-    "graph":"/mnt/data/docker",
+    "graph":"/data/docker",
     "log-opts": {"max-size":"10m", "max-file":"1"}
 }
 EOF
