@@ -30,8 +30,8 @@ else
     echo "解压出错，请检查"
 fi
 
-# 做软连接，方便以后升级
-ln -s ${FILE} mysql
+# 更改文件名
+mv ${FILE} mysql
 
 #创建mysql用户
 if id -g mysql >/dev/null 2>&1; then
@@ -110,11 +110,15 @@ PrivateTmp=true
 WantedBy=multi-user.target
 EOF
 
-# 将mysql文件拷贝到/usr/local/bin/，这样就能在任意地方使用mysql命令
+# 添加环境变量，这样就能在任意地方使用mysql全套命令
+echo "export PATH=${PATH}:${DIR}/mysql/bin" > /etc/profile.d/mysql.sh
+source /etc/profile
 if [ -f /usr/local/bin/mysql ];then
-    rm -f /usr/local/bin/mysql
+    echo "/usr/local/bin目录有未删除的mysql相关文件，请检查！"
 fi
-cp ${DIR}/mysql/bin/mysql /usr/local/bin/
+if [ -f /usr/bin/mysql ];then
+    echo "/usr/bin目录有未删除的mysql相关文件，请检查！"
+fi
 
 echo "设置完毕"
 systemctl enable mysql.service >/dev/null 2>&1
