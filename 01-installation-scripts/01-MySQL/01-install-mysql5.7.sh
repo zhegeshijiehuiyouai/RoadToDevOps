@@ -150,3 +150,5 @@ EOF
     echo -e "\n\033[31m再次重启mysql\033[0m\n"
 fi
 
+echo "楼主水平有限，在执行以上步骤前请手动执行 source /etc/profile "
+
