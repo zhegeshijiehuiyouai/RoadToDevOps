@@ -8,7 +8,8 @@ yum remove docker \
     docker-latest \
     docker-latest-logrotate \
     docker-logrotate \
-    docker-engine
+    docker-engine \
+    docker-ce
 
 echo -e "\033[32m安装docker\033[0m"
 cd /etc/yum.repos.d/
