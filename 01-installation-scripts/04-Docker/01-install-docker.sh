@@ -14,7 +14,7 @@ yum remove docker \
 
 echo -e "\033[32m安装docker\033[0m"
 cd /etc/yum.repos.d/
-[ -f docker-ce.repo ] || wget https://download.docker.com/linux/centos/docker-ce.repo
+[ -f docker-ce.repo ] || wget https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
 yum makecache
 yum install -y docker-ce
 
