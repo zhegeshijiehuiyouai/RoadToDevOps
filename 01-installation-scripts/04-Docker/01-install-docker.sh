@@ -4,6 +4,7 @@ echo -e "\033[32m如果之前有安装docker的话，先删除docker\033[0m"
 yum remove docker \
     docker-client \
     docker-client-latest \
+    docker-ce-cli \
     docker-common \
     docker-latest \
     docker-latest-logrotate \
