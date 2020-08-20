@@ -16,7 +16,17 @@ echo -e "\033[32m安装docker\033[0m"
 cd /etc/yum.repos.d/
 [ -f docker-ce.repo ] || wget https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
 yum makecache
-yum install -y docker-ce
+
+# 根据CentOS版本（7还是8）来进行安装
+osv=$(cat /etc/redhat-release | awk '{print $4}' | awk -F'.' '{print $1}')
+if [ $osv -eq 7 ]; then
+    yum install docker-ce -y
+elif [ $osv -eq 8 ];then
+    dnf install docker-ce --nobest -y
+else
+    echo "版本不支持"
+    exit 1
+fi
 
 echo -e "\033[32mdocker配置调整\033[0m"
 mkdir -p /etc/docker
