@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # 脚本功能：自动部署mysql5.7
-# 测试系统：CentOS7.4
+# 测试系统：CentOS7.6
 # mysql安装文件：二进制包
 #
-# mysql下载地址：http://ftp.ntu.edu.tw/MySQL/Downloads/MySQL-5.7/
+# mysql下载地址：https://cdn.mysql.com/Downloads/MySQL-5.7/mysql-5.7.31-linux-glibc2.12-x86_64.tar.gz
 # 或者官网下载
 #
 # 将本脚本和二进制包放在同一目录下，脚本会在本目录下创建mysql作为mysql安装目录
@@ -14,15 +14,15 @@
 # 部署目录
 DIR=`pwd`
 # 端口
-PORT=3308
+PORT=3306
 # 解压后的名字
-FILE=mysql-5.7.26-linux-glibc2.12-x86_64
+FILE=mysql-5.7.31-linux-glibc2.12-x86_64
 # mysql二进制包名字
 Archive=${FILE}.tar.gz
 
 # 判断压缩包是否存在，如果不存在就下载
 ls ${Archive} &> /dev/null
-[ $? -eq 0 ] || wget http://mirrors.sohu.com/mysql/MySQL-5.7/${Archive}
+[ $? -eq 0 ] || wget https://cdn.mysql.com/Downloads/MySQL-5.7/${Archive}
 
 # 解压
 echo "解压中，请稍候..."
@@ -34,7 +34,8 @@ else
 fi
 
 # 更改文件名
-mv ${FILE} mysql
+mysql_dir_name=mysql-5.7.31
+mv ${FILE} ${mysql_dir_name}
 
 # 创建mysql用户
 if id -g mysql >/dev/null 2>&1; then
@@ -52,15 +53,15 @@ fi
 
 echo "初始化mysql..."
 
-mkdir -p ${DIR}/mysql/data
-chown -R mysql:mysql ${DIR}/mysql/
+mkdir -p ${DIR}/${mysql_dir_name}/data
+chown -R mysql:mysql ${DIR}/${mysql_dir_name}/
 
 # 初始化
-cd mysql
-bin/mysqld --initialize --basedir=${DIR}/mysql --datadir=${DIR}/mysql/data  --pid-file=${DIR}/mysql/data/mysql.pid >/dev/null 2>&1
+cd ${mysql_dir_name}
+bin/mysqld --initialize --basedir=${DIR}/${mysql_dir_name} --datadir=${DIR}/${mysql_dir_name}/data  --pid-file=${DIR}/${mysql_dir_name}/data/mysql.pid >/dev/null 2>&1
 echo "初始化完毕"
 # 初始化完成后，data目录会生成文件，所以重新赋权
-chown -R mysql:mysql ${DIR}/mysql/
+chown -R mysql:mysql ${DIR}/${mysql_dir_name}/
 echo "mysql目录授权成功"
 
 # 备份原来的/etc/my.cnf
@@ -74,14 +75,14 @@ echo "初始化/etc/my.cnf..."
 cat > /etc/my.cnf << EOF
 [mysql]
 default-character-set=utf8
-socket=${DIR}/mysql/data/mysql.sock
+socket=${DIR}/${mysql_dir_name}/data/mysql.sock
 
 [mysqld]
 skip-grant-tables
 port=${PORT}
-socket=${DIR}/mysql/data/mysql.sock
-basedir=${DIR}/mysql
-datadir=${DIR}/mysql/data
+socket=${DIR}/${mysql_dir_name}/data/mysql.sock
+basedir=${DIR}/${mysql_dir_name}
+datadir=${DIR}/${mysql_dir_name}/data
 max_connections=200
 character-set-server=utf8
 default-storage-engine=INNODB
@@ -103,17 +104,17 @@ Description=mysql
 After=network.target
 [Service]
 Type=forking
-ExecStart=${DIR}/mysql/support-files/mysql.server start
-ExecStop=${DIR}/mysql/support-files/mysql.server stop
-ExecRestart=${DIR}/mysql/support-files/mysql.server restart
-ExecReload=${DIR}/mysql/support-files/mysql.server reload
+ExecStart=${DIR}/${mysql_dir_name}/
+ExecStop=${DIR}/${mysql_dir_name}/support-files/mysql.server stop
+ExecRestart=${DIR}/${mysql_dir_name}/support-files/mysql.server restart
+ExecReload=${DIR}/${mysql_dir_name}/support-files/mysql.server reload
 PrivateTmp=true
 [Install]
 WantedBy=multi-user.target
 EOF
 
 # 添加环境变量，这样就能在任意地方使用mysql全套命令
-echo "export PATH=${PATH}:${DIR}/mysql/bin" > /etc/profile.d/mysql.sh
+echo "export PATH=${PATH}:${DIR}/${mysql_dir_name}/bin" > /etc/profile.d/mysql.sh
 source /etc/profile
 if [ -f /usr/local/bin/mysql ];then
     echo "/usr/local/bin目录有未删除的mysql相关文件，请检查！"
