@@ -104,7 +104,7 @@ Description=mysql
 After=network.target
 [Service]
 Type=forking
-ExecStart=${DIR}/${mysql_dir_name}/
+ExecStart=${DIR}/${mysql_dir_name}/support-files/mysql.server start
 ExecStop=${DIR}/${mysql_dir_name}/support-files/mysql.server stop
 ExecRestart=${DIR}/${mysql_dir_name}/support-files/mysql.server restart
 ExecReload=${DIR}/${mysql_dir_name}/support-files/mysql.server reload
