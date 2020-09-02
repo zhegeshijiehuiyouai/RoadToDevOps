@@ -79,6 +79,7 @@ socket=${DIR}/${mysql_dir_name}/data/mysql.sock
 
 [mysqld]
 skip-grant-tables
+skip-name-resolve
 port=${PORT}
 socket=${DIR}/${mysql_dir_name}/data/mysql.sock
 basedir=${DIR}/${mysql_dir_name}
@@ -146,7 +147,7 @@ EOF
     echo -e "\033[32mmysql> flush privileges;\033[0m"
     echo -e "\n请务必在修改密码后将/etc/my.cnf的skip-grant-tables注释掉并重启mysql"
     echo "重启后执行以下命令取消密码有效期限制"
-    echo -e "\n\033[32mmysql> alter user 'root'@'localhost' identified by 'xxx' PASSWORD EXPIRE NEVER account unlock;\033[0m"
+    echo -e "\n\033[32mmysql> alter user 'root'@'localhost' identified by '123456' PASSWORD EXPIRE NEVER account unlock;\033[0m"
     echo -e "\033[32mmysql> flush privileges;\033[0m"
     echo -e "\n\033[31m再次重启mysql\033[0m\n"
 fi

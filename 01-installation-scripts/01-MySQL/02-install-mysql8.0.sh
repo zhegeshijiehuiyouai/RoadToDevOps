@@ -77,6 +77,7 @@ socket=${DIR}/${mysql_dir_name}/data/mysql.sock
 
 [mysqld]
 skip-grant-tables
+skip-name-resolve
 port=${PORT}
 socket=${DIR}/${mysql_dir_name}/data/mysql.sock
 basedir=${DIR}/${mysql_dir_name}
