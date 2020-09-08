@@ -33,7 +33,8 @@ mkdir -p /etc/docker
 cd /etc/docker
 cat > daemon.json << EOF
 {
-    "graph":"/data/docker",
+    "registry-mirrors": ["https://bxsfpjcb.mirror.aliyuncs.com"],
+    "data-root": "/data/docker",
     "log-opts": {"max-size":"10m", "max-file":"1"}
 }
 EOF
