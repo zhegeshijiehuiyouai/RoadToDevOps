@@ -138,7 +138,8 @@ mysql控制命令：
     重启：systemctl restart mysql
     停止：systemctl stop mysql
 EOF
-    echo -e "\n请输入命令：mysql，进入MySQL修改密码"
+    echo -e "\033[36m请先执行 \033[0m\033[33msource /etc/profile\033[0m\033[36m 加载环境变量，或者新开一个终端执行下面的命令\033[0m"
+    echo -e "\n请输入命令：\033[33mmysql\033[0m，进入MySQL修改密码"
     echo -e "首先将密码置空："
     echo -e "\033[32mmysql> use mysql;\033[0m"
     echo -e "\033[32mmysql> update user set authentication_string = '' where user = 'root';\033[0m"
@@ -157,6 +158,3 @@ mysql> ALTER USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY '123456';
 EOF
     echo -e "\033[0m"
 fi
-
-
-echo "楼主水平有限，在执行以上步骤前请手动执行 source /etc/profile "
