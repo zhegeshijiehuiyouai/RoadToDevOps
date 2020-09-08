@@ -28,6 +28,7 @@ if [ $? -eq 0 ];then
     echo "解压完毕"
 else
     echo "解压出错，请检查"
+    exit 2
 fi
 
 # 更改文件名
@@ -128,7 +129,7 @@ systemctl start mysql.service
 # mysql启动失败的话退出
 if [ $? -ne 0 ];then
     echo -e "\n\033[31mmysql启动失败，请查看错误信息\033[0m\n"
-    return 1
+    exit 1
 else
 # 提供一些提示信息	
     echo -e "mysql已启动成功，端口号为：\033[32m${PORT}\033[0m\n"
