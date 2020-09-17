@@ -1,0 +1,38 @@
+version: '2'
+services:
+  elasticsearch:
+    #image: docker.elastic.co/elasticsearch/elasticsearch:7.9.1
+    build: ./elasticsearch
+    # 设置build出来的镜像名
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.9.1-http
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+    expose:
+      - 9200
+    ports:
+      - "9200:9200"
+    volumes:
+      - /etc/localtime:/etc/localtime
+      - /etc/timezone:/etc/timezone
+
+  es-head:
+    image: mobz/elasticsearch-head:5
+    container_name: es-head
+    ports:
+      - "9100:9100"
+    links:
+      - "elasticsearch"
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.9.1
+    container_name: kibana
+    environment:
+      - I18N_LOCALE=zh-CN #汉化
+    links:
+      - "elasticsearch"
+    ports:
+      - "5601:5601"
+    volumes:
+      - /etc/localtime:/etc/localtime
+      - /etc/timezone:/etc/timezone
