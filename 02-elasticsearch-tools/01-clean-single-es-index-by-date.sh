@@ -12,15 +12,20 @@ http_es=10.0.17.109:9200
 # 定义索引保留天数
 keep_days=3
 # 获取所有索引
-all_indexs=$(curl -s -H'Content-Type:application/json' -XGET "http://${http_es}/_cat/shards" | awk '{print $1}' | uniq | sort)
+all_indexs=$(curl -s -XGET "http://${http_es}/_cat/indices" |awk '{print $3}' | uniq | sort)
 # 定义关键字颜色
 color=32
 
+echo -e "\033[33m以下是您希望删除的索引：\033[0m"
+echo ${wanna_del_indexs}
+echo -e "\033[33m在Elasticsearch中搜索到以下索引：\033[0m"
+echo ${all_indexs}
+echo
 
 # 定义删除函数
 clean_index(){
 cat > this_is_a_temp_file.sh << EOF
-  curl -H'Content-Type:application/json' -d'{
+  curl -s -H'Content-Type:application/json' -d'{
       "query": {
           "range": {
               "@timestamp": {

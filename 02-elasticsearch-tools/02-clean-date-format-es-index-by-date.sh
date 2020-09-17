@@ -10,14 +10,17 @@ http_es=10.0.17.98:9200
 # 定义索引保留天数
 keep_days=3
 # 定义要删除的索引，索引之间用空格隔开
-wanna_del_indexs=$(curl -H'Content-Type:application/json' -XGET "http://${http_es}/_cat/shards" |awk '{print $1}' |grep -v "\.kibana"|grep $(date -d "${keep_days} day ago" +%Y.%m.%d)|uniq)
+wanna_del_indexs=$(curl -s -XGET "http://${http_es}/_cat/indices" |awk '{print $3}' | grep -Ev "^\." | grep $(date -d "${keep_days} day ago" +%Y.%m.%d) | uniq)
 # 定义关键字颜色
 color=32
 
+echo -e "\033[33m在Elasticsearch中搜索到以下索引：\033[0m"
+echo ${wanna_del_indexs}
+echo
 
 # 定义删除函数
 clean_index(){
-  curl -XDELETE  http://${http_es}/$1
+  curl -s -XDELETE  http://${http_es}/$1
 }
 
 # 删除操作
