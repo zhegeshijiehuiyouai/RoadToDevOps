@@ -19,13 +19,10 @@
 │   ├── 01-nacos
 │   ├── 02-feely-sys
 │   └── 03-centos
-├── 04-基于公网的访问控制
-│   ├── inet-based-vlan
-│   └── set-vlan
-├── 05-disk-tools
+├── 04-disk-tools
 │   ├── 01-Create-Swap
 │   └── 02-Create-LVM
-├── 06-system-tools
+├── 05-system-tools
 │   └── 01-check-package-manager.sh
 └── README.md
 
