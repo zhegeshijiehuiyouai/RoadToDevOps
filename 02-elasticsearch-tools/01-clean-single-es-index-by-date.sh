@@ -6,20 +6,20 @@
 #
 
 # 定义要删除的索引，索引之间用空格隔开
-wanna_del_indexs="tms-devprod-new-log wms-devprod-new-log tb-devprod-new-log"
+wanna_del_indices="tms-devprod-new-log wms-devprod-new-log tb-devprod-new-log"
 # 定义 Elasticsearch 访问路径
 http_es=10.0.17.109:9200
 # 定义索引保留天数
 keep_days=3
 # 获取所有索引
-all_indexs=$(curl -s -XGET "http://${http_es}/_cat/indices" |awk '{print $3}' | uniq | sort)
+all_indices=$(curl -s -XGET "http://${http_es}/_cat/indices" |awk '{print $3}' | uniq | sort)
 # 定义关键字颜色
 color=32
 
 echo -e "\033[33m以下是您希望删除的索引：\033[0m"
-echo ${wanna_del_indexs}
+echo ${wanna_del_indices}
 echo -e "\033[33m在Elasticsearch中搜索到以下索引：\033[0m"
-echo ${all_indexs}
+echo ${all_indices}
 echo
 
 # 定义删除函数
@@ -43,9 +43,9 @@ rm -f this_is_a_temp_file.sh
 
 # 删除操作
 count=0
-for index in ${wanna_del_indexs}; do
+for index in ${wanna_del_indices}; do
   # 判断es中是否有该索引
-  echo ${all_indexs} | grep -w "${index}" &> /dev/null
+  echo ${all_indices} | grep -w "${index}" &> /dev/null
   if [ $? -ne 0 ]; then
     echo -e "没有索引:\033[${color}m${index}\033[0m"
     continue
