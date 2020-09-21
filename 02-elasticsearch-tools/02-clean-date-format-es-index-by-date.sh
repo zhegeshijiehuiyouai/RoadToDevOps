@@ -14,7 +14,7 @@ for i in $(seq 1 ${keep_days});do
     dateformat=$(date -d "${i} day ago" +%Y.%m.%d)
     sed -i /${dateformat}/d _all_indices
 done
-wanna_del_indices=$(cat _all_indices | grep -Ev "^[[:space:]]*$")
+wanna_del_indices=$(cat _all_indices | grep -Ev "^[[:space:]]*$" | grep -v $(date +%Y.%m.%d))
 rm -f _all_indices
 
 # 定义关键字颜色
