@@ -15,6 +15,8 @@
 DIR=`pwd`
 # 端口
 PORT=3306
+# mysql部署好后，root的默认密码
+my_root_passwd=123456
 # 解压后的名字
 FILE=mysql-5.7.31-linux-glibc2.12-x86_64
 # mysql二进制包名字
@@ -25,61 +27,65 @@ ls ${Archive} &> /dev/null
 [ $? -eq 0 ] || wget https://cdn.mysql.com/Downloads/MySQL-5.7/${Archive}
 
 # 解压
-echo "解压中，请稍候..."
+echo -e "\033[32m[+] 解压中，请稍候...\033[0m"
 tar -zxf ${Archive} >/dev/null 2>&1
 if [ $? -eq 0 ];then
-    echo "解压完毕"
+    echo -e "\033[32m[+] 解压完毕\033[0m"
 else
-    echo "解压出错，请检查"
+    echo -e "\033[31m[*] 解压出错，请检查!\033[0m"
     exit 2
 fi
 
 # 更改文件名
-mysql_dir_name=mysql-5.7.31
+mysql_dir_name=mysql
 mv ${FILE} ${mysql_dir_name}
 
 # 创建mysql用户
 if id -g mysql >/dev/null 2>&1; then
-    echo "mysql组已存在，无需创建"
+    echo -e "\033[32m[--] mysql组已存在，无需创建\033[0m"
 else
     groupadd mysql
-    echo "+++创建mysql组"
+    echo -e "\033[32m[+] 创建mysql组\033[0m"
 fi
 if id -u mysql >/dev/null 2>&1; then
-    echo "mysql用户已存在，无需创建"
+    echo -e "\033[32m[--] mysql用户已存在，无需创建\033[0m"
 else
     useradd -M -g mysql -s /sbin/nologin mysql
-    echo "+++创建mysql用户"
+    echo -e "\033[32m[+] 创建mysql用户\033[0m"
 fi
 
-echo "初始化mysql..."
+echo -e "\033[32m[+] 初始化mysql\033[0m"
 
 mkdir -p ${DIR}/${mysql_dir_name}/data
 chown -R mysql:mysql ${DIR}/${mysql_dir_name}/
 
 # 初始化
 cd ${mysql_dir_name}
-bin/mysqld --initialize --basedir=${DIR}/${mysql_dir_name} --datadir=${DIR}/${mysql_dir_name}/data  --pid-file=${DIR}/${mysql_dir_name}/data/mysql.pid >/dev/null 2>&1
-echo "初始化完毕"
+bin/mysqld --initialize --basedir=${DIR}/${mysql_dir_name} --datadir=${DIR}/${mysql_dir_name}/data  --pid-file=${DIR}/${mysql_dir_name}/data/mysql.pid >/tmp/mysql_password.txt 2>&1
+
+# 获取初始密码
+init_password=$(awk '/password/ {print $11}' /tmp/mysql_password.txt)
+rm -f /tmp/mysql_password.txt
+
 # 初始化完成后，data目录会生成文件，所以重新赋权
 chown -R mysql:mysql ${DIR}/${mysql_dir_name}/
-echo "mysql目录授权成功"
+echo -e "\033[32m[+] 初始化完毕\033[0m"
 
 # 备份原来的/etc/my.cnf
 if [ -f /etc/my.cnf ];then
     mv /etc/my.cnf /etc/my.cnf_`date +%F`
-    echo -e "\033[31m备份/etc/my.cnf_`date +%F`\033[0m"
+    echo -e "\033[36m[*] 备份/etc/my.cnf_`date +%F`\033[0m"
 fi
 
 # 生成新的/etc/my.cnf
-echo "初始化/etc/my.cnf..."
+echo -e "\033[32m[+] 初始化/etc/my.cnf\033[0m"
 cat > /etc/my.cnf << EOF
 [mysql]
 default-character-set=utf8
 socket=${DIR}/${mysql_dir_name}/data/mysql.sock
 
 [mysqld]
-skip-grant-tables
+#skip-grant-tables
 skip-name-resolve
 port=${PORT}
 socket=${DIR}/${mysql_dir_name}/data/mysql.sock
@@ -90,15 +96,13 @@ character-set-server=utf8
 default-storage-engine=INNODB
 max_allowed_packet=16M
 EOF
-echo "/etc/my.cnf初始化完毕"
-
 
 # 设置systemctl控制
 if [ -f /lib/systemd/system/mysql.service ];then
     mv /lib/systemd/system/mysql.service /lib/systemd/system/mysql.service_`date +%F`
-    echo -e "\033[31m备份/lib/systemd/system/mysql.service_`date +%F`\033[0m"
+    echo -e "\033[36m[*] 备份/lib/systemd/system/mysql.service_`date +%F`\033[0m"
 fi
-echo "设置systemctl启动文件，之后使用systemctl start mysql启动"
+echo -e "\033[32m[+] 设置systemctl启动文件\033[0m"
 
 cat > /lib/systemd/system/mysql.service << EOF
 [Unit]
@@ -116,41 +120,47 @@ WantedBy=multi-user.target
 EOF
 
 # 添加环境变量，这样就能在任意地方使用mysql全套命令
-echo "export PATH=${PATH}:${DIR}/${mysql_dir_name}/bin" > /etc/profile.d/mysql.sh
-source /etc/profile
+echo -e "\033[32m[+] 配置PATH环境变量\033[0m"
 if [ -f /usr/local/bin/mysql ];then
-    echo "/usr/local/bin目录有未删除的mysql相关文件，请检查！"
+    echo -e "\033[31m[*] /usr/local/bin目录有未删除的mysql相关文件，请检查！\033[0m"
+    exit 10
 fi
 if [ -f /usr/bin/mysql ];then
-    echo "/usr/bin目录有未删除的mysql相关文件，请检查！"
+    echo  -e"\033[31m[*] /usr/bin目录有未删除的mysql相关文件，请检查！\033[0m"
+    exit 10
 fi
+echo "export PATH=${PATH}:${DIR}/${mysql_dir_name}/bin" > /etc/profile.d/mysql.sh
+source /etc/profile
 
-echo "设置完毕"
 systemctl enable mysql.service >/dev/null 2>&1
 systemctl start mysql.service
 # mysql启动失败的话退出
 if [ $? -ne 0 ];then
-    echo -e "\n\033[31mmysql启动失败，请查看错误信息\033[0m\n"
+    echo -e "\n\033[31m[*] mysql启动失败，请查看错误信息\033[0m\n"
     exit 1
 else
-# 提供一些提示信息	
-    echo -e "mysql已启动成功，端口号为：\033[32m${PORT}\033[0m\n"
-    cat << EOF
-mysql控制命令：
-    启动：systemctl start mysql
-    重启：systemctl restart mysql
-    停止：systemctl stop mysql
-EOF
-    echo -e "\033[36m请先执行 \033[0m\033[33msource /etc/profile\033[0m\033[36m 加载环境变量，或者新开一个终端执行下面的命令\033[0m"
-    echo -e "\n请输入命令：\033[33mmysql\033[0m，进入MySQL修改密码"
-    echo -e "修改MySQL密码的命令如下："
-    echo -e "\033[32mmysql> use mysql;\033[0m"
-    echo -e "\033[32mmysql> update user set authentication_string=password('123456') where user='root';\033[0m"
-    echo -e "\033[32mmysql> flush privileges;\033[0m"
-    echo -e "\n请务必在修改密码后将/etc/my.cnf的skip-grant-tables注释掉并重启mysql"
-    echo "重启后执行以下命令取消密码有效期限制"
-    echo -e "\n\033[32mmysql> alter user 'root'@'localhost' identified by '123456' PASSWORD EXPIRE NEVER account unlock;\033[0m"
-    echo -e "\033[32mmysql> flush privileges;\033[0m"
-    echo -e "\n\033[31m再次重启mysql\033[0m\n"
+
+# mysql启动成功后的操作
+source /etc/profile
+
+echo -e "\033[36m[+] 设置密码\033[0m"
+mysql -uroot -p"${init_password}" --connect-expired-password -e "SET PASSWORD = PASSWORD('${my_root_passwd}');flush privileges;" &> /dev/null
+echo -e "\033[36m[+] 重启mysql\033[0m"
+systemctl restart mysql
+echo -e "\033[36m[+] 设置所有主机均可访问mysql\033[0m"
+mysql -uroot -p"${my_root_passwd}" -e "grant all on *.* to root@'%' identified by '${my_root_passwd}'" &> /dev/null
+echo -e "\033[36m[+] 重启mysql\033[0m"
+systemctl restart mysql
+
+    echo -e "\nmysql已启动成功!相关信息如下："
+    echo -e "    端口号：\033[32m${PORT}\033[0m"
+    echo -e "    账号：\033[32mroot\033[0m"
+    echo -e "    密码：\033[32m${my_root_passwd}\033[0m"
+
+    echo -e "\nmysql控制命令："
+    echo -e "    启动：\033[32msystemctl start mysql\033[0m"
+    echo -e "    重启：\033[32msystemctl restart mysql\033[0m"
+    echo -e "    停止：\033[32msystemctl stop mysql\n\033[0m"
 fi
 
+echo -e "\033[32m由于shell特性限制，请手动  \033[36msource /etc/profile\033[0m  \033[32m后，再连接数据库\n\033[0m"
