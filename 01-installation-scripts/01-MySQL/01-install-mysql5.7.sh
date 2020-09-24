@@ -24,10 +24,13 @@ Archive=${FILE}.tar.gz
 
 # 判断压缩包是否存在，如果不存在就下载
 ls ${Archive} &> /dev/null
-[ $? -eq 0 ] || wget https://cdn.mysql.com/Downloads/MySQL-5.7/${Archive}
+if [ $? -ne 0 ];then
+    echo -e "\033[32m[+] 下载MySQL二进制包${Archive}\033[0m"
+    wget https://cdn.mysql.com/Downloads/MySQL-5.7/${Archive}
+fi
 
 # 解压
-echo -e "\033[32m[+] 解压中，请稍候...\033[0m"
+echo -e "\033[32m[+] 解压 ${Archive} 中，请稍候...\033[0m"
 tar -zxf ${Archive} >/dev/null 2>&1
 if [ $? -eq 0 ];then
     echo -e "\033[32m[+] 解压完毕\033[0m"
@@ -163,4 +166,5 @@ systemctl restart mysql
     echo -e "    停止：\033[32msystemctl stop mysql\n\033[0m"
 fi
 
-echo -e "\033[32m由于shell特性限制，请手动  \033[36msource /etc/profile\033[0m  \033[32m后，再连接数据库\n\033[0m"
+echo -e "\033[32m由于bash特性限制，在本终端连接mysql需要先手动执行  \033[36msource /etc/profile\033[0m  \033[32m加载环境变量\033[0m"
+echo -e "\033[33m或者\033[32m新开一个终端连接mysql\n\033[0m"
