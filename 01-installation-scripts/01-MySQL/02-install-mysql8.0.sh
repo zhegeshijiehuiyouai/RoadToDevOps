@@ -87,6 +87,7 @@ max_connections=200
 character-set-server=utf8
 default-storage-engine=INNODB
 max_allowed_packet=16M
+lower_case_table_names = 1
 EOF
 echo "/etc/my.cnf初始化完毕"
 
