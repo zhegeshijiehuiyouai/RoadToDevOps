@@ -49,6 +49,7 @@ mv ${FILE} ${redis_dir_name}
 cd ${redis_dir_name}
 redis_home=$(pwd)
 
+echo -e "\033[32m[+] 检查编译环境\033[0m"
 yum install -y gcc devtoolset-9-gcc devtoolset-9-gcc-c++ devtoolset-9-binutils
 # 升级gcc，6.x版本需要
 source /opt/rh/devtoolset-9/enable
