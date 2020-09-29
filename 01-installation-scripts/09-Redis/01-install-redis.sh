@@ -111,3 +111,25 @@ else
     echo -e "\033[31m[*] 启动失败，请检查配置！\n\033[0m"
     exit 20
 fi
+
+echo -e "\033[32m[#] iredis介绍：\033[0m"
+echo -e "\033[32m    iredis是一个具有代码补全和语法高亮的redis命令行客户端，github项目地址：\033[0m"
+echo -e "\033[32m    https://github.com/laixintao/iredis\033[0m"
+function iredisyn() {
+read -p "[>] 是否添加iredis (y/n)：" choice
+case ${choice} in
+    y|Y)
+        yum install -y python3-pip
+        pip3 install iredis -i https://pypi.tuna.tsinghua.edu.cn/simple
+        echo
+        ;;
+    n|N)
+        echo
+        exit 14
+        ;;
+    *)
+        iredisyn
+        ;;
+esac
+}
+iredisyn
