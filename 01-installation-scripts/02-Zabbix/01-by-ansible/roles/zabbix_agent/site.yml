@@ -1,3 +1,4 @@
-- hosts: all
+#-hosts: all
+- hosts: 192.168.1.81
   roles:
   - zabbix_agent
