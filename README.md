@@ -25,7 +25,7 @@
 │   └── 02-Create-LVM
 ├── 05-system-tools
 │   └── 01-check-package-manager.sh
-├── 06-Antivirus tool
+├── 06-Antivirus-tool
 │   └── 01-kill_miner_proc.sh
 └── README.md
 
