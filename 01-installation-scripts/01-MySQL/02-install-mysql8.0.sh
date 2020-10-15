@@ -72,6 +72,9 @@ fi
 # 生成新的/etc/my.cnf
 echo "初始化/etc/my.cnf..."
 cat > /etc/my.cnf << EOF
+[client]
+socket=${DIR}/${mysql_dir_name}/data/mysql.sock
+
 [mysql]
 default-character-set=utf8
 socket=${DIR}/${mysql_dir_name}/data/mysql.sock
