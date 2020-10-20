@@ -12,7 +12,8 @@
 │   ├── 06-Gitlab
 │   ├── 07-Nginx
 │   ├── 08-EFK
-│   └── 09-Redis
+│   ├── 09-Redis
+│   └── 10-GoAccess
 ├── 02-elasticsearch-tools
 │   ├── 01-clean-single-es-index-by-date.sh
 │   └── 02-clean-date-format-es-index-by-date.sh
