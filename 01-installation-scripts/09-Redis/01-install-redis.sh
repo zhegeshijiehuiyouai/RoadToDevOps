@@ -18,6 +18,25 @@ FILE=redis-6.0.8
 # redis源码包名字
 Archive=${FILE}.tar.gz
 
+
+
+function add_user_and_group(){
+    if id -g ${1} >/dev/null 2>&1; then
+        echo -e "\033[32m[#] ${1}组已存在，无需创建\033[0m"
+    else
+        groupadd ${1}
+        echo -e "\033[32m[+] 创建${1}组\033[0m"
+    fi
+    if id -u ${1} >/dev/null 2>&1; then
+        echo -e "\033[32m[#] ${1}用户已存在，无需创建\033[0m"
+    else
+        useradd -M -g ${1} -s /sbin/nologin ${1}
+        echo -e "\033[32m[+] 创建${1}用户\033[0m"
+    fi
+}
+
+add_user_and_group redis
+
 # 如果同端口已被占用，则直接退出
 netstat -tnlp | grep ${PORT}
 if [ $? -eq 0 ];then
@@ -95,6 +114,81 @@ EOF
 /bin/bash /tmp/_redis_file1
 rm -f /tmp/_redis_file1
 
+
+######################
+# 设置systemctl控制
+echo -e "\033[32m[+] 设置systemctl启动文件\033[0m"
+
+cat > /lib/systemd/system/redis.service << EOF
+[Unit]
+Description=Redis
+After=network.target
+
+[Service]
+User=redis
+Group=redis
+Type=forking
+ExecStart=${redis_home}/src/redis-server ${redis_home}/redis.conf
+ExecStop=${redis_home}/redis-shutdown 
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+echo -e "\033[32m[+] 设置停止rediis脚本\033[0m"
+cat > ${redis_home}/redis-shutdown << EOF
+#!/bin/bash
+#
+# Wrapper to close properly redis and sentinel
+test x"\$REDIS_DEBUG" != x && set -x
+
+REDIS_CLI=${redis_home}/src/redis-cli
+
+# Retrieve service name
+SERVICE_NAME="\$1"
+if [ -z "\$SERVICE_NAME" ]; then
+   SERVICE_NAME=redis
+fi
+
+# Get the proper config file based on service name
+CONFIG_FILE="${redis_home}/\$SERVICE_NAME.conf"
+
+# Use awk to retrieve host, port from config file
+HOST=$(awk '/^[[:blank:]]*bind/ { print \$2 }' \$CONFIG_FILE | tail -n1)
+PORT=$(awk '/^[[:blank:]]*port/ { print \$2 }' \$CONFIG_FILE | tail -n1)
+PASS=$(awk '/^[[:blank:]]*requirepass/ { print \$2 }' \$CONFIG_FILE | tail -n1)
+SOCK=$(awk '/^[[:blank:]]*unixsocket\s/ { print \$2 }' \$CONFIG_FILE | tail -n1)
+
+# Just in case, use default host, port
+HOST=\${HOST:-127.0.0.1}
+if [ "\$SERVICE_NAME" = redis ]; then
+    PORT=\${PORT:-6379}
+else
+    PORT=\${PORT:-26739}
+fi
+
+# Setup additional parameters
+# e.g password-protected redis instances
+[ -z "\$PASS"  ] || ADDITIONAL_PARAMS="-a \$PASS"
+
+# shutdown the service properly
+if [ -e "\$SOCK" ] ; then
+    \$REDIS_CLI -s \$SOCK \$ADDITIONAL_PARAMS shutdown
+else
+    \$REDIS_CLI -h \$HOST -p \$PORT \$ADDITIONAL_PARAMS shutdown
+fi
+EOF
+chmod +x ${redis_home}/redis-shutdown
+
+echo -e "\033[32m[+] 添加环境变量\033[0m"
+cat > /etc/profile.d/redis.sh << EOF
+export PATH=$PATH:${redis_home}/src
+EOF
+
+chown -R redis:redis ${redis_home}
+######################
+
+
 echo -e "\033[32m\n[>] redis已编译成功，详细信息如下：\033[0m"
 echo -e "\033[32m    部署版本： \033[33m${FILE}\033[0m"
 echo -e "\033[32m    监听IP：   \033[33m${listen_ip}\033[0m"
@@ -102,19 +196,24 @@ echo -e "\033[32m    监听端口： \033[33m${PORT}\033[0m"
 echo -e "\033[32m    redis密码：\033[33m${redis_pass}\033[0m"
 
 echo -e "\033[32m\n[>] 启动redis\033[0m"
-${redis_home}/src/redis-server ${redis_home}/redis.conf
-sleep 2
+systemctl start redis
+
 netstat -tnlp | grep ${PORT}
 if [ $? -eq 0 ];then
-    echo -e "\033[32m\n[>] redis已启动！\n启动命令：\033[36m${redis_home}/src/redis-server ${redis_home}/redis.conf\n\033[0m"
+    echo -e "\033[32m\n[>] redis已启动！\033[0m"
+    echo -e "\033[32m      启动命令：\033[36msystemctl start redis\033[0m"
+    echo -e "\033[32m      关闭命令：\033[36msystemctl stop redis\033[0m"
+    echo -e "\033[32m      连接服务端：\033[36mredis-cli\033[0m"
+    echo -e "\033[32m[****]由于bash特性限制，在本终端连接redis-server需要先手动执行  \033[36msource /etc/profile\033[0m  \033[32m加载环境变量\033[0m"
+    echo -e "\033[32m[****]\033[33m或者\033[32m新开一个终端连接redis-server\n\033[0m"
 else
     echo -e "\033[31m[*] 启动失败，请检查配置！\n\033[0m"
     exit 20
 fi
 
-echo -e "\033[32m[#] iredis介绍：\033[0m"
-echo -e "\033[32m    iredis是一个具有代码补全和语法高亮的redis命令行客户端，github项目地址：\033[0m"
-echo -e "\033[32m    https://github.com/laixintao/iredis\033[0m"
+echo -e "\033[34m[#] iredis介绍：\033[0m"
+echo -e "\033[34m    iredis是一个具有代码补全和语法高亮的redis命令行客户端，github项目地址：\033[0m"
+echo -e "\033[34m    https://github.com/laixintao/iredis\033[0m"
 function iredisyn() {
 read -p "[>] 是否添加iredis (y/n)：" choice
 case ${choice} in
