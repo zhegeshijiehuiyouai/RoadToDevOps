@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo -e "\033[32m如果之前有安装docker的话，先删除docker\033[0m"
+echo -e "\033[32m[~] 如果之前有安装docker的话，先删除docker\033[0m"
 yum remove docker \
     docker-client \
     docker-client-latest \
@@ -12,7 +12,7 @@ yum remove docker \
     docker-engine \
     docker-ce
 
-echo -e "\033[32m安装docker\033[0m"
+echo -e "\033[32m[+] 安装docker\033[0m"
 cd /etc/yum.repos.d/
 [ -f docker-ce.repo ] || wget https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
 yum makecache
@@ -24,11 +24,11 @@ if [ $osv -eq 7 ]; then
 elif [ $osv -eq 8 ];then
     dnf install docker-ce --nobest -y
 else
-    echo "版本不支持"
+    echo -e "\033[31m[*] 当前版本不支持\033[0m"
     exit 1
 fi
 
-echo -e "\033[32mdocker配置调整\033[0m"
+echo -e "\033[36m[+] docker配置调整\033[0m"
 mkdir -p /etc/docker
 cd /etc/docker
 cat > daemon.json << EOF
@@ -41,7 +41,7 @@ EOF
 systemctl start docker
 systemctl enable docker
 
-echo -e "\033[32mdocker状态：\033[0m"
+echo -e "\033[32m[>] docker状态：\033[0m"
 systemctl status docker
-echo -e "\033[32mdocker版本：\033[0m"
+echo -e "\033[32m[>] docker版本：\033[0m"
 docker -v
