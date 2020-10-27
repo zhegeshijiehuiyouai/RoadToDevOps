@@ -4,7 +4,7 @@
 # 测试系统：CentOS7.6
 # mysql安装文件：二进制包
 #
-# mysql下载地址：https://cdn.mysql.com/Downloads/MySQL-5.7/mysql-5.7.31-linux-glibc2.12-x86_64.tar.gz
+# mysql下载地址：https://cdn.mysql.com/Downloads/MySQL-5.7/mysql-5.7.32-linux-glibc2.12-x86_64.tar.gz
 # 或者官网下载
 #
 # 将本脚本和二进制包放在同一目录下，脚本会在本目录下创建mysql作为mysql安装目录
@@ -18,7 +18,7 @@ PORT=3306
 # mysql部署好后，root的默认密码
 my_root_passwd=123456
 # 解压后的名字
-FILE=mysql-5.7.31-linux-glibc2.12-x86_64
+FILE=mysql-5.7.32-linux-glibc2.12-x86_64
 # mysql二进制包名字
 Archive=${FILE}.tar.gz
 
@@ -45,13 +45,13 @@ mv ${FILE} ${mysql_dir_name}
 
 # 创建mysql用户
 if id -g mysql >/dev/null 2>&1; then
-    echo -e "\033[32m[--] mysql组已存在，无需创建\033[0m"
+    echo -e "\033[32m[#] mysql组已存在，无需创建\033[0m"
 else
     groupadd mysql
     echo -e "\033[32m[+] 创建mysql组\033[0m"
 fi
 if id -u mysql >/dev/null 2>&1; then
-    echo -e "\033[32m[--] mysql用户已存在，无需创建\033[0m"
+    echo -e "\033[32m[#] mysql用户已存在，无需创建\033[0m"
 else
     useradd -M -g mysql -s /sbin/nologin mysql
     echo -e "\033[32m[+] 创建mysql用户\033[0m"
@@ -105,10 +105,6 @@ lower_case_table_names = 1
 EOF
 
 # 设置systemctl控制
-if [ -f /lib/systemd/system/mysql.service ];then
-    mv /lib/systemd/system/mysql.service /lib/systemd/system/mysql.service_`date +%F`
-    echo -e "\033[36m[*] 备份/lib/systemd/system/mysql.service_`date +%F`\033[0m"
-fi
 echo -e "\033[32m[+] 设置systemctl启动文件\033[0m"
 
 cat > /lib/systemd/system/mysql.service << EOF
