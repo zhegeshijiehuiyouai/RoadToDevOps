@@ -15,7 +15,7 @@ PORT=6379
 # redis的密码
 redis_pass=OrcMu4tDie
 # 源码下载目录
-src_dir=$(pwd)/redis-src
+src_dir=$(pwd)/00src00
 # redis版本
 redis_version=6.0.8
 # 部署目录的父目录

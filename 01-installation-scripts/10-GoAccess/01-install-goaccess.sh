@@ -2,7 +2,7 @@
 
 # 定义变量
 version=1.4
-src_dir=goaccess-src
+src_dir=00src00
 
 # GeoIP2需要从 MaxMind 下载 城市/国家 数据库，并通过 --geoip-database 设定。
 # 如果使用 GeoIP，则不用下载数据库。

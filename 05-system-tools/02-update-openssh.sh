@@ -5,7 +5,7 @@
 # openssh官网下载：wget https://openbsd.hk/pub/OpenBSD/OpenSSH/portable/openssh-${openssh_version}.tar.gz
 
 # 如果没有检测到tar.gz包，则下载到这个目录
-openssh_source_dir=$(pwd)/openssh-update
+openssh_source_dir=$(pwd)/00src00
 openssl_version=1.1.1h
 openssh_version=8.4p1
 

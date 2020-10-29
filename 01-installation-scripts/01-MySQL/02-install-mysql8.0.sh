@@ -14,7 +14,7 @@ DIR=$(pwd)
 # 部署目录的名字，最终的部署目录为${DIR}/${mysql_dir_name}
 mysql_dir_name=mysql-8
 # 源码下载目录
-src_dir=$(pwd)/mysql-src
+src_dir=$(pwd)/00src00
 # 端口
 PORT=3306
 # mysql部署好后，root的默认密码
