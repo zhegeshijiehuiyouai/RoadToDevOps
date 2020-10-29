@@ -8,46 +8,112 @@
 #
 # 本脚本默认会下载二进制包，如果自己上传，可以注释掉
 
-# 部署目录
-DIR=`pwd`
+#######################定义变量##############################
+# 部署目录的父目录
+DIR=$(pwd)
+# 部署目录的名字，最终的部署目录为${DIR}/${mysql_dir_name}
+mysql_dir_name=mysql-8
+# 源码下载目录
+src_dir=$(pwd)/mysql-src
 # 端口
 PORT=3306
-# 解压后的名字
-FILE=mysql-8.0.17-el7-x86_64
-# mysql二进制包名字
-Archive=${FILE}.tar.gz
+# mysql部署好后，root的默认密码
+my_root_passwd=123456
+# mysql版本
+mysql8_version=8.0.17
 
-# 判断是否存在压缩包，没有的话就下载网易镜像站的mysql压缩包
-ls ${Archive} &> /dev/null
-[ $? -eq 0 ] || wget http://mirrors.sohu.com/mysql/MySQL-8.0/${Archive}
+# 解压后的名字
+FILE=mysql-${mysql8_version}-el7-x86_64
+# mysql二进制包名字
+mysql_tgz=${FILE}.tar.gz
+#############################################################
 
 # 解压
-echo "解压中，请稍候..."
-tar -zxf ${Archive} >/dev/null 2>&1
-if [ $? -eq 0 ];then
-    echo "解压完毕"
-else
-    echo "解压出错，请检查"
-    exit 2
-fi
+function untar_tgz(){
+    echo -e "\033[32m[+] 解压 $1 中\033[0m"
+    tar xf $1
+    if [ $? -ne 0 ];then
+        echo -e "\033[31m[*] 解压出错，请检查!\033[0m"
+        exit 2
+    fi
+}
 
-# 更改文件名
-mysql_dir_name=mysql-8
-mv ${FILE} ${mysql_dir_name}
+# 首先判断当前目录是否有压缩包：
+#   I. 如果有压缩包，那么就在当前目录解压；
+#   II.如果没有压缩包，那么就检查有没有 ${openssh_source_dir} 表示的目录;
+#       1) 如果有目录，那么检查有没有压缩包
+#           ① 有压缩包就解压
+#           ② 没有压缩包则下载压缩包
+#       2) 如果没有,那么就创建这个目录，然后 cd 到目录中，然后下载压缩包，然
+#       后解压
+# 解压的步骤都在后面，故此处只做下载
 
-#创建mysql用户
-if id -g mysql >/dev/null 2>&1; then
-    echo "mysql组已存在，无需创建"
-else
-    groupadd mysql
-    echo "+++创建mysql组"
-fi
-if id -u mysql >/dev/null 2>&1; then
-    echo "mysql用户已存在，无需创建"
-else
-    useradd -M -g mysql -s /sbin/nologin mysql
-    echo "+++创建mysql用户"
-fi
+# 语法： download_tar_gz 文件名 保存的目录 下载链接
+# 使用示例： download_tar_gz openssl-1.1.1h.tar.gz /data/openssh-update https://mirrors.cloud.tencent.com/openssl/source/openssl-1.1.1h.tar.gz
+function download_tar_gz(){
+    back_dir=$(pwd)
+    file_in_the_dir=''  # 这个目录是后面编译目录的父目录
+
+    ls $1 &> /dev/null
+    if [ $? -ne 0 ];then
+        # 进入此处表示脚本所在目录没有压缩包
+        ls -d $2 &> /dev/null
+        if [ $? -ne 0 ];then
+            # 进入此处表示没有${openssh_source_dir}目录
+            mkdir -p $2 && cd $2
+            echo -e "\033[32m[+] 下载源码包 $1 至 $(pwd)/\033[0m"
+            wget $3
+            file_in_the_dir=$(pwd)
+            # 返回脚本所在目录，这样这个函数才可以多次使用
+            cd ${back_dir}
+        else
+            # 进入此处表示有${openssh_source_dir}目录
+            cd $2
+            ls $1 &> /dev/null
+            if [ $? -ne 0 ];then
+            # 进入此处表示${openssh_source_dir}目录内没有压缩包
+                echo -e "\033[32m[+] 下载源码包 $1 至 $(pwd)/\033[0m"
+                wget $3
+                file_in_the_dir=$(pwd)
+                cd ${back_dir}
+            else
+                # 进入此处，表示${openssh_source_dir}目录内有压缩包
+                echo -e "\033[32m[!] 发现压缩包$(pwd)/$1\033[0m"
+                file_in_the_dir=$(pwd)
+                cd ${back_dir}
+            fi
+        fi
+    else
+        # 进入此处表示脚本所在目录有压缩包
+        echo -e "\033[32m[!] 发现压缩包$(pwd)/$1\033[0m"
+        file_in_the_dir=$(pwd)
+    fi
+}
+
+function add_user_and_group(){
+    if id -g ${1} >/dev/null 2>&1; then
+        echo -e "\033[32m[#] ${1}组已存在，无需创建\033[0m"
+    else
+        groupadd ${1}
+        echo -e "\033[32m[+] 创建${1}组\033[0m"
+    fi
+    if id -u ${1} >/dev/null 2>&1; then
+        echo -e "\033[32m[#] ${1}用户已存在，无需创建\033[0m"
+    else
+        useradd -M -g ${1} -s /sbin/nologin ${1}
+        echo -e "\033[32m[+] 创建${1}用户\033[0m"
+    fi
+}
+
+
+download_tar_gz ${mysql_tgz} ${src_dir} http://mirrors.sohu.com/mysql/MySQL-8.0/${mysql_tgz}
+cd ${file_in_the_dir}
+untar_tgz ${mysql_tgz}
+
+
+mv ${FILE} ${DIR}/${mysql_dir_name}
+
+add_user_and_group mysql
 
 
 echo "初始化mysql..."
@@ -56,7 +122,7 @@ mkdir -p ${DIR}/${mysql_dir_name}/data
 chown -R mysql:mysql ${DIR}/${mysql_dir_name}/
 
 # 初始化
-cd ${mysql_dir_name}
+cd ${DIR}/${mysql_dir_name}
 bin/mysqld --initialize --basedir=${DIR}/${mysql_dir_name} --datadir=${DIR}/${mysql_dir_name}/data  --pid-file=${DIR}/${mysql_dir_name}/data/mysql.pid >/dev/null 2>&1
 echo "初始化完毕"
 # 初始化完成后，data目录会生成文件，所以重新赋权

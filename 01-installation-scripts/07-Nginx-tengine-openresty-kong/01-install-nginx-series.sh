@@ -1,6 +1,10 @@
 #!/bin/bash
 # 可根据需要选择部署nginx、tengine、openresty、kong
 
+
+# 所有需要下载的文件都下载到当前目录下的${src_dir}目录中
+src_dir=nginx-series
+
 ##################从官网获取最新版本号##################
 echo -e "\n\033[36m[~] 获取官网最新版本中\033[0m"
 
@@ -13,7 +17,7 @@ nginx_default_version=1.19.4
 nginx_version=$(curl -s  --connect-timeout 3 http://nginx.org/en/CHANGES | head -3 | grep nginx | awk '{print $4}')
 # 接口正常，[ ! ${nginx_version} ]为1；接口失败，[ ! ${nginx_version} ]为0
 if [ ! ${nginx_version} ];then
-    echo -e "\033[31m[*] 接口访问超时，使用默认版本：${nginx_default_version}\033[0m"
+    echo -e "\033[31m[*] nginx接口访问超时，使用默认版本：${nginx_default_version}\033[0m"
     nginx_version=${nginx_default_version}
     version_nginx_hint="（默认版本）"
 fi
@@ -23,43 +27,79 @@ tengine_default_version=2.3.2
 tengine_version=$(curl -s --connect-timeout 3 http://tengine.taobao.org/changelog_cn.html | awk -F'class="article-entry"' '{print $2}' | awk -F'id="Tengine' '{print $2}' | grep -oE "\".*\"" | grep -oE "title=.*" | awk -F"-" '{print $2}' | awk '{print $1}')
 # 接口正常，[ ! ${tengine_version} ]为1；接口失败，[ ! ${tengine_version} ]为0
 if [ ! ${tengine_version} ];then
-    echo -e "\033[31m[*] 接口访问超时，使用默认版本：${tengine_default_version}\033[0m"
+    echo -e "\033[31m[*] tengine接口访问超时，使用默认版本：${tengine_default_version}\033[0m"
     tengine_version=${tengine_default_version}
     version_tengine_hint="（默认版本）"
 fi
 #######################################################
 
-# 所有需要下载的文件都下载到当前目录下的${src_dir}目录中
-src_dir=nginx-series
+# 首先判断当前目录是否有压缩包：
+#   I. 如果有压缩包，那么就在当前目录解压；
+#   II.如果没有压缩包，那么就检查有没有 ${openssh_source_dir} 表示的目录;
+#       1) 如果有目录，那么检查有没有压缩包
+#           ① 有压缩包就解压
+#           ② 没有压缩包则下载压缩包
+#       2) 如果没有,那么就创建这个目录，然后 cd 到目录中，然后下载压缩包，然
+#       后解压
+# 解压的步骤都在后面，故此处只做下载
 
+# 语法： download_tar_gz 文件名 保存的目录 下载链接
+# 使用示例： download_tar_gz openssl-1.1.1h.tar.gz /data/openssh-update https://mirrors.cloud.tencent.com/openssl/source/openssl-1.1.1h.tar.gz
+function download_tar_gz(){
+    back_dir=$(pwd)
+    file_in_the_dir=''  # 这个目录是后面编译目录的父目录
 
-# 对于要下载源码的web容器，都统一下载到一个目录里，避免文件混乱
-function mkdir_and_cd(){
-    # 记录当前目录，以备可能使用
-    first_dir=$(pwd)
-    [ -d ${src_dir} ] || mkdir ${src_dir}
-    cd ${src_dir}
+    ls $1 &> /dev/null
+    if [ $? -ne 0 ];then
+        # 进入此处表示脚本所在目录没有压缩包
+        ls -d $2 &> /dev/null
+        if [ $? -ne 0 ];then
+            # 进入此处表示没有${openssh_source_dir}目录
+            mkdir -p $2 && cd $2
+            echo -e "\033[32m[+] 下载源码包 $1 至 $(pwd)/\033[0m"
+            wget $3
+            file_in_the_dir=$(pwd)
+            # 返回脚本所在目录，这样这个函数才可以多次使用
+            cd ${back_dir}
+        else
+            # 进入此处表示有${openssh_source_dir}目录
+            cd $2
+            ls $1 &> /dev/null
+            if [ $? -ne 0 ];then
+            # 进入此处表示${openssh_source_dir}目录内没有压缩包
+                echo -e "\033[32m[+] 下载源码包 $1 至 $(pwd)/\033[0m"
+                wget $3
+                file_in_the_dir=$(pwd)
+                cd ${back_dir}
+            else
+                # 进入此处，表示${openssh_source_dir}目录内有压缩包
+                echo -e "\033[32m[!] 发现压缩包$(pwd)/$1\033[0m"
+                file_in_the_dir=$(pwd)
+                cd ${back_dir}
+            fi
+        fi
+    else
+        # 进入此处表示脚本所在目录有压缩包
+        echo -e "\033[32m[!] 发现压缩包$(pwd)/$1\033[0m"
+        file_in_the_dir=$(pwd)
+    fi
 }
 
-# 判断压缩包是否存在，如果不存在就下载
+
+# 根据$1判断下载什么应用
 function download() {
-    ls $2 &> /dev/null
-    if [ $? -ne 0 ];then
-        case $1 in
-            nginx)
-                echo -e "\033[32m[+] 下载${tag}源码包 $2 到 $(pwd)\033[0m"
-                wget http://nginx.org/download/$2
-                ;;
-            tengine)
-                echo -e "\033[32m[+] 下载${tag}源码包 $2 $(pwd)\033[0m"
-                wget https://tengine.taobao.org/download/$2
-                ;;
-            *)
-                echo -e "\033[31m[*] 你下载了个寂寞\033[0m"
-                exit 3
-                ;;
-        esac
-    fi
+    case $1 in
+        nginx)
+            download_tar_gz $2 ${src_dir} http://nginx.org/download/$2
+            ;;
+        tengine)
+            download_tar_gz $2 ${src_dir} https://tengine.taobao.org/download/$2
+            ;;
+        *)
+            echo -e "\033[31m[*] 你下载了个寂寞\033[0m"
+            exit 3
+            ;;
+    esac
 }
 
 # 解压
@@ -78,7 +118,7 @@ function multi_core_compile(){
     cpucores=$(cat /proc/cpuinfo | grep -c processor)
     compilecore=$(($cpucores - $assumeused - 1))
     if [ $compilecore -ge 1 ];then
-        make -j $compilecore && make install
+        make -j $compilecore && make -j $compilecore install
         if [ $? -ne 0 ];then
             echo -e "\n\033[31m[*] 编译安装出错，请检查脚本\033[0m\n"
             exit 1
@@ -109,14 +149,13 @@ function add_user_and_group(){
 
 # 编译安装Nginx
 function install_nginx(){
-    mkdir_and_cd
     # 用tag标识部署什么，后续脚本中调用
     tag=nginx
     # 部署目录
     installdir=/data/${tag}
 
     download ${tag} ${tag}-${nginx_version}.tar.gz
-
+    cd ${file_in_the_dir}
     untar_tgz ${tag}-${nginx_version}.tar.gz
 
     echo -e "\033[32m[+] 配置编译环境\033[0m"
@@ -134,12 +173,12 @@ function install_nginx(){
 
 # 编译安装tengine
 function install_tengine(){
-    mkdir_and_cd
     # 用tag标识部署什么，后续脚本中调用
     tag=tengine
     # 部署目录
     installdir=/data/${tag}
     download ${tag} ${tag}-${tengine_version}.tar.gz
+    cd ${file_in_the_dir}
     untar_tgz ${tag}-${tengine_version}.tar.gz
 
     echo -e "\033[32m[+] 配置编译环境\033[0m"

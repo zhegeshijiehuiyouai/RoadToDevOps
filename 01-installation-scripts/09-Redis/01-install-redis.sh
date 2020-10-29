@@ -7,17 +7,90 @@
 #         如果是【非官网下载】的版本，那么先下载好tar.gz包，然后在修改脚本中的FILE即可
 # 卸载：未添加环境变量，直接删除redis目录即可
 
+########################################
 # 监听地址
 listen_ip=0.0.0.0
 # 端口
 PORT=6379
 # redis的密码
 redis_pass=OrcMu4tDie
-# 解压后的名字
-FILE=redis-6.0.8
-# redis源码包名字
-Archive=${FILE}.tar.gz
+# 源码下载目录
+src_dir=$(pwd)/redis-src
+# redis版本
+redis_version=6.0.8
+# 部署目录的父目录
+DIR=$(pwd)
+# 部署的目录名，完整的部署目录为${DIR}/${redis_dir_name}
+redis_dir_name=redis
 
+# 解压后的名字
+FILE=redis-${redis_version}
+# redis源码包名字
+redis_tgz=${FILE}.tar.gz
+########################################
+
+
+# 解压
+function untar_tgz(){
+    echo -e "\033[32m[+] 解压 $1 中\033[0m"
+    tar xf $1
+    if [ $? -ne 0 ];then
+        echo -e "\033[31m[*] 解压出错，请检查!\033[0m"
+        exit 2
+    fi
+}
+
+# 首先判断当前目录是否有压缩包：
+#   I. 如果有压缩包，那么就在当前目录解压；
+#   II.如果没有压缩包，那么就检查有没有 ${openssh_source_dir} 表示的目录;
+#       1) 如果有目录，那么检查有没有压缩包
+#           ① 有压缩包就解压
+#           ② 没有压缩包则下载压缩包
+#       2) 如果没有,那么就创建这个目录，然后 cd 到目录中，然后下载压缩包，然
+#       后解压
+# 解压的步骤都在后面，故此处只做下载
+
+# 语法： download_tar_gz 文件名 保存的目录 下载链接
+# 使用示例： download_tar_gz openssl-1.1.1h.tar.gz /data/openssh-update https://mirrors.cloud.tencent.com/openssl/source/openssl-1.1.1h.tar.gz
+function download_tar_gz(){
+    back_dir=$(pwd)
+    file_in_the_dir=''  # 这个目录是后面编译目录的父目录
+
+    ls $1 &> /dev/null
+    if [ $? -ne 0 ];then
+        # 进入此处表示脚本所在目录没有压缩包
+        ls -d $2 &> /dev/null
+        if [ $? -ne 0 ];then
+            # 进入此处表示没有${openssh_source_dir}目录
+            mkdir -p $2 && cd $2
+            echo -e "\033[32m[+] 下载源码包 $1 至 $(pwd)/\033[0m"
+            wget $3
+            file_in_the_dir=$(pwd)
+            # 返回脚本所在目录，这样这个函数才可以多次使用
+            cd ${back_dir}
+        else
+            # 进入此处表示有${openssh_source_dir}目录
+            cd $2
+            ls $1 &> /dev/null
+            if [ $? -ne 0 ];then
+            # 进入此处表示${openssh_source_dir}目录内没有压缩包
+                echo -e "\033[32m[+] 下载源码包 $1 至 $(pwd)/\033[0m"
+                wget $3
+                file_in_the_dir=$(pwd)
+                cd ${back_dir}
+            else
+                # 进入此处，表示${openssh_source_dir}目录内有压缩包
+                echo -e "\033[32m[!] 发现压缩包$(pwd)/$1\033[0m"
+                file_in_the_dir=$(pwd)
+                cd ${back_dir}
+            fi
+        fi
+    else
+        # 进入此处表示脚本所在目录有压缩包
+        echo -e "\033[32m[!] 发现压缩包$(pwd)/$1\033[0m"
+        file_in_the_dir=$(pwd)
+    fi
+}
 
 
 function add_user_and_group(){
@@ -44,28 +117,15 @@ if [ $? -eq 0 ];then
     exit 21
 fi
 
-# 判断压缩包是否存在，如果不存在就下载
-ls ${Archive} &> /dev/null
-if [ $? -ne 0 ];then
-    echo -e "\033[32m[+] 下载Redis源码包 ${Archive}\033[0m"
-    wget http://download.redis.io/releases/${Archive}
-fi
+download_tar_gz ${redis_tgz} ${src_dir} http://download.redis.io/releases/${redis_tgz}
+cd ${file_in_the_dir}
+untar_tgz ${redis_tgz}
 
-# 解压
-echo -e "\033[32m[+] 解压 ${Archive} 中，请稍候...\033[0m"
-tar xf ${Archive} >/dev/null 2>&1
-if [ $? -eq 0 ];then
-    echo -e "\033[32m[+] 解压完毕\033[0m"
-else
-    echo -e "\033[31m[*] 解压出错，请检查!\033[0m"
-    exit 2
-fi
 
-# 更改文件名
-redis_dir_name=redis
-mv ${FILE} ${redis_dir_name}
 
-cd ${redis_dir_name}
+mv ${FILE} ${DIR}/${redis_dir_name}
+
+cd ${DIR}/${redis_dir_name}
 redis_home=$(pwd)
 
 echo -e "\033[32m[+] 检查编译环境\033[0m"
@@ -204,8 +264,8 @@ if [ $? -eq 0 ];then
     echo -e "\033[32m      启动命令：\033[36msystemctl start redis\033[0m"
     echo -e "\033[32m      关闭命令：\033[36msystemctl stop redis\033[0m"
     echo -e "\033[32m      连接服务端：\033[36mredis-cli\033[0m"
-    echo -e "\033[32m[****]由于bash特性限制，在本终端连接redis-server需要先手动执行  \033[36msource /etc/profile\033[0m  \033[32m加载环境变量\033[0m"
-    echo -e "\033[32m[****]\033[33m或者\033[32m新开一个终端连接redis-server\n\033[0m"
+    echo -e "\033[32m[\033[31m****\033[32m] 由于bash特性限制，在本终端连接redis-server需要先手动执行  \033[36msource /etc/profile\033[0m  \033[32m加载环境变量\033[0m"
+    echo -e "\033[32m[\033[31m****\033[32m] \033[33m或者\033[32m新开一个终端连接redis-server\n\033[0m"
 else
     echo -e "\033[31m[*] 启动失败，请检查配置！\n\033[0m"
     exit 20
