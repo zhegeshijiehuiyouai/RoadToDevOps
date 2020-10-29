@@ -1,10 +1,34 @@
 #!/bin/bash
 # 可根据需要选择部署nginx、tengine、openresty、kong
 
-# nginx的版本
-nginx_version=1.19.3
-# tengine的版本
-tengine_version=2.3.2
+##################从官网获取最新版本号##################
+echo -e "\n\033[36m[~] 获取官网最新版本中\033[0m"
+
+# 该变量用于显示下载的版本是不是最新版，如果从官网获取版本号失败，就提示是默认版本
+version_nginx_hint="（官网最新版）"
+version_tengine_hint="（官网最新版）"
+
+nginx_default_version=1.19.4
+# nginx的版本(从官网获取最新版)
+nginx_version=$(curl -s  --connect-timeout 3 http://nginx.org/en/CHANGES | head -3 | grep nginx | awk '{print $4}')
+# 接口正常，[ ! ${nginx_version} ]为1；接口失败，[ ! ${nginx_version} ]为0
+if [ ! ${nginx_version} ];then
+    echo -e "\033[31m[*] 接口访问超时，使用默认版本：${nginx_default_version}\033[0m"
+    nginx_version=${nginx_default_version}
+    version_nginx_hint="（默认版本）"
+fi
+
+tengine_default_version=2.3.2
+# tengine的版本(从官网获取最新版)
+tengine_version=$(curl -s --connect-timeout 3 http://tengine.taobao.org/changelog_cn.html | awk -F'class="article-entry"' '{print $2}' | awk -F'id="Tengine' '{print $2}' | grep -oE "\".*\"" | grep -oE "title=.*" | awk -F"-" '{print $2}' | awk '{print $1}')
+# 接口正常，[ ! ${tengine_version} ]为1；接口失败，[ ! ${tengine_version} ]为0
+if [ ! ${tengine_version} ];then
+    echo -e "\033[31m[*] 接口访问超时，使用默认版本：${tengine_default_version}\033[0m"
+    tengine_version=${tengine_default_version}
+    version_tengine_hint="（默认版本）"
+fi
+#######################################################
+
 # 所有需要下载的文件都下载到当前目录下的${src_dir}目录中
 src_dir=nginx-series
 
@@ -382,8 +406,8 @@ function install_main_func(){
 }
 
 echo -e "\033[32m\n本脚本支持一键部署：\033[0m"
-echo -e "\033[36m[1]\033[32m nginx     - 编译安装，${nginx_version} 版本"
-echo -e "\033[36m[2]\033[32m tengine   - 编译安装，${tengine_version} 版本"
+echo -e "\033[36m[1]\033[32m nginx     - 编译安装，${nginx_version} 版本${version_nginx_hint}"
+echo -e "\033[36m[2]\033[32m tengine   - 编译安装，${tengine_version} 版本${version_tengine_hint}"
 echo -e "\033[36m[3]\033[32m openresty - yum安装，官方repo仓库最新版"
 echo -e "\033[36m[4]\033[32m kong      - docker安装，官方docker仓库最新版"
 # 终止终端字体颜色
