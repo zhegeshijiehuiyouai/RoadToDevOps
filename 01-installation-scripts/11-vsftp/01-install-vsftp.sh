@@ -78,7 +78,7 @@ EOF
     echo -e "\033[33m[>] vsftp已成功配置启动，详细信息如下：\033[0m"
     echo -e "\033[32m    与vsftp关联的系统用户：${sys_user}\033[0m"
     echo -e "\033[32m    系统用户密码：${sys_pass}\033[0m"
-    echo -e "\033[32m    系统用户家目录：${sys_user_home_dir}/${sys_user}\033[0m"
+    echo -e "\033[32m    系统用户家目录：${sys_user_home_dir}\033[0m"
 
     echo -e "\033[36m[+] 创建-新增系统登录用户脚本：/etc/vsftpd/${help_doc}\033[0m"
 cat >/etc/vsftpd/${help_doc} <<EOT
@@ -205,7 +205,7 @@ EOF
     if [ ! -f /etc/vsftpd/${vir_conf_dir}/${vir_user} ];then
 cat >/etc/vsftpd/${vir_conf_dir}/${vir_user} <<EOF
 #指定用户的家目录
-local_root=${sys_user_home_dir}/${vir_user}
+local_root=${sys_user_home_dir}/${sys_user}/${vir_user}
 #允许登陆用户有写权限
 write_enable=YES
 #允许登录用户下载文件
@@ -277,7 +277,7 @@ chmod 600 /etc/vsftpd/${sec_file_name}.db
 if [ ! -f /etc/vsftpd/${vir_conf_dir}/\$doc_vir_user ];then
 cat >/etc/vsftpd/${vir_conf_dir}/\$doc_vir_user <<EOF
 #指定用户的家目录
-local_root=${sys_user_home_dir}/\$doc_vir_user
+local_root=${sys_user_home_dir}/${sys_user}/\$doc_vir_user
 #允许登陆用户有写权限
 write_enable=YES
 #允许登录用户下载文件
