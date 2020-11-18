@@ -53,6 +53,12 @@ function untar_tgz(){
 # 语法： download_tar_gz 文件名 保存的目录 下载链接
 # 使用示例： download_tar_gz openssl-1.1.1h.tar.gz /data/openssh-update https://mirrors.cloud.tencent.com/openssl/source/openssl-1.1.1h.tar.gz
 function download_tar_gz(){
+    # 检测是否有wget工具
+    if [ ! -f /usr/bin/wget ];then
+        echo -e "\033[32m[+] 安装wget工具\033[0m"
+        yum install -y wget
+    fi
+    
     back_dir=$(pwd)
     file_in_the_dir=''  # 这个目录是后面编译目录的父目录
 
