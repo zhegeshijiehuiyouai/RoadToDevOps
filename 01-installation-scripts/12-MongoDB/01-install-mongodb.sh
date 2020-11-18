@@ -6,6 +6,7 @@ user=root
 passwd=654321
 port=27017
 bind_ip=0.0.0.0
+sys_user=mongod
 #*******************yum部署配置，它与二进制配置之中，只有一个会生效
 # 指定repo版本，生成配置需要，不能省略
 repo_version=4.2
@@ -89,7 +90,7 @@ sed -i 's/port: 27017/port: ${port}/g' /etc/mongod.conf
 sed -i 's/bindIp: 127.0.0.1/bindIp: ${bind_ip}/g' /etc/mongod.conf
 sed -i 's#dbPath: /var/lib/mongo#dbPath: ${dbpath}#g' /etc/mongod.conf
 sed -i 's#ExecStartPre=/usr/bin/mkdir -p /var/run/mongodb#ExecStartPre=/usr/bin/mkdir -p ${dbpath}#g' /usr/lib/systemd/system/mongod.service
-sed -i 's#ExecStartPre=/usr/bin/chown mongod:mongod /var/run/mongodb#ExecStartPre=/usr/bin/chown mongod:mongod ${dbpath}#g' /usr/lib/systemd/system/mongod.service
+sed -i 's#ExecStartPre=/usr/bin/chown mongod:mongod /var/run/mongodb#ExecStartPre=/usr/bin/chown ${sys_user}:${sys_user} ${dbpath}#g' /usr/lib/systemd/system/mongod.service
 sed -i 's#ExecStartPre=/usr/bin/chmod 0755 /var/run/mongodb#ExecStartPre=/usr/bin/chmod 0755 ${dbpath}#g' /usr/lib/systemd/system/mongod.service
 EOF
     /bin/bash /tmp/mongo_install_temp_$(date +%F).sh
@@ -185,7 +186,7 @@ function untar_tgz(){
 }
 
 function install_by_tgz(){
-    add_user_and_group mongod
+    add_user_and_group ${sys_user}
     download_tar_gz ${src_dir} https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel70-${tgz_version}.tgz
     cd ${file_in_the_dir}
     untar_tgz mongodb-linux-x86_64-rhel70-${tgz_version}.tgz
@@ -198,7 +199,7 @@ function install_by_tgz(){
     mv mongodb-linux-x86_64-rhel70-4.2.6 ${base_dir}
     cd ${base_dir}
     mkdir conf data logs
-    chown -R mongod:mongod ${base_dir}
+    chown -R ${sys_user}:${sys_user} ${base_dir}
     chmod -R 0755 ${base_dir}
     echo -e "\033[32m[+] 生成配置文件mongod.conf\033[0m"
 cat > conf/mongod.conf <<EOF
@@ -249,7 +250,7 @@ net:
 #snmp:
 EOF
     # 上面新生成的文件的数组是root，所以需要修改
-    chown -R mongod:mongod ${base_dir}
+    chown -R ${sys_user}:${sys_user} ${base_dir}
 
     echo -e "\033[32m[+] 生成mongodb unit file文件\033[0m"
 cat >/usr/lib/systemd/system/mongod.service <<EOF
@@ -259,8 +260,8 @@ Documentation=https://docs.mongodb.org/manual
 After=network.target
 
 [Service]
-User=mongod
-Group=mongod
+User=${sys_user}
+Group=${sys_user}
 Environment="OPTIONS=-f ${base_dir}/conf/mongod.conf"
 EnvironmentFile=-/etc/sysconfig/mongod
 ExecStart=${base_dir}/bin/mongod \$OPTIONS
