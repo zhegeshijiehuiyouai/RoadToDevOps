@@ -39,7 +39,7 @@ cat > daemon.json << EOF
 }
 EOF
 systemctl start docker
-systemctl enable docker
+systemctl enable docker &> /dev/null
 
 ######### 部署docker-compose
 docker_compose_version=$(curl -s --connect-timeout 5 https://github.com/docker/compose/tags | grep "/docker/compose/releases/tag/" | head -1 | awk -F'"' '{print $2}' | xargs basename)
@@ -57,6 +57,7 @@ echo -e "\033[32m[+] 部署docker-compose\033[0m"
 curl -sL --connect-timeout 5 "https://get.daocloud.io/docker/compose/releases/download/${docker_compose_version}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 chmod +x /usr/local/bin/docker-compose
 docker-compose --version
+echo
 
 echo -e "\033[32m[>] docker状态：\033[0m"
 systemctl status docker
