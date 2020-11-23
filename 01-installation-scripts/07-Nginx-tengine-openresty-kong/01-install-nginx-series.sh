@@ -6,7 +6,7 @@
 src_dir=00src00
 
 ##################从官网获取最新版本号##################
-echo -e "\n\033[36m[~] 获取官网最新版本中\033[0m"
+echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m从官网获取最新版本中\033[0m"
 
 # 该变量用于显示下载的版本是不是最新版，如果从官网获取版本号失败，就提示是默认版本
 version_nginx_hint="（官网最新版）"
@@ -14,28 +14,34 @@ version_tengine_hint="（官网最新版）"
 
 nginx_default_version=1.19.4
 # nginx的版本(从官网获取最新版)
-nginx_version=$(curl -s  --connect-timeout 3 http://nginx.org/en/CHANGES | head -3 | grep nginx | awk '{print $4}')
+curl_timeout=2
+# 设置dns超时时间，避免没网情况下等很久
+echo "options timeout:${curl_timeout} attempts:1 rotate" >> /etc/resolv.conf
+nginx_version=$(curl -s  --connect-timeout ${curl_timeout} http://nginx.org/en/CHANGES | head -3 | grep nginx | awk '{print $4}')
 # 接口正常，[ ! ${nginx_version} ]为1；接口失败，[ ! ${nginx_version} ]为0
 if [ ! ${nginx_version} ];then
-    echo -e "\033[31m[*] nginx接口访问超时，使用默认版本：${nginx_default_version}\033[0m"
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31mnginx接口访问超时，使用默认版本：${nginx_default_version}\033[0m"
     nginx_version=${nginx_default_version}
     version_nginx_hint="（默认版本）"
 fi
+sed -i '$d' /etc/resolv.conf
 
 tengine_default_version=2.3.2
 # tengine的版本(从官网获取最新版)
+echo "options timeout:${curl_timeout} attempts:1 rotate" >> /etc/resolv.conf
 tengine_version=$(curl -s --connect-timeout 3 http://tengine.taobao.org/changelog_cn.html | awk -F'class="article-entry"' '{print $2}' | awk -F'id="Tengine' '{print $2}' | grep -oE "\".*\"" | grep -oE "title=.*" | awk -F"-" '{print $2}' | awk '{print $1}')
 # 接口正常，[ ! ${tengine_version} ]为1；接口失败，[ ! ${tengine_version} ]为0
 if [ ! ${tengine_version} ];then
-    echo -e "\033[31m[*] tengine接口访问超时，使用默认版本：${tengine_default_version}\033[0m"
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31mtengine接口访问超时，使用默认版本：${tengine_default_version}\033[0m"
     tengine_version=${tengine_default_version}
     version_tengine_hint="（默认版本）"
 fi
+sed -i '$d' /etc/resolv.conf
 #######################################################
 
 # 首先判断当前目录是否有压缩包：
 #   I. 如果有压缩包，那么就在当前目录解压；
-#   II.如果没有压缩包，那么就检查有没有 ${openssh_source_dir} 表示的目录;
+#   II.如果没有压缩包，那么就检查有没有 ${src_dir} 表示的目录;
 #       1) 如果有目录，那么检查有没有压缩包
 #           ① 有压缩包就解压
 #           ② 没有压缩包则下载压缩包
@@ -48,7 +54,7 @@ fi
 function download_tar_gz(){
     # 检测是否有wget工具
     if [ ! -f /usr/bin/wget ];then
-        echo -e "\033[32m[+] 安装wget工具\033[0m"
+        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装wget工具\033[0m"
         yum install -y wget
     fi
 
@@ -63,7 +69,7 @@ function download_tar_gz(){
         if [ $? -ne 0 ];then
             # 进入此处表示没有${src_dir}目录
             mkdir -p $1 && cd $1
-            echo -e "\033[32m[+] 下载 $download_file_name 至 $(pwd)/\033[0m"
+            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m下载 $download_file_name 至 $(pwd)/\033[0m"
             wget $2
             file_in_the_dir=$(pwd)
             # 返回脚本所在目录，这样这个函数才可以多次使用
@@ -74,20 +80,20 @@ function download_tar_gz(){
             ls $download_file_name &> /dev/null
             if [ $? -ne 0 ];then
             # 进入此处表示${src_dir}目录内没有压缩包
-                echo -e "\033[32m[+] 下载 $download_file_name 至 $(pwd)/\033[0m"
+                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m下载 $download_file_name 至 $(pwd)/\033[0m"
                 wget $3
                 file_in_the_dir=$(pwd)
                 cd ${back_dir}
             else
                 # 进入此处，表示${src_dir}目录内有压缩包
-                echo -e "\033[32m[!] 发现压缩包$(pwd)/$download_file_name\033[0m"
+                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m发现压缩包$(pwd)/$download_file_name\033[0m"
                 file_in_the_dir=$(pwd)
                 cd ${back_dir}
             fi
         fi
     else
         # 进入此处表示脚本所在目录有压缩包
-        echo -e "\033[32m[!] 发现压缩包$(pwd)/$download_file_name\033[0m"
+        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m发现压缩包$(pwd)/$download_file_name\033[0m"
         file_in_the_dir=$(pwd)
     fi
 }
@@ -103,7 +109,7 @@ function download() {
             download_tar_gz ${src_dir} https://tengine.taobao.org/download/$2
             ;;
         *)
-            echo -e "\033[31m[*] 你下载了个寂寞\033[0m"
+            echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m你下载了个寂寞\033[0m"
             exit 3
             ;;
     esac
@@ -111,10 +117,10 @@ function download() {
 
 # 解压
 function untar_tgz(){
-    echo -e "\033[32m[+] 解压 $1 中\033[0m"
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m解压 $1 中\033[0m"
     tar xf $1
     if [ $? -ne 0 ];then
-        echo -e "\033[31m[*] 解压出错，请检查!\033[0m"
+        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m解压出错，请检查！\033[0m"
         exit 2
     fi
 }
@@ -127,13 +133,13 @@ function multi_core_compile(){
     if [ $compilecore -ge 1 ];then
         make -j $compilecore && make -j $compilecore install
         if [ $? -ne 0 ];then
-            echo -e "\n\033[31m[*] 编译安装出错，请检查脚本\033[0m\n"
+            echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m编译安装出错，请检查脚本\033[0m"
             exit 1
         fi
     else
         make && make install
         if [ $? -ne 0 ];then
-            echo -e "\n\033[31m[*] 编译安装出错，请检查脚本\033[0m\n"
+            echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m编译安装出错，请检查脚本\033[0m"
             exit 1
         fi 
     fi
@@ -141,16 +147,16 @@ function multi_core_compile(){
 
 function add_user_and_group(){
     if id -g ${1} >/dev/null 2>&1; then
-        echo -e "\033[32m[#] ${1}组已存在，无需创建\033[0m"
+        echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m${1}组已存在，无需创建\033[0m"
     else
         groupadd ${1}
-        echo -e "\033[32m[+] 创建${1}组\033[0m"
+        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建${1}组\033[0m"
     fi
     if id -u ${1} >/dev/null 2>&1; then
-        echo -e "\033[32m[#] ${1}用户已存在，无需创建\033[0m"
+        echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m${1}用户已存在，无需创建\033[0m"
     else
         useradd -M -g ${1} -s /sbin/nologin ${1}
-        echo -e "\033[32m[+] 创建${1}用户\033[0m"
+        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建${1}用户\033[0m"
     fi
 }
 
@@ -165,7 +171,7 @@ function install_nginx(){
     cd ${file_in_the_dir}
     untar_tgz ${tag}-${nginx_version}.tar.gz
 
-    echo -e "\033[32m[+] 配置编译环境\033[0m"
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m配置编译环境\033[0m"
     yum install -y gcc zlib zlib-devel openssl openssl-devel pcre pcre-devel
 
     add_user_and_group ${tag}
@@ -173,9 +179,8 @@ function install_nginx(){
     ./configure --prefix=${installdir} --user=${tag} --group=${tag} --with-pcre --with-http_ssl_module --with-http_v2_module --with-stream --with-http_stub_status_module
     multi_core_compile
 
-    echo -e "\n\n\033[33m[+] Nginx已安装在\033[0m${installdir}\033[33m，详细信息如下：\033[0m\n"
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mNginx已安装在 ${installdir} ，详细信息如下：\033[0m"
     ${installdir}/sbin/nginx -V
-    echo -e "\n"
 }
 
 # 编译安装tengine
@@ -188,7 +193,7 @@ function install_tengine(){
     cd ${file_in_the_dir}
     untar_tgz ${tag}-${tengine_version}.tar.gz
 
-    echo -e "\033[32m[+] 配置编译环境\033[0m"
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m配置编译环境\033[0m"
     yum install -y gcc zlib zlib-devel openssl openssl-devel pcre pcre-devel
 
     add_user_and_group ${tag}
@@ -196,24 +201,22 @@ function install_tengine(){
     ./configure --prefix=${installdir} --user=${tag} --group=${tag} --with-pcre --with-http_ssl_module --with-http_v2_module --with-stream --with-http_stub_status_module
     multi_core_compile
 
-    echo -e "\n\n\033[33m[+] tengine已安装在\033[0m${installdir}\033[33m，详细信息如下：\033[0m\n"
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mtengine已安装在 ${installdir} ，详细信息如下：\033[0m"
     ${installdir}/sbin/nginx -V
-    echo -e "\n"
 }
 
 # yum安装openresty
 function install_openresty(){
-    echo -e "\033[32m[+] 下载openresty官方repo\033[0m"
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m下载openresty官方repo\033[0m"
     [ -f /etc/yum.repos.d/openresty.repo ] && rm -f /etc/yum.repos.d/openresty.repo
     wget -O /etc/yum.repos.d/openresty.repo https://openresty.org/package/centos/openresty.repo
-    echo -e "\033[32m[+] yum安装openresty\033[0m"
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m通过yum安装openresty\033[0m"
     yum install -y openresty
     if [ $? -eq 0 ];then
-        echo -e "\n\n\033[33m[+] openresty已成功，版本信息如下：\033[0m"
+        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mopenresty已安装成功，版本信息如下：\033[0m"
         openresty -v
-        echo -e "\033[36m[>] 查看帮助：\033[0m"
-        echo -e "\033[36m    openresty -h\033[0m"
-        echo
+        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m查看帮助：\033[0m"
+        echo -e "\033[37m                  openresty -h\033[0m"
     else
         echo -e "\033[31m[*] 安装出错，请检查系统!\033[0m"
         exit 2
