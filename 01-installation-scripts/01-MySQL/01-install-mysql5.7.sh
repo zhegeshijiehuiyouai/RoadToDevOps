@@ -150,12 +150,12 @@ function init_account(){
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m重启mysql\033[0m"
     systemctl restart ${systemd_service_name}
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mzookeeper mysql已启动成功！相关信息如下：\033[0m"
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mmysql已启动成功！相关信息如下：\033[0m"
     echo -e "\033[37m                  端口号：${PORT}\033[0m"
     echo -e "\033[37m                  账号：root\033[0m"
     echo -e "\033[37m                  密码：${my_root_passwd}\033[0m"
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mzookeeper mysql控制命令：\033[0m"
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mmysql控制命令：\033[0m"
     echo -e "\033[37m                  启动：systemctl start ${systemd_service_name}\033[0m"
     echo -e "\033[37m                  重启：systemctl restart ${systemd_service_name}\033[0m"
     echo -e "\033[37m                  停止：systemctl stop ${systemd_service_name}\033[0m"
