@@ -45,13 +45,17 @@ echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mdocker已部
 docker -v
 
 ######### 部署docker-compose
-docker_compose_version=$(curl -s --connect-timeout 5 https://github.com/docker/compose/tags | grep "/docker/compose/releases/tag/" | head -1 | awk -F'"' '{print $2}' | xargs basename)
+curl_timeout=2
+# 设置dns超时时间，避免没网情况下等很久
+echo "options timeout:${curl_timeout} attempts:1 rotate" >> /etc/resolv.conf
+docker_compose_version=$(curl -s --connect-timeout ${curl_timeout} https://github.com/docker/compose/tags | grep "/docker/compose/releases/tag/" | head -1 | awk -F'"' '{print $2}' | xargs basename)
 # 接口正常，[ ! ${docker_compose_version} ]为1；接口失败，[ ! ${docker_compose_version} ]为0
 if [ ! ${docker_compose_version} ];then
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31mdocker-compose github官网[ \033[36mhttps://github.com/docker/compose/tags\033[31m ]访问超时，请检查网络！\033[0m"
-    
+    sed -i '$d' /etc/resolv.conf
     exit 10
 fi
+sed -i '$d' /etc/resolv.conf
 
 echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m部署docker-compose中，请耐心等候\033[0m"
 # 使用国内源加速下载

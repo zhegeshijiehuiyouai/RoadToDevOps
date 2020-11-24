@@ -42,7 +42,7 @@ function untar_tgz(){
 
 # 首先判断当前目录是否有压缩包：
 #   I. 如果有压缩包，那么就在当前目录解压；
-#   II.如果没有压缩包，那么就检查有没有 ${openssh_source_dir} 表示的目录;
+#   II.如果没有压缩包，那么就检查有没有 ${src_dir} 表示的目录;
 #       1) 如果有目录，那么检查有没有压缩包
 #           ① 有压缩包就解压
 #           ② 没有压缩包则下载压缩包
@@ -53,12 +53,6 @@ function untar_tgz(){
 # 语法： download_tar_gz 保存的目录 下载链接
 # 使用示例： download_tar_gz /data/openssh-update https://mirrors.cloud.tencent.com/openssl/source/openssl-1.1.1h.tar.gz
 function download_tar_gz(){
-    # 检测是否有wget工具
-    if [ ! -f /usr/bin/wget ];then
-        echo -e "\033[32m[+] 安装wget工具\033[0m"
-        yum install -y wget
-    fi
-
     download_file_name=$(echo $2 |  awk -F"/" '{print $NF}')
     back_dir=$(pwd)
     file_in_the_dir=''  # 这个目录是后面编译目录的父目录
@@ -70,7 +64,12 @@ function download_tar_gz(){
         if [ $? -ne 0 ];then
             # 进入此处表示没有${src_dir}目录
             mkdir -p $1 && cd $1
-            echo -e "\033[32m[+] 下载 $download_file_name 至 $(pwd)/\033[0m"
+            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m下载 $download_file_name 至 $(pwd)/\033[0m"
+            # 检测是否有wget工具
+            if [ ! -f /usr/bin/wget ];then
+                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装wget工具\033[0m"
+                yum install -y wget
+            fi
             wget $2
             file_in_the_dir=$(pwd)
             # 返回脚本所在目录，这样这个函数才可以多次使用
@@ -81,20 +80,25 @@ function download_tar_gz(){
             ls $download_file_name &> /dev/null
             if [ $? -ne 0 ];then
             # 进入此处表示${src_dir}目录内没有压缩包
-                echo -e "\033[32m[+] 下载 $download_file_name 至 $(pwd)/\033[0m"
+                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m下载 $download_file_name 至 $(pwd)/\033[0m"
+                # 检测是否有wget工具
+                if [ ! -f /usr/bin/wget ];then
+                    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装wget工具\033[0m"
+                    yum install -y wget
+                fi
                 wget $3
                 file_in_the_dir=$(pwd)
                 cd ${back_dir}
             else
                 # 进入此处，表示${src_dir}目录内有压缩包
-                echo -e "\033[32m[!] 发现压缩包$(pwd)/$download_file_name\033[0m"
+                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m发现压缩包$(pwd)/$download_file_name\033[0m"
                 file_in_the_dir=$(pwd)
                 cd ${back_dir}
             fi
         fi
     else
         # 进入此处表示脚本所在目录有压缩包
-        echo -e "\033[32m[!] 发现压缩包$(pwd)/$download_file_name\033[0m"
+        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m发现压缩包$(pwd)/$download_file_name\033[0m"
         file_in_the_dir=$(pwd)
     fi
 }

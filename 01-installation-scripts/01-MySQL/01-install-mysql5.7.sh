@@ -58,12 +58,6 @@ function untar_tgz(){
 # 语法： download_tar_gz 保存的目录 下载链接
 # 使用示例： download_tar_gz /data/openssh-update https://mirrors.cloud.tencent.com/openssl/source/openssl-1.1.1h.tar.gz
 function download_tar_gz(){
-    # 检测是否有wget工具
-    if [ ! -f /usr/bin/wget ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装wget工具\033[0m"
-        yum install -y wget
-    fi
-
     download_file_name=$(echo $2 |  awk -F"/" '{print $NF}')
     back_dir=$(pwd)
     file_in_the_dir=''  # 这个目录是后面编译目录的父目录
@@ -76,6 +70,11 @@ function download_tar_gz(){
             # 进入此处表示没有${src_dir}目录
             mkdir -p $1 && cd $1
             echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m下载 $download_file_name 至 $(pwd)/\033[0m"
+            # 检测是否有wget工具
+            if [ ! -f /usr/bin/wget ];then
+                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装wget工具\033[0m"
+                yum install -y wget
+            fi
             wget $2
             file_in_the_dir=$(pwd)
             # 返回脚本所在目录，这样这个函数才可以多次使用
@@ -87,6 +86,11 @@ function download_tar_gz(){
             if [ $? -ne 0 ];then
             # 进入此处表示${src_dir}目录内没有压缩包
                 echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m下载 $download_file_name 至 $(pwd)/\033[0m"
+                # 检测是否有wget工具
+                if [ ! -f /usr/bin/wget ];then
+                    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装wget工具\033[0m"
+                    yum install -y wget
+                fi
                 wget $3
                 file_in_the_dir=$(pwd)
                 cd ${back_dir}
@@ -167,7 +171,8 @@ function install_by_rpm(){
     cd ${file_in_the_dir}
     untar_tgz mysql-${mysql_version}-1.el7.x86_64.rpm-bundle.tar
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m使用rpm包安装mysql\033[0m"
-    yum install -y ./mysql-community-*rpm 
+    rpm -Uvh ./mysql-community-*rpm 
+    #yum install -y ./mysql-community-*rpm 
     if [ $? -eq 0 ];then
         echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m已成功安装mysql，即将进行一些优化配置\033[0m"
     else
