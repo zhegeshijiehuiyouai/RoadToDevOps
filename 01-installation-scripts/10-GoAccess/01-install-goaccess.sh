@@ -22,10 +22,10 @@ src_dir=00src00
 
 # 解压
 function untar_tgz(){
-    echo -e "\033[32m[+] 解压 $1 中\033[0m"
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m解压 $1 中\033[0m"
     tar xf $1
     if [ $? -ne 0 ];then
-        echo -e "\033[31m[*] 解压出错，请检查!\033[0m"
+        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m解压出错，请检查！\033[0m"
         exit 2
     fi
 }
@@ -93,48 +93,52 @@ function download_tar_gz(){
     fi
 }
 
+# 多核编译
+function multi_core_compile(){
+    assumeused=$(w | grep 'load average' | awk -F': ' '{print $2}' | awk -F'.' '{print $1}')
+    cpucores=$(cat /proc/cpuinfo | grep -c processor)
+    compilecore=$(($cpucores - $assumeused - 1))
+    if [ $compilecore -ge 1 ];then
+        make -j $compilecore && make -j $compilecore install
+        if [ $? -ne 0 ];then
+            echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m编译安装出错，请检查脚本\033[0m"
+            exit 1
+        fi
+    else
+        make && make install
+        if [ $? -ne 0 ];then
+            echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m编译安装出错，请检查脚本\033[0m"
+            exit 1
+        fi 
+    fi
+}
+
 download_tar_gz ${src_dir} https://tar.goaccess.io/goaccess-${version}.tar.gz
 cd ${file_in_the_dir}
 untar_tgz goaccess-${version}.tar.gz
 
 
-echo -e "\033[32m[+] 检查编译环境\033[0m"
+echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装依赖程序\033[0m"
 yum install -y openssl-devel GeoIP-devel ncurses-devel epel-release gcc
 
-echo -e "\033[32m[>] 编译 goaccess\033[0m"
+echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m配置编译参数\033[0m"
 cd goaccess-${version}
 #./configure --enable-utf8 --enable-geoip=mmdb --with-openssl --with-getline --enable-tcb=memhash
 ./configure --enable-utf8 --enable-geoip=legacy --with-getline --enable-tcb=memhash
 
-# 配置多核编译
-assumeused=$(w | grep 'load average' | awk -F': ' '{print $2}' | awk -F'.' '{print $1}')
-cpucores=$(cat /proc/cpuinfo | grep -c processor)
-compilecore=$(($cpucores - $assumeused - 1))
-if [ $compilecore -ge 1 ];then
-    make -j $compilecore && make -j $compilecore install
-    if [ $? -ne 0 ];then
-        echo -e "\n\033[31m[*] 编译出错，请检查脚本\033[0m\n"
-        exit 1
-    fi
-else
-    make && make install
-    if [ $? -ne 0 ];then
-        echo -e "\n\033[31m[*] 编译出错，请检查脚本\033[0m\n"
-        exit 1
-    fi
-fi
+multi_core_compile
 
-echo -e "\033[36m\n[+] 设置配置文件 为 nginx 日志分析模式\033[0m"
+echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m设置配置文件 为 nginx 日志分析模式\033[0m"
 sed -i 's@^#time-format %H:%M:%S@time-format %H:%M:%S@' /usr/local/etc/goaccess/goaccess.conf
 sed -i 's@^#date-format %d/%b/%Y@date-format %d/%b/%Y@' /usr/local/etc/goaccess/goaccess.conf
 sed -i 's@#log-format COMBINED@log-format COMBINED@' /usr/local/etc/goaccess/goaccess.conf
 
-echo -e "\033[32m\n[>] goaccess 已编译安装成功，详细信息如下：\033[0m"
-echo -e -n "\033[33m"
-echo "配置文件路径：/usr/local/etc/goaccess/goaccess.conf"
+echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mgoaccess 已编译安装成功，详细信息如下：\033[0m"
+echo -e "\033[37m                  配置文件路径：/usr/local/etc/goaccess/goaccess.conf\033[0m"
+echo -e "\033[37m                  设置输出html为中文的方法：\033[0m"
+echo -e "\033[37m                  \033[36mexport LANG=zh_CN.UTF-8\033[0m"
+echo -e "\033[37m                  用法举例：\033[0m"
+echo -e "\033[37m                  \033[36mgoaccess -a -g -f yourlogfile -o output.html\033[0m"
+echo -e "\033[37m                  goaccess版本：\033[0m"
 goaccess -V
-echo 
-echo "设置输出html为中文："
-echo -e "\033[36mexport LANG=zh_CN.UTF-8\033[33m"
-echo "用法举例："
-echo -e "\033[36mgoaccess -a -g -f yourlogfile -o output.html\033[0m\n"
+echo

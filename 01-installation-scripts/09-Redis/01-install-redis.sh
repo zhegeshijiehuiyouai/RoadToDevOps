@@ -32,10 +32,10 @@ redis_tgz=${FILE}.tar.gz
 
 # 解压
 function untar_tgz(){
-    echo -e "\033[32m[+] 解压 $1 中\033[0m"
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m解压 $1 中\033[0m"
     tar xf $1
     if [ $? -ne 0 ];then
-        echo -e "\033[31m[*] 解压出错，请检查!\033[0m"
+        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m解压出错，请检查！\033[0m"
         exit 2
     fi
 }
@@ -105,16 +105,36 @@ function download_tar_gz(){
 
 function add_user_and_group(){
     if id -g ${1} >/dev/null 2>&1; then
-        echo -e "\033[32m[#] ${1}组已存在，无需创建\033[0m"
+        echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m${1}组已存在，无需创建\033[0m"
     else
         groupadd ${1}
-        echo -e "\033[32m[+] 创建${1}组\033[0m"
+        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建${1}组\033[0m"
     fi
     if id -u ${1} >/dev/null 2>&1; then
-        echo -e "\033[32m[#] ${1}用户已存在，无需创建\033[0m"
+        echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m${1}用户已存在，无需创建\033[0m"
     else
         useradd -M -g ${1} -s /sbin/nologin ${1}
-        echo -e "\033[32m[+] 创建${1}用户\033[0m"
+        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建${1}用户\033[0m"
+    fi
+}
+
+# 多核编译
+function multi_core_compile(){
+    assumeused=$(w | grep 'load average' | awk -F': ' '{print $2}' | awk -F'.' '{print $1}')
+    cpucores=$(cat /proc/cpuinfo | grep -c processor)
+    compilecore=$(($cpucores - $assumeused - 1))
+    if [ $compilecore -ge 1 ];then
+        make -j $compilecore && make -j $compilecore install
+        if [ $? -ne 0 ];then
+            echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m编译安装出错，请检查脚本\033[0m"
+            exit 1
+        fi
+    else
+        make && make install
+        if [ $? -ne 0 ];then
+            echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m编译安装出错，请检查脚本\033[0m"
+            exit 1
+        fi 
     fi
 }
 
@@ -123,7 +143,7 @@ add_user_and_group redis
 # 如果同端口已被占用，则直接退出
 netstat -tnlp | grep ${PORT}
 if [ $? -eq 0 ];then
-    echo -e "\033[32m\n[*] ${PORT} 端口已被占用！\n退出...\033[0m"
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m${PORT} 端口已被占用！退出\033[0m"
     exit 21
 fi
 
@@ -131,42 +151,24 @@ download_tar_gz ${src_dir} http://download.redis.io/releases/${redis_tgz}
 cd ${file_in_the_dir}
 untar_tgz ${redis_tgz}
 
-
-
 mv ${FILE} ${DIR}/${redis_dir_name}
 
 cd ${DIR}/${redis_dir_name}
 redis_home=$(pwd)
 
-echo -e "\033[32m[+] 检查编译环境\033[0m"
+echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m检查编译环境\033[0m"
 yum install -y gcc
 yum install -y centos-release-scl-rh 
 yum install -y devtoolset-9-gcc devtoolset-9-gcc-c++ devtoolset-9-binutils
 # 升级gcc，6.x版本需要
 source /opt/rh/devtoolset-9/enable
 
-echo -e "\033[32m[>] 编译redis\033[0m"
+echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m编译redis\033[0m"
 # 清理先前编译出错的内容
 make distclean
-# 配置多核编译
-assumeused=$(w | grep 'load average' | awk -F': ' '{print $2}' | awk -F'.' '{print $1}')
-cpucores=$(cat /proc/cpuinfo | grep -c processor)
-compilecore=$(($cpucores - $assumeused - 1))
-if [ $compilecore -ge 1 ];then
-    make -j $compilecore
-    if [ $? -ne 0 ];then
-        echo -e "\n\033[31m[*] 编译出错，请检查脚本\033[0m\n"
-        exit 1
-    fi
-else
-    make
-    if [ $? -ne 0 ];then
-        echo -e "\n\033[31m[*] 编译出错，请检查脚本\033[0m\n"
-        exit 1
-    fi 
-fi
+multi_core_compile
 
-echo -e "\033[36m\n[+] 优化redis.conf文件\033[0m"
+echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m优化redis.conf文件\033[0m"
 sed -i 's/^daemonize no/daemonize yes/' redis.conf
 
 # 解决单引号里无法使用变量的问题
@@ -186,8 +188,7 @@ rm -f /tmp/_redis_file1
 
 
 ######################
-# 设置systemctl控制
-echo -e "\033[32m[+] 设置systemctl启动文件\033[0m"
+echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m设置systemd unit file文件\033[0m"
 
 cat > /lib/systemd/system/redis.service << EOF
 [Unit]
@@ -205,7 +206,7 @@ ExecStop=${redis_home}/redis-shutdown
 WantedBy=multi-user.target
 EOF
 
-echo -e "\033[32m[+] 设置停止rediis脚本\033[0m"
+echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m设置停止redis脚本\033[0m"
 cat > ${redis_home}/redis-shutdown << EOF
 #!/bin/bash
 #
@@ -250,7 +251,7 @@ fi
 EOF
 chmod +x ${redis_home}/redis-shutdown
 
-echo -e "\033[32m[+] 添加环境变量\033[0m"
+echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m添加环境变量\033[0m"
 cat > /etc/profile.d/redis.sh << EOF
 export PATH=$PATH:${redis_home}/src
 EOF
@@ -258,34 +259,34 @@ EOF
 chown -R redis:redis ${redis_home}
 ######################
 
+echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mredis已编译成功，详细信息如下：\033[0m"
+echo -e "\033[37m                  部署版本：  ${FILE}\033[0m"
+echo -e "\033[37m                  监听IP：   ${listen_ip}\033[0m"
+echo -e "\033[37m                  监听端口：  ${PORT}\033[0m"
+echo -e "\033[37m                  redis密码：${redis_pass}\033[0m"
 
-echo -e "\033[32m\n[>] redis已编译成功，详细信息如下：\033[0m"
-echo -e "\033[32m    部署版本： \033[33m${FILE}\033[0m"
-echo -e "\033[32m    监听IP：   \033[33m${listen_ip}\033[0m"
-echo -e "\033[32m    监听端口： \033[33m${PORT}\033[0m"
-echo -e "\033[32m    redis密码：\033[33m${redis_pass}\033[0m"
-
-echo -e "\033[32m\n[>] 启动redis\033[0m"
+echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m启动redis\033[0m"
 systemctl start redis
 
 netstat -tnlp | grep ${PORT}
 if [ $? -eq 0 ];then
-    echo -e "\033[32m\n[>] redis已启动！\033[0m"
-    echo -e "\033[32m      启动命令：\033[36msystemctl start redis\033[0m"
-    echo -e "\033[32m      关闭命令：\033[36msystemctl stop redis\033[0m"
-    echo -e "\033[32m      连接服务端：\033[36mredis-cli\033[0m"
-    echo -e "\033[32m[\033[31m****\033[32m] 由于bash特性限制，在本终端连接redis-server需要先手动执行  \033[36msource /etc/profile\033[0m  \033[32m加载环境变量\033[0m"
-    echo -e "\033[32m[\033[31m****\033[32m] \033[33m或者\033[32m新开一个终端连接redis-server\n\033[0m"
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mredis已成功启动！\033[0m"
+    echo -e "\033[37m                  启动命令：systemctl start redis\033[0m"
+    echo -e "\033[37m                  关闭命令：systemctl stop redis\033[0m"
+    echo -e "\033[37m                  连接服务端：redis-cli\033[0m"
+    echo -e "\033[37m                  部署版本：  ${FILE}\033[0m"
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m由于bash特性限制，在本终端连接redis-server需要先手动执行  \033[1;36msource /etc/profile\033[0m  \033[37m加载环境变量\033[0m"
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m或者新开一个终端连接redis-server\033[0m"
 else
-    echo -e "\033[31m[*] 启动失败，请检查配置！\n\033[0m"
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m启动失败，请检查配置！\033[0m"
     exit 20
 fi
 
-echo -e "\033[34m[#] iredis介绍：\033[0m"
-echo -e "\033[34m    iredis是一个具有代码补全和语法高亮的redis命令行客户端，github项目地址：\033[0m"
-echo -e "\033[34m    https://github.com/laixintao/iredis\033[0m"
+echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37miredis介绍：\033[0m"
+echo -e "\033[37m                  iredis是一个具有代码补全和语法高亮的redis命令行客户端，github项目地址：\033[0m"
+echo -e "\033[37m                  https://github.com/laixintao/iredis\033[0m"
 function iredisyn() {
-read -p "[>] 是否添加iredis (y/n)：" choice
+read -p "是否添加iredis (y/n)：" choice
 case ${choice} in
     y|Y)
         yum install -y python3-pip

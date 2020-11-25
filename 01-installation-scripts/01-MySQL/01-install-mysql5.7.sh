@@ -355,9 +355,7 @@ function install_main_func(){
     esac
 }
 
-echo -e "\033[31m\n\033[0m"
-echo -e "\033[36m[1]\033[32m rpm包部署mysql"
-echo -e "\033[36m[2]\033[32m 二进制包部署mysql"
-# 终止终端字体颜色
-echo -e "\033[0m"
+echo -e "\033[31m本脚本支持两种部署方式：\033[0m"
+echo -e "\033[36m[1]\033[32m rpm包部署mysql\033[0m"
+echo -e "\033[36m[2]\033[32m 二进制包部署mysql\033[0m"
 install_main_func
