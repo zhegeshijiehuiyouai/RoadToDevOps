@@ -621,7 +621,6 @@ function install_main_func(){
     read -p "请输入数字选择要安装的组件（如需退出请输入q）：" software
     case $software in
         1)
-            echo -e "\033[32m[!] 即将安装 \033[36mnginx\033[32m ...\033[0m"
             echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m即将安装 \033[36mnginx\033[0m"
             # 等待1秒，给用户手动取消的时间
             sleep 1
