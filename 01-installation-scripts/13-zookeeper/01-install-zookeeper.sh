@@ -6,12 +6,17 @@
 # zookeeper版本，鉴于仓库中3.5.x或者3.6.x只会保留一个版本，因此这里不指定第三位x的版本号，转而从网络获取
 zk_version=3.5
 # 尽管不美观，但不要移动到后面去
-zk_exact_version=$(curl -s --connect-timeout 3 http://mirrors.aliyun.com/apache/zookeeper/ | grep zookeeper-${zk_version} | awk -F'"' '{print $2}' | xargs basename | awk -F'-' '{print $2}')
+curl_timeout=2
+# 设置dns超时时间，避免没网情况下等很久
+echo "options timeout:${curl_timeout} attempts:1 rotate" >> /etc/resolv.conf
+zk_exact_version=$(curl -s --connect-timeout ${curl_timeout} http://mirrors.aliyun.com/apache/zookeeper/ | grep zookeeper-${zk_version} | awk -F'"' '{print $2}' | xargs basename | awk -F'-' '{print $2}')
 # 接口正常，[ ! ${zk_exact_version} ]为1；接口失败，[ ! ${zk_exact_version} ]为0
 if [ ! ${zk_exact_version} ];then
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31mzookeeper仓库[ \033[36mhttp://mirrors.aliyun.com/apache/zookeeper/\033[31m ]访问超时，请检查网络！\033[0m"
+    sed -i '$d' /etc/resolv.conf
     exit 2
 fi
+sed -i '$d' /etc/resolv.conf
 
 # 包下载目录
 src_dir=$(pwd)/00src00
@@ -131,8 +136,8 @@ function add_user_and_group(){
 
 
 ########【注意】集群部署函数从这个函数里根据行数取内容，如果这里修改了行数，需要修改集群函数
-    function install_single_zk(){
-        java -version &> /dev/null
+function install_single_zk(){
+    java -version &> /dev/null
     if [ $? -ne 0 ];then
         echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m未检测到java，请先部署java\033[0m"
         exit 1
@@ -209,7 +214,7 @@ function install_cluster_zk(){
     if [ $? -ne 0 ];then
         echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m未检测到ansible，安装ansible中\033[0m"
         if [ ! -f /etc/yum.repos.d/*epel* ];then
-            yum install -y epel-release
+            wget -q -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
             if [ $? -ne 0 ];then
                 echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31mepel仓库安装失败，请检查网络！\033[0m"
             fi
@@ -237,16 +242,18 @@ function install_cluster_zk(){
     for i in $(seq 1 $count);do
         echo "${server_ip[i]} ansible_ssh_user=\"root\" ansible_ssh_pass=\"${server_root_passwd[$i]}\"" >> /etc/ansible/hosts
     done
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m调整ansible连接配置\033[0m"
+    sed -i 's/^#host_key_checking.*/host_key_checking = False/' /etc/ansible/ansible.cfg 
 
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m生成单机部署zookeeper的脚本\033[0m"
-    head -25 $0 > /tmp/zk_single_shell.sh
+    head -30 $0 > /tmp/zk_single_shell.sh
     echo -e "\n\n" >> /tmp/zk_single_shell.sh
-    grep -A56 "function install_single_zk(){" $0 >> /tmp/zk_single_shell.sh
+    grep -A70 "function install_single_zk(){" $0 >> /tmp/zk_single_shell.sh
     #echo "install_single_zk" >> /tmp/zk_single_shell.sh
     #for i in $(seq ${count} -1 1);do
     #    sed -i "/rm\ \-rf\ \/tmp\/zookeeper_install_temp_/a \    echo \"server.${i}=${server_ip[$i]}:${server_communicate_port[$i]}:${server_vote_port[$i]}\"\ >>\ conf\/zoo.cfg" /tmp/zk_single_shell.sh
     #done
-    #exit
+    exit
 }
 
 
@@ -273,8 +280,6 @@ function install_main_func(){
     esac
 }
 
-echo -e "\033[36m[1]\033[32m 部署单机zookeeper"
-echo -e "\033[36m[2]\033[32m 部署集群zookeeper"
-# 终止终端字体颜色
-echo -e "\033[0m"
+echo -e "\033[36m[1]\033[32m 部署单机zookeeper\033[0m"
+echo -e "\033[36m[2]\033[32m 部署集群zookeeper\033[0m"
 install_main_func
