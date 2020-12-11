@@ -147,9 +147,9 @@ function init_account(){
     systemctl restart ${systemd_service_name}
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m设置所有主机均可访问mysql\033[0m"
     if [ ${systemd_service_name} == mysqld ];then
-        mysql -uroot -p"${my_root_passwd}" -e "set global validate_password_policy=0;set global validate_password_mixed_case_count=0;set global validate_password_number_count=3;set global validate_password_special_char_count=0;set global validate_password_length=3;grant all on *.* to root@'%' identified by '${my_root_passwd}'" &> /dev/null
+        mysql -uroot -p"${my_root_passwd}" -e "set global validate_password_policy=0;set global validate_password_mixed_case_count=0;set global validate_password_number_count=3;set global validate_password_special_char_count=0;set global validate_password_length=3;grant all on *.* to root@'%' identified by '${my_root_passwd}' WITH GRANT OPTION;" &> /dev/null
     else
-        mysql -uroot -p"${my_root_passwd}" -e "grant all on *.* to root@'%' identified by '${my_root_passwd}'" &> /dev/null
+        mysql -uroot -p"${my_root_passwd}" -e "grant all on *.* to root@'%' identified by '${my_root_passwd}' WITH GRANT OPTION;" &> /dev/null
     fi
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m重启mysql\033[0m"
     systemctl restart ${systemd_service_name}
