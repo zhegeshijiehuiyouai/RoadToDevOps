@@ -12,7 +12,7 @@ echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m从官网获
 version_nginx_hint="（官网最新版）"
 version_tengine_hint="（官网最新版）"
 
-nginx_default_version=1.19.4
+nginx_default_version=1.19.6
 # nginx的版本(从官网获取最新版)
 curl_timeout=2
 # 设置dns超时时间，避免没网情况下等很久
