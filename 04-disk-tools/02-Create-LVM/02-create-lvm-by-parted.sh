@@ -1,4 +1,16 @@
 #!/bin/bash
+
+# 带格式的echo函数
+function echo_info() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m$@\033[0m"
+}
+function echo_warning() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m$@\033[0m"
+}
+function echo_error() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
+}
+
 # only use in centos7
 partition=/data                # 定义最终挂载的名称
 vgname=vgdata                      # 定义逻辑卷组的名称
@@ -6,7 +18,7 @@ lvmname=lvmdata                     # 定义逻辑卷的名称
 code='vdb'   # 根据分区的实际情况修改
 
 if [ -d $partition ];then
-	echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m${partition}目录已存在，退出\033[0m"
+	echo_error ${partition}目录已存在，退出
 	exit 1
 fi
 
@@ -29,26 +41,26 @@ EOF
 disk="$disk /dev/${i}1" # 将所有分区拼起来
 done
 
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m即将使用这些磁盘创建lvm：$disk\033[0m"
+echo_info 即将使用这些磁盘创建lvm：$disk
 
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建pv\033[0m"
+echo_info 创建pv
 pvcreate $disk
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建vg\033[0m"
+echo_info 创建vg
 vgcreate $vgname $disk
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建lv\033[0m"
+echo_info 创建lv
 lvcreate -l 100%VG -n $lvmname $vgname
 
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建xfs文件系统\033[0m"
+echo_info 创建xfs文件系统
 mkfs.xfs /dev/$vgname/$lvmname
 if [ $? == 0 ]
 then 
 	mkdir -p $partition
-	echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m更新/etc/fstab\033[0m"
+	echo_info 更新/etc/fstab
 	echo "/dev/$vgname/$lvmname  $partition  xfs     defaults        0 0" >> /etc/fstab
 	mount -a
-	echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mlvm创建成功\033[0m"
-	echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mlvm文件系统磁盘空间使用情况：\033[0m"
+	echo_info lvm创建成功
+	echo_info lvm文件系统磁盘空间使用情况：
 	df -h
 else
-	echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31mlvm创建失败！\033[0m"
+	echo_error lvm创建失败！
 fi

@@ -35,12 +35,23 @@ FILE=mysql-${mysql_version}-linux-glibc2.12-x86_64
 mysql_tgz=${FILE}.tar.gz
 #############################################################
 
+# 带格式的echo函数
+function echo_info() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m$@\033[0m"
+}
+function echo_warning() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m$@\033[0m"
+}
+function echo_error() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
+}
+
 # 解压
 function untar_tgz(){
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m解压 $1 中\033[0m"
+    echo_info 解压 $1 中
     tar xf $1
     if [ $? -ne 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m解压出错，请检查！\033[0m"
+        echo_error 解压出错，请检查！
         exit 2
     fi
 }
@@ -69,10 +80,10 @@ function download_tar_gz(){
         if [ $? -ne 0 ];then
             # 进入此处表示没有${src_dir}目录
             mkdir -p $1 && cd $1
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m下载 $download_file_name 至 $(pwd)/\033[0m"
+            echo_info 下载 $download_file_name 至 $(pwd)/
             # 检测是否有wget工具
             if [ ! -f /usr/bin/wget ];then
-                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装wget工具\033[0m"
+                echo_info 安装wget工具
                 yum install -y wget
             fi
             wget $2
@@ -85,10 +96,10 @@ function download_tar_gz(){
             ls $download_file_name &> /dev/null
             if [ $? -ne 0 ];then
             # 进入此处表示${src_dir}目录内没有压缩包
-                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m下载 $download_file_name 至 $(pwd)/\033[0m"
+                echo_info 下载 $download_file_name 至 $(pwd)/
                 # 检测是否有wget工具
                 if [ ! -f /usr/bin/wget ];then
-                    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装wget工具\033[0m"
+                    echo_info 安装wget工具
                     yum install -y wget
                 fi
                 wget $3
@@ -96,30 +107,30 @@ function download_tar_gz(){
                 cd ${back_dir}
             else
                 # 进入此处，表示${src_dir}目录内有压缩包
-                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m发现压缩包$(pwd)/$download_file_name\033[0m"
+                echo_info 发现压缩包$(pwd)/$download_file_name
                 file_in_the_dir=$(pwd)
                 cd ${back_dir}
             fi
         fi
     else
         # 进入此处表示脚本所在目录有压缩包
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m发现压缩包$(pwd)/$download_file_name\033[0m"
+        echo_info 发现压缩包$(pwd)/$download_file_name
         file_in_the_dir=$(pwd)
     fi
 }
 
 function add_user_and_group(){
     if id -g ${1} >/dev/null 2>&1; then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m${1}组已存在，无需创建\033[0m"
+        echo_warning ${1}组已存在，无需创建
     else
         groupadd ${1}
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建${1}组\033[0m"
+        echo_info 创建${1}组
     fi
     if id -u ${1} >/dev/null 2>&1; then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m${1}用户已存在，无需创建\033[0m"
+        echo_warning ${1}用户已存在，无需创建
     else
         useradd -M -g ${1} -s /sbin/nologin ${1}
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建${1}用户\033[0m"
+        echo_info 创建${1}用户
     fi
 }
 
@@ -131,35 +142,35 @@ function init_account(){
     systemctl start ${systemd_service_name}.service
     # mysql启动失败的话退出
     if [ $? -ne 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31mmysql启动失败，请查看错误信息\033[0m"
+        echo_error mysql启动失败，请查看错误信息
         exit 1
     fi
 
     # mysql启动成功后的操作
     source /etc/profile
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m设置密码\033[0m"
+    echo_info 设置密码
     if [ ${systemd_service_name} == mysqld ];then
         mysql -uroot -p"${login_pass}" --connect-expired-password -e "set global validate_password_policy=0;set global validate_password_mixed_case_count=0;set global validate_password_number_count=3;set global validate_password_special_char_count=0;set global validate_password_length=3;" &> /dev/null
     fi
     mysql -uroot -p"${login_pass}" --connect-expired-password -e "SET PASSWORD = PASSWORD('${my_root_passwd}');flush privileges;" &> /dev/null
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m重启mysql\033[0m"
+    echo_info 重启mysql
     systemctl restart ${systemd_service_name}
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m设置所有主机均可访问mysql\033[0m"
+    echo_info 设置所有主机均可访问mysql
     if [ ${systemd_service_name} == mysqld ];then
         mysql -uroot -p"${my_root_passwd}" -e "set global validate_password_policy=0;set global validate_password_mixed_case_count=0;set global validate_password_number_count=3;set global validate_password_special_char_count=0;set global validate_password_length=3;grant all on *.* to root@'%' identified by '${my_root_passwd}' WITH GRANT OPTION;" &> /dev/null
     else
         mysql -uroot -p"${my_root_passwd}" -e "grant all on *.* to root@'%' identified by '${my_root_passwd}' WITH GRANT OPTION;" &> /dev/null
     fi
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m重启mysql\033[0m"
+    echo_info 重启mysql
     systemctl restart ${systemd_service_name}
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mmysql已启动成功！相关信息如下：\033[0m"
+    echo_info mysql已启动成功！相关信息如下：
     echo -e "\033[37m                  端口号：${PORT}\033[0m"
     echo -e "\033[37m                  账号：root\033[0m"
     echo -e "\033[37m                  密码：${my_root_passwd}\033[0m"
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mmysql控制命令：\033[0m"
+    echo_info mysql控制命令：
     echo -e "\033[37m                  启动：systemctl start ${systemd_service_name}\033[0m"
     echo -e "\033[37m                  重启：systemctl restart ${systemd_service_name}\033[0m"
     echo -e "\033[37m                  停止：systemctl stop ${systemd_service_name}\033[0m"
@@ -171,23 +182,23 @@ function install_by_rpm(){
     download_tar_gz ${src_dir} https://dev.mysql.com/get/Downloads/MySQL-5.7/mysql-${mysql_version}-1.el7.x86_64.rpm-bundle.tar
     cd ${file_in_the_dir}
     untar_tgz mysql-${mysql_version}-1.el7.x86_64.rpm-bundle.tar
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m使用rpm包安装mysql\033[0m"
+    echo_info 使用rpm包安装mysql
     rpm -Uvh ./mysql-community-*rpm 
     #yum install -y ./mysql-community-*rpm 
     if [ $? -eq 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m已成功安装mysql，即将进行一些优化配置\033[0m"
+        echo_info 已成功安装mysql，即将进行一些优化配置
     else
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m安装出错，请检查！\033[0m"
+        echo_error 安装出错，请检查！
         exit 5
     fi
 
     if [ -f /etc/my.cnf ];then
         mv /etc/my.cnf /etc/my.cnf_`date +%F`
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m检测到配置文件，已备份为/etc/my.cnf_`date +%F`\033[0m"
+        echo_warning 检测到配置文件，已备份为/etc/my.cnf_`date +%F`
     fi
 
     # 生成新的/etc/my.cnf
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m初始化/etc/my.cnf\033[0m"
+    echo_info 初始化/etc/my.cnf
 cat > /etc/my.cnf << EOF
 # For advice on how to change settings please see
 # http://dev.mysql.com/doc/refman/5.7/en/server-configuration-defaults.html
@@ -248,7 +259,7 @@ function install_by_tgz(){
 
     add_user_and_group mysql
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m初始化mysql\033[0m"
+    echo_info 初始化mysql
     mkdir -p ${DIR}/${mysql_dir_name}/data
     chown -R mysql:mysql ${DIR}/${mysql_dir_name}/
 
@@ -262,16 +273,16 @@ function install_by_tgz(){
 
     # 初始化完成后，data目录会生成文件，所以重新赋权
     chown -R mysql:mysql ${DIR}/${mysql_dir_name}/
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m初始化完毕\033[0m"
+    echo_info 初始化完毕
 
     # 备份原来的/etc/my.cnf
     if [ -f /etc/my.cnf ];then
         mv /etc/my.cnf /etc/my.cnf_`date +%F`
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m检测到配置文件，已备份为/etc/my.cnf_`date +%F`\033[0m"
+        echo_warning 检测到配置文件，已备份为/etc/my.cnf_`date +%F`
     fi
 
     # 生成新的/etc/my.cnf
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m初始化/etc/my.cnf\033[0m"
+    echo_info 初始化/etc/my.cnf
 cat > /etc/my.cnf << EOF
 [client]
 socket=${DIR}/${mysql_dir_name}/data/mysql.sock
@@ -295,7 +306,7 @@ lower_case_table_names = 1
 EOF
 
     # 设置systemctl控制
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m设置systemd unit file文件\033[0m"
+    echo_info 设置systemd unit file文件
 
 cat > /lib/systemd/system/mysql.service << EOF
 [Unit]
@@ -313,13 +324,13 @@ WantedBy=multi-user.target
 EOF
 
     # 添加环境变量，这样就能在任意地方使用mysql全套命令
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m配置PATH环境变量\033[0m"
+    echo_info 配置PATH环境变量
     if [ -f /usr/local/bin/mysql ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m/usr/local/bin目录有未删除的mysql相关文件，请检查！\033[0m"
+        echo_error /usr/local/bin目录有未删除的mysql相关文件，请检查！
         exit 10
     fi
     if [ -f /usr/bin/mysql ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m/usr/bin目录有未删除的mysql相关文件，请检查！\033[0m"
+        echo_error /usr/bin目录有未删除的mysql相关文件，请检查！
         exit 10
     fi
     echo "export PATH=${PATH}:${DIR}/${mysql_dir_name}/bin" > /etc/profile.d/mysql.sh
@@ -328,22 +339,22 @@ EOF
     # 进行账号、密码设置
     init_account ${init_password} mysql
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m由于bash特性限制，在本终端连接mysql需要先手动执行  \033[1;36msource /etc/profile\033[0m  \033[37m加载环境变量\033[0m"
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m或者新开一个终端连接mysql\033[0m"
+    echo_warning 由于bash特性限制，在本终端连接mysql需要先手动执行 source /etc/profile 加载环境变量，或者新开一个终端连接mysql
 }
 
 function install_main_func(){
     read -p "请输入数字选择安装类型（如需退出请输入q）：" software
     case $software in
         1)
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m即将使用 \033[36mrpm包\033[37m 安装mysql\033[0m"
+            echo_info 即将使用 rpm包 安装mysql
             # 等待1秒，给用户手动取消的时间
             sleep 1
             install_by_rpm
             ;;
         2)
             echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m即将使用 \033[36m二进制包\033[37m 安装mysql\033[0m"
-            sleep 2
+            echo_info 即将使用 二进制包 安装mysql
+            sleep 1
             install_by_tgz
             ;;
         q|Q)

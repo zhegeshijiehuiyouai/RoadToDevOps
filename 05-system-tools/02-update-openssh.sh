@@ -9,7 +9,18 @@ openssh_source_dir=$(pwd)/00src00
 openssl_version=1.1.1h
 openssh_version=8.4p1
 
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m现在的版本：\033[0m"
+# 带格式的echo函数
+function echo_info() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m$@\033[0m"
+}
+function echo_warning() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m$@\033[0m"
+}
+function echo_error() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
+}
+
+echo_info 现在的版本：
 openssl version
 ssh -V
 
@@ -21,13 +32,13 @@ function multi_core_compile(){
     if [ $compilecore -ge 1 ];then
         make -j $compilecore && make -j $compilecore install
         if [ $? -ne 0 ];then
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m编译安装出错，请检查脚本\033[0m"
+            echo_error 编译安装出错，请检查脚本
             exit 1
         fi
     else
         make && make install
         if [ $? -ne 0 ];then
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m编译安装出错，请检查脚本\033[0m"
+            echo_error 编译安装出错，请检查脚本
             exit 1
         fi 
     fi
@@ -35,10 +46,10 @@ function multi_core_compile(){
 
 # 解压
 function untar_tgz(){
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m解压 $1 中\033[0m"
+    echo_info 解压 $1 中
     tar xf $1
     if [ $? -ne 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m解压出错，请检查！\033[0m"
+        echo_error 解压出错，请检查！
         exit 2
     fi
 }
@@ -67,10 +78,10 @@ function download_tar_gz(){
         if [ $? -ne 0 ];then
             # 进入此处表示没有${src_dir}目录
             mkdir -p $1 && cd $1
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m下载 $download_file_name 至 $(pwd)/\033[0m"
+            echo_info 下载 $download_file_name 至 $(pwd)/
             # 检测是否有wget工具
             if [ ! -f /usr/bin/wget ];then
-                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装wget工具\033[0m"
+                echo_info 安装wget工具
                 yum install -y wget
             fi
             wget $2
@@ -83,10 +94,10 @@ function download_tar_gz(){
             ls $download_file_name &> /dev/null
             if [ $? -ne 0 ];then
             # 进入此处表示${src_dir}目录内没有压缩包
-                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m下载 $download_file_name 至 $(pwd)/\033[0m"
+                echo_info 下载 $download_file_name 至 $(pwd)/
                 # 检测是否有wget工具
                 if [ ! -f /usr/bin/wget ];then
-                    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装wget工具\033[0m"
+                    echo_info 安装wget工具
                     yum install -y wget
                 fi
                 wget $3
@@ -94,23 +105,23 @@ function download_tar_gz(){
                 cd ${back_dir}
             else
                 # 进入此处，表示${src_dir}目录内有压缩包
-                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m发现压缩包$(pwd)/$download_file_name\033[0m"
+                echo_info 发现压缩包$(pwd)/$download_file_name
                 file_in_the_dir=$(pwd)
                 cd ${back_dir}
             fi
         fi
     else
         # 进入此处表示脚本所在目录有压缩包
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m发现压缩包$(pwd)/$download_file_name\033[0m"
+        echo_info 发现压缩包$(pwd)/$download_file_name
         file_in_the_dir=$(pwd)
     fi
 }
 
 # 升级openssl
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m准备升级 openssl\033[0m"
+echo_info 准备升级 openssl
 
 yum install -y gcc
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m备份 /usr/bin/openssl 为 /usr/bin/openssl_old\033[0m"
+echo_info 备份 /usr/bin/openssl 为 /usr/bin/openssl_old
 mv -f /usr/bin/openssl /usr/bin/openssl_old
 
 download_tar_gz ${openssh_source_dir} https://mirrors.cloud.tencent.com/openssl/source/openssl-${openssl_version}.tar.gz
@@ -121,7 +132,7 @@ cd openssl-${openssl_version}
 ./config shared
 multi_core_compile 
 
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m配置软链接\033[0m"
+echo_info 配置软链接
 ln -s /usr/local/bin/openssl /usr/bin/openssl
 [ -f /usr/lib64/libssl.so.1.1 ] || ln -s /usr/local/lib64/libssl.so.1.1 /usr/lib64/
 [ -f /usr/lib64/libcrypto.so.1.1 ] || ln -s /usr/local/lib64/libcrypto.so.1.1 /usr/lib64/
@@ -129,14 +140,14 @@ ln -s /usr/local/bin/openssl /usr/bin/openssl
 # 退出openssl源码目录
 cd ..
 
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m备份 /etc/ssh目录 为 /etc/ssh_old目录\033[0m"
+echo_info 备份 /etc/ssh目录 为 /etc/ssh_old目录
 [ -d /etc/ssh_old ] && rm -rf /etc/ssh_old
 mkdir /etc/ssh_old
 mv /etc/ssh/* /etc/ssh_old/
 
 
 # 升级openssh
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m准备升级 openssh\033[0m"
+echo_info 准备升级 openssh
 
 yum install zlib-devel openssl-devel pam-devel -y
 download_tar_gz ${openssh_source_dir} https://mirrors.cloud.tencent.com/OpenBSD/OpenSSH/portable/openssh-${openssh_version}.tar.gz
@@ -147,17 +158,17 @@ cd openssh-${openssh_version}
 ./configure --prefix=/usr/ --sysconfdir=/etc/ssh --with-ssl-dir=/usr/local/lib64/ --with-zlib --with-pam --with-md5-password --with-ssl-engine --with-selinux
 multi_core_compile
 
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m优化sshd_config\033[0m"
+echo_info 优化sshd_config
 sed -i '/^#PermitRootLogin/s/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config 
 sed -i '/^#UseDNS/s/#UseDNS.*/UseDNS no/' /etc/ssh/sshd_config
 
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m优化sshd.service\033[0m"
+echo_info 优化sshd.service
 sed -i 's/^Type/#&/' /usr/lib/systemd/system/sshd.service
 
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m升级后的版本：\033[0m"
+echo_info 升级后的版本：
 openssl version
 ssh -V
 
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m重启sshd服务\033[0m"
+echo_info 重启sshd服务
 systemctl daemon-reload
 systemctl restart sshd

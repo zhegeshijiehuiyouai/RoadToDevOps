@@ -1,5 +1,16 @@
 #!/bin/bash
 
+# 带格式的echo函数
+function echo_info() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m$@\033[0m"
+}
+function echo_warning() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m$@\033[0m"
+}
+function echo_error() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
+}
+
 # 环境变量配置，略长，，，
 ###########################################################################
 ###########################################################################
@@ -12,7 +23,7 @@ echo "options timeout:${curl_timeout} attempts:1 rotate" >> /etc/resolv.conf
 zk_exact_version=$(curl -s --connect-timeout ${curl_timeout} http://mirrors.aliyun.com/apache/zookeeper/ | grep zookeeper-${zk_version} | awk -F'"' '{print $2}' | xargs basename | awk -F'-' '{print $2}')
 # 接口正常，[ ! ${zk_exact_version} ]为1；接口失败，[ ! ${zk_exact_version} ]为0
 if [ ! ${zk_exact_version} ];then
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31mzookeeper仓库[ \033[36mhttp://mirrors.aliyun.com/apache/zookeeper/\033[31m ]访问超时，请检查网络！\033[0m"
+    echo_error zookeeper仓库[ http://mirrors.aliyun.com/apache/zookeeper/ ]访问超时，请检查网络！
     sed -i '$d' /etc/resolv.conf
     exit 2
 fi
@@ -48,10 +59,10 @@ EOF
 
 # 解压
 function untar_tgz(){
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m解压 $1 中\033[0m"
+    echo_info 解压 $1 中
     tar xf $1
     if [ $? -ne 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m解压出错，请检查！\033[0m"
+        echo_error 解压出错，请检查！
         exit 2
     fi
 }
@@ -80,10 +91,10 @@ function download_tar_gz(){
         if [ $? -ne 0 ];then
             # 进入此处表示没有${src_dir}目录
             mkdir -p $1 && cd $1
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m下载 $download_file_name 至 $(pwd)/\033[0m"
+            echo_info 下载 $download_file_name 至 $(pwd)/
             # 检测是否有wget工具
             if [ ! -f /usr/bin/wget ];then
-                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装wget工具\033[0m"
+                echo_info 安装wget工具
                 yum install -y wget
             fi
             wget $2
@@ -96,10 +107,10 @@ function download_tar_gz(){
             ls $download_file_name &> /dev/null
             if [ $? -ne 0 ];then
             # 进入此处表示${src_dir}目录内没有压缩包
-                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m下载 $download_file_name 至 $(pwd)/\033[0m"
+                echo_info 下载 $download_file_name 至 $(pwd)/
                 # 检测是否有wget工具
                 if [ ! -f /usr/bin/wget ];then
-                    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装wget工具\033[0m"
+                    echo_info 安装wget工具
                     yum install -y wget
                 fi
                 wget $3
@@ -107,30 +118,30 @@ function download_tar_gz(){
                 cd ${back_dir}
             else
                 # 进入此处，表示${src_dir}目录内有压缩包
-                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m发现压缩包$(pwd)/$download_file_name\033[0m"
+                echo_info 发现压缩包$(pwd)/$download_file_name
                 file_in_the_dir=$(pwd)
                 cd ${back_dir}
             fi
         fi
     else
         # 进入此处表示脚本所在目录有压缩包
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m发现压缩包$(pwd)/$download_file_name\033[0m"
+        echo_info 发现压缩包$(pwd)/$download_file_name
         file_in_the_dir=$(pwd)
     fi
 }
 
 function add_user_and_group(){
     if id -g ${1} >/dev/null 2>&1; then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m${1}组已存在，无需创建\033[0m"
+        echo_warning ${1}组已存在，无需创建
     else
         groupadd ${1}
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建${1}组\033[0m"
+        echo_info 创建${1}组
     fi
     if id -u ${1} >/dev/null 2>&1; then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m${1}用户已存在，无需创建\033[0m"
+        echo_warning ${1}用户已存在，无需创建
     else
         useradd -M -g ${1} -s /sbin/nologin ${1}
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建${1}用户\033[0m"
+        echo_info 创建${1}用户
     fi
 }
 
@@ -139,13 +150,13 @@ function add_user_and_group(){
 function install_single_zk(){
     java -version &> /dev/null
     if [ $? -ne 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m未检测到java，请先部署java\033[0m"
+        echo_error 未检测到java，请先部署java
         exit 1
     fi
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m检测部署目录中\033[0m"
+    echo_info 检测部署目录中
     if [ -d ${basedir}/${zookeeperdir} ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m目录 ${basedir}/${zookeeperdir} 已存在，无法继续安装，退出\033[0m"
+        echo_error 目录 ${basedir}/${zookeeperdir} 已存在，无法继续安装，退出
         exit 3
     else
         [ -d ${basedir} ] || mkdir -p ${basedir}
@@ -168,15 +179,15 @@ EOF
     /bin/bash /tmp/zookeeper_install_temp_$(date +%F).sh
     rm -rf /tmp/zookeeper_install_temp_$(date +%F).sh
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m部署目录授权中\033[0m"
+    echo_info 部署目录授权中
     chown -R ${sys_user}:${sys_user} ${basedir}/${zookeeperdir}
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m配置PATH环境变量\033[0m"
+    echo_info 配置PATH环境变量
     echo "ZOOKEEPER_HOME=${basedir}/${zookeeperdir}" >  /etc/profile.d/zookeeper.sh
     echo "export PATH=${basedir}/${zookeeperdir}/bin" >> /etc/profile.d/zookeeper.sh
     source /etc/profile
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m生成/usr/lib/systemd/system/zookeeper.service\033[0m"
+    echo_info 生成/usr/lib/systemd/system/zookeeper.service
 cat >/usr/lib/systemd/system/zookeeper.service <<EOF
 [Unit]
 Description=Zookeeper server manager
@@ -197,89 +208,15 @@ EOF
     systemctl daemon-reload
     systemctl start zookeeper
     if [ $? -ne 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31mzookeeper启动出错，请检查！\033[0m"
+        echo_error zookeeper启动出错，请检查！
         exit 4
     fi
     systemctl enable zookeeper &> /dev/null
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mzookeeper 已安装配置完成：\033[0m"
+    echo_info zookeeper 已安装配置完成：
     echo -e "\033[37m                  部署目录：${basedir}/${zookeeperdir}\033[0m"
     echo -e "\033[37m                  启动命令：systemctl start zookeeper\033[0m"
 
 }
 
-function install_cluster_zk(){
-    # 确保ansible安装了
-    ansible --version &> /dev/null
-    if [ $? -ne 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m未检测到ansible，安装ansible中\033[0m"
-        if [ ! -f /etc/yum.repos.d/*epel* ];then
-            wget -q -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
-            if [ $? -ne 0 ];then
-                echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31mepel仓库安装失败，请检查网络！\033[0m"
-            fi
-        else    
-            yum install -y ansible
-            if [ $? -ne 0 ];then
-                echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31mansible安装失败，请检查网络！\033[0m"
-            fi
-        fi
-    fi
-
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m读取集群配置中\033[0m"
-    count=0
-    for line in $(cat /tmp/zk_cluster_info.temp);do
-        let count=count+1
-
-        server_ip[$count]=$(echo $line | awk -F":" '{print $3}')
-        server_communicate_port[$count]=$(echo $line | awk -F":" '{print $4}')
-        server_vote_port[$count]=$(echo $line | awk -F":" '{print $5}')
-        server_root_passwd[$count]=$(echo $line | awk -F":" '{print $6}')
-    done
-
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m配置ansible hosts\033[0m"
-    echo "[myzookeeper]" >> /etc/ansible/hosts
-    for i in $(seq 1 $count);do
-        echo "${server_ip[i]} ansible_ssh_user=\"root\" ansible_ssh_pass=\"${server_root_passwd[$i]}\"" >> /etc/ansible/hosts
-    done
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m调整ansible连接配置\033[0m"
-    sed -i 's/^#host_key_checking.*/host_key_checking = False/' /etc/ansible/ansible.cfg 
-
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m生成单机部署zookeeper的脚本\033[0m"
-    head -30 $0 > /tmp/zk_single_shell.sh
-    echo -e "\n\n" >> /tmp/zk_single_shell.sh
-    grep -A70 "function install_single_zk(){" $0 >> /tmp/zk_single_shell.sh
-    #echo "install_single_zk" >> /tmp/zk_single_shell.sh
-    #for i in $(seq ${count} -1 1);do
-    #    sed -i "/rm\ \-rf\ \/tmp\/zookeeper_install_temp_/a \    echo \"server.${i}=${server_ip[$i]}:${server_communicate_port[$i]}:${server_vote_port[$i]}\"\ >>\ conf\/zoo.cfg" /tmp/zk_single_shell.sh
-    #done
-    exit
-}
-
-
-function install_main_func(){
-    read -p "请输入数字选择安装类型（如需退出请输入q）：" software
-    case $software in
-        1)
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m即将安装 \033[36m单机\033[37m zookeeper\033[0m"
-            # 等待1秒，给用户手动取消的时间
-            sleep 1
-            install_single_zk
-            ;;
-        2)
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m即将安装 \033[36m集群\033[37m zookeeper\033[0m"
-            sleep 1
-            install_cluster_zk
-            ;;
-        q|Q)
-            exit 0
-            ;;
-        *)
-            install_main_func
-            ;;
-    esac
-}
-
-echo -e "\033[36m[1]\033[32m 部署单机zookeeper\033[0m"
-echo -e "\033[36m[2]\033[32m 部署集群zookeeper\033[0m"
-install_main_func
+install_single_zk

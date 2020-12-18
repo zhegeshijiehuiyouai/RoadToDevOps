@@ -1,12 +1,22 @@
 #!/bin/bash
 # 可根据需要选择部署nginx、tengine、openresty、kong
 
+# 带格式的echo函数
+function echo_info() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m$@\033[0m"
+}
+function echo_warning() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m$@\033[0m"
+}
+function echo_error() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
+}
 
 # 所有需要下载的文件都下载到当前目录下的${src_dir}目录中
 src_dir=00src00
 
 ##################从官网获取最新版本号##################
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m从官网获取最新版本中\033[0m"
+echo_info 从官网获取最新版本中
 
 # 该变量用于显示下载的版本是不是最新版，如果从官网获取版本号失败，就提示是默认版本
 version_nginx_hint="（官网最新版）"
@@ -20,7 +30,7 @@ echo "options timeout:${curl_timeout} attempts:1 rotate" >> /etc/resolv.conf
 nginx_version=$(curl -s  --connect-timeout ${curl_timeout} http://nginx.org/en/CHANGES | head -3 | grep nginx | awk '{print $4}')
 # 接口正常，[ ! ${nginx_version} ]为1；接口失败，[ ! ${nginx_version} ]为0
 if [ ! ${nginx_version} ];then
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31mnginx接口访问超时，使用默认版本：${nginx_default_version}\033[0m"
+    echo_error nginx接口访问超时，使用默认版本：${nginx_default_version}
     nginx_version=${nginx_default_version}
     version_nginx_hint="（默认版本）"
 fi
@@ -32,7 +42,7 @@ echo "options timeout:${curl_timeout} attempts:1 rotate" >> /etc/resolv.conf
 tengine_version=$(curl -s --connect-timeout 3 http://tengine.taobao.org/changelog_cn.html | awk -F'class="article-entry"' '{print $2}' | awk -F'id="Tengine' '{print $2}' | grep -oE "\".*\"" | grep -oE "title=.*" | awk -F"-" '{print $2}' | awk '{print $1}')
 # 接口正常，[ ! ${tengine_version} ]为1；接口失败，[ ! ${tengine_version} ]为0
 if [ ! ${tengine_version} ];then
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31mtengine接口访问超时，使用默认版本：${tengine_default_version}\033[0m"
+    echo_error tengine接口访问超时，使用默认版本：${tengine_default_version}
     tengine_version=${tengine_default_version}
     version_tengine_hint="（默认版本）"
 fi
@@ -63,10 +73,10 @@ function download_tar_gz(){
         if [ $? -ne 0 ];then
             # 进入此处表示没有${src_dir}目录
             mkdir -p $1 && cd $1
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m下载 $download_file_name 至 $(pwd)/\033[0m"
+            echo_info 下载 $download_file_name 至 $(pwd)/
             # 检测是否有wget工具
             if [ ! -f /usr/bin/wget ];then
-                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装wget工具\033[0m"
+                echo_info 安装wget工具
                 yum install -y wget
             fi
             wget $2
@@ -79,10 +89,10 @@ function download_tar_gz(){
             ls $download_file_name &> /dev/null
             if [ $? -ne 0 ];then
             # 进入此处表示${src_dir}目录内没有压缩包
-                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m下载 $download_file_name 至 $(pwd)/\033[0m"
+                echo_info 下载 $download_file_name 至 $(pwd)/
                 # 检测是否有wget工具
                 if [ ! -f /usr/bin/wget ];then
-                    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装wget工具\033[0m"
+                    echo_info 安装wget工具
                     yum install -y wget
                 fi
                 wget $3
@@ -90,14 +100,14 @@ function download_tar_gz(){
                 cd ${back_dir}
             else
                 # 进入此处，表示${src_dir}目录内有压缩包
-                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m发现压缩包$(pwd)/$download_file_name\033[0m"
+                echo_info 发现压缩包$(pwd)/$download_file_name
                 file_in_the_dir=$(pwd)
                 cd ${back_dir}
             fi
         fi
     else
         # 进入此处表示脚本所在目录有压缩包
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m发现压缩包$(pwd)/$download_file_name\033[0m"
+        echo_info 发现压缩包$(pwd)/$download_file_name
         file_in_the_dir=$(pwd)
     fi
 }
@@ -113,7 +123,7 @@ function download() {
             download_tar_gz ${src_dir} https://tengine.taobao.org/download/$2
             ;;
         *)
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m你下载了个寂寞\033[0m"
+            echo_error 你下载了个寂寞
             exit 3
             ;;
     esac
@@ -121,10 +131,10 @@ function download() {
 
 # 解压
 function untar_tgz(){
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m解压 $1 中\033[0m"
+    echo_info 解压 $1 中
     tar xf $1
     if [ $? -ne 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m解压出错，请检查！\033[0m"
+        echo_error 解压出错，请检查！
         exit 2
     fi
 }
@@ -137,13 +147,13 @@ function multi_core_compile(){
     if [ $compilecore -ge 1 ];then
         make -j $compilecore && make -j $compilecore install
         if [ $? -ne 0 ];then
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m编译安装出错，请检查脚本\033[0m"
+            echo_error 编译安装出错，请检查脚本
             exit 1
         fi
     else
         make && make install
         if [ $? -ne 0 ];then
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m编译安装出错，请检查脚本\033[0m"
+            echo_error 编译安装出错，请检查脚本
             exit 1
         fi 
     fi
@@ -151,16 +161,16 @@ function multi_core_compile(){
 
 function add_user_and_group(){
     if id -g ${1} >/dev/null 2>&1; then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m${1}组已存在，无需创建\033[0m"
+        echo_warning ${1}组已存在，无需创建
     else
         groupadd ${1}
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建${1}组\033[0m"
+        echo_info 创建${1}组
     fi
     if id -u ${1} >/dev/null 2>&1; then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m${1}用户已存在，无需创建\033[0m"
+        echo_warning ${1}用户已存在，无需创建
     else
         useradd -M -g ${1} -s /sbin/nologin ${1}
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建${1}用户\033[0m"
+        echo_info 创建${1}用户
     fi
 }
 
@@ -175,17 +185,17 @@ function install_nginx(){
     cd ${file_in_the_dir}
     untar_tgz ${tag}-${nginx_version}.tar.gz
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装依赖程序\033[0m"
+    echo_info 安装依赖程序
     yum install -y gcc zlib zlib-devel openssl openssl-devel pcre pcre-devel
 
     add_user_and_group ${tag}
     cd ${tag}-${nginx_version}
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m配置编译参数\033[0m"
+    echo_info 配置编译参数
     ./configure --prefix=${installdir} --user=${tag} --group=${tag} --with-pcre --with-http_ssl_module --with-http_v2_module --with-stream --with-http_stub_status_module
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m多核编译\033[0m"
+    echo_info 多核编译
     multi_core_compile
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m优化nginx.conf\033[0m"
+    echo_info 优化nginx.conf
     worker_connections=$(expr 65535 / $cpucores)
 cat > ${installdir}/conf/nginx.conf << EOF
 #user  nginx;
@@ -364,10 +374,10 @@ http {
 }
 EOF
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m设置nginx配置文件语法高亮显示\033[0m"
+    echo_info 设置nginx配置文件语法高亮显示
     [ -d ~/.vim ] || mkdir -p ~/.vim
     \cp -rf contrib/vim/* ~/.vim/
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mNginx已安装在 ${installdir} ，详细信息如下：\n\033[0m"
+    echo_info Nginx已安装在 ${installdir} ，详细信息如下：
     ${installdir}/sbin/nginx -V
     echo
 }
@@ -382,39 +392,39 @@ function install_tengine(){
     cd ${file_in_the_dir}
     untar_tgz ${tag}-${tengine_version}.tar.gz
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装依赖程序\033[0m"
+    echo_info 安装依赖程序
     yum install -y gcc zlib zlib-devel openssl openssl-devel pcre pcre-devel
 
     add_user_and_group ${tag}
     cd ${tag}-${tengine_version}
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m配置编译参数\033[0m"
+    echo_info 配置编译参数
     ./configure --prefix=${installdir} --user=${tag} --group=${tag} --with-pcre --with-http_ssl_module --with-http_v2_module --with-stream --with-http_stub_status_module
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m多核编译\033[0m"
+    echo_info 多核编译
     multi_core_compile
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m设置tengine配置文件语法高亮显示\033[0m"
+    echo_info 设置tengine配置文件语法高亮显示
     [ -d ~/.vim ] || mkdir -p ~/.vim
     \cp -rf contrib/vim/* ~/.vim/
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mtengine已安装在 ${installdir} ，详细信息如下：\n\033[0m"
+    echo_info tengine已安装在 ${installdir} ，详细信息如下：
     ${installdir}/sbin/nginx -V
     echo
 }
 
 # yum安装openresty
 function install_openresty(){
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m下载openresty官方repo\033[0m"
+    echo_info 下载openresty官方repo
     [ -f /etc/yum.repos.d/openresty.repo ] && rm -f /etc/yum.repos.d/openresty.repo
     wget -O /etc/yum.repos.d/openresty.repo https://openresty.org/package/centos/openresty.repo
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m通过yum安装openresty\033[0m"
+    echo_info 通过yum安装openresty
     yum install -y openresty
     if [ $? -eq 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mopenresty已安装成功，版本信息如下：\033[0m"
+        echo_info penresty已安装成功，版本信息如下：
         openresty -v
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m查看帮助：\033[0m"
+        echo_info 查看帮助：
         echo -e "\033[37m                  openresty -h\033[0m"
     else
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m安装出错，请检查系统！\033[0m"
+        echo_error 安装出错，请检查系统！
         exit 2
     fi
 }
@@ -432,11 +442,11 @@ function install_docker(){
     elif [ $osv -eq 8 ];then
         dnf install docker-ce --nobest -y
     else
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m当前版本不支持\033[0m"
+        echo_error 当前版本不支持
         exit 1
     fi
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mdocker配置优化\033[0m"
+    echo_info docker配置优化
     mkdir -p /etc/docker
     cd /etc/docker
     cat > daemon.json << EOF
@@ -451,7 +461,7 @@ EOF
 }
 
 function kong_info(){
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mkong已成功启动，端口信息如下：\033[0m"
+    echo_info kong已成功启动，端口信息如下：
     echo -e "\033[37m                  web_port：8000\033[0m"
     echo -e "\033[37m                  web_ssl_port：8443\033[0m"
     echo -e "\033[37m                  admin_port：8001 (127.0.0.1)\033[0m"
@@ -459,7 +469,7 @@ function kong_info(){
 }
 
 function kong_with_database(){
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m启动PostgreSQL容器\033[0m"
+    echo_info 启动PostgreSQL容器
     docker run -d --name kong-database \
                --network=kong-net \
                -p 5432:5432 \
@@ -468,12 +478,12 @@ function kong_with_database(){
                -e "POSTGRES_PASSWORD=kong" \
                postgres:9.6
     if [ $? -ne 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m启动PostgreSQL容器失败，请检查！\033[0m"
+        echo_error 启动PostgreSQL容器失败，请检查！
         exit 50
     fi
     # 等上面的容器启动好
     sleep 6
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m启动临时kong容器迁移数据\033[0m"
+    echo_info 启动临时kong容器迁移数据
     docker run --rm \
                --network=kong-net \
                -e "KONG_DATABASE=postgres" \
@@ -483,10 +493,10 @@ function kong_with_database(){
                -e "KONG_CASSANDRA_CONTACT_POINTS=kong-database" \
                kong:latest kong migrations bootstrap
     if [ $? -ne 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m启动临时kong容器迁移数据失败，请检查！\033[0m"
+        echo_error 启动临时kong容器迁移数据失败，请检查！
         exit 51
     fi
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m启动kong容器\033[0m"
+    echo_info 启动kong容器
     docker run -d --name kong \
                --network=kong-net \
                -e "KONG_DATABASE=postgres" \
@@ -505,7 +515,7 @@ function kong_with_database(){
                -p 127.0.0.1:${admin_ssl_port}:8444 \
                kong:latest
     if [ $? -ne 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m启动kong容器失败，请检查！\033[0m"
+        echo_error 启动kong容器失败，请检查！
         exit 52
     fi
     kong_info
@@ -513,15 +523,15 @@ function kong_with_database(){
 
 function kong_without_database(){
     kong_dir=/data/kong
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m检测kong专用目录 ${kong_dir}\033[0m"
+    echo_info 检测kong专用目录 ${kong_dir}
     if [ -d ${kong_dir} ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m目录已存在，无需创建\033[0m"
+        echo_warning 目录已存在，无需创建
     else
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m未检测到目录，创建目录\033[0m"
+        echo_info 未检测到目录，创建目录
         mkdir -p ${kong_dir}
     fi
     [ -d ${kong_dir}/conf ] || mkdir -p ${kong_dir}/conf
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m生成配置 ${kong_dir}/conf/kong.yml\033[0m"
+    echo_info 生成配置 ${kong_dir}/conf/kong.yml
 cat > ${kong_dir}/conf/kong.yml << EOF
 _format_version: "2.1"
 _transform: true
@@ -541,7 +551,7 @@ consumers:
   keyauth_credentials:
   - key: my-key
 EOF
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m启动kong容器\033[0m"
+    echo_info 启动kong容器
     docker run -d --name kong \
                --network=kong-net \
                -v "${kong_dir}/conf:/usr/local/kong/declarative" \
@@ -559,7 +569,7 @@ EOF
                kong:latest
     
     if [ $? -ne 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m启动kong容器失败，请检查！\033[0m"
+        echo_error 启动kong容器失败，请检查！
         exit 53
     fi
     kong_info
@@ -569,12 +579,12 @@ function choose_kong(){
     read -p "请输入数字选择（如需退出请输入q）：" kong_choice
     case $kong_choice in
         1)
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m即将安装\033[36m 带PostgreSQL数据库的kong\033[0m"
+            echo_info 即将安装 带PostgreSQL数据库的kong
             sleep 1
             kong_with_database
             ;;
         2)
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m即将安装\033[36m 不带数据库的kong\033[0m"
+            echo_info 即将安装 不带数据库的kong
             sleep 1
             kong_without_database
             ;;
@@ -595,18 +605,18 @@ function install_kong(){
     admin_ssl_port=8444
 
     # 判断是否部署了docker
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m正在检测是否安装了docker\033[0m"
+    echo_info 正在检测是否安装了docker
     docker -v &> /dev/null
     if [ $? -eq 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m检测到docker已部署\033[0m"
+        echo_info 检测到docker已部署
     else
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m未检测到docker，安装docker中\033[0m"
+        echo_info 未检测到docker，安装docker中
         install_docker
     fi
 
     docker network list | grep -E "[[:space:]]kong-net[[:space:]]" &> /dev/null
     if [ $? -ne 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建kong专用的网络 kong-net\033[0m"
+        echo_info 创建kong专用的网络 kong-net
         docker network create kong-net
     fi
 
@@ -621,23 +631,23 @@ function install_main_func(){
     read -p "请输入数字选择要安装的组件（如需退出请输入q）：" software
     case $software in
         1)
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m即将安装 \033[36mnginx\033[0m"
+            echo_info 即将安装 nginx
             # 等待1秒，给用户手动取消的时间
             sleep 1
             install_nginx
             ;;
         2)
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m即将安装 \033[36mtengine\033[0m"
+            echo_info 即将安装 tengine
             sleep 1
             install_tengine
             ;;
         3)
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m即将安装 \033[36mopenresty\033[0m"
+            echo_info 即将安装 openresty
             sleep 1
             install_openresty
             ;;
         4)
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m即将安装 \033[36mkong\033[0m"
+            echo_info 即将安装 kong
             sleep 1
             install_kong
             ;;

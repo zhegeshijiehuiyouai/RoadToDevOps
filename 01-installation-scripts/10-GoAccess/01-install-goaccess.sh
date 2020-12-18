@@ -19,13 +19,23 @@ src_dir=00src00
 # sh -c "echo /usr/local/lib  >> /etc/ld.so.conf.d/local.conf"
 # ldconfig
 
+# 带格式的echo函数
+function echo_info() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m$@\033[0m"
+}
+function echo_warning() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m$@\033[0m"
+}
+function echo_error() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
+}
 
 # 解压
 function untar_tgz(){
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m解压 $1 中\033[0m"
+    echo_info 解压 $1 中
     tar xf $1
     if [ $? -ne 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m解压出错，请检查！\033[0m"
+        echo_error 解压出错，请检查！
         exit 2
     fi
 }
@@ -54,10 +64,10 @@ function download_tar_gz(){
         if [ $? -ne 0 ];then
             # 进入此处表示没有${src_dir}目录
             mkdir -p $1 && cd $1
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m下载 $download_file_name 至 $(pwd)/\033[0m"
+            echo_info 下载 $download_file_name 至 $(pwd)/
             # 检测是否有wget工具
             if [ ! -f /usr/bin/wget ];then
-                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装wget工具\033[0m"
+                echo_info 安装wget工具
                 yum install -y wget
             fi
             wget $2
@@ -70,10 +80,10 @@ function download_tar_gz(){
             ls $download_file_name &> /dev/null
             if [ $? -ne 0 ];then
             # 进入此处表示${src_dir}目录内没有压缩包
-                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m下载 $download_file_name 至 $(pwd)/\033[0m"
+                echo_info 下载 $download_file_name 至 $(pwd)/
                 # 检测是否有wget工具
                 if [ ! -f /usr/bin/wget ];then
-                    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装wget工具\033[0m"
+                    echo_info 安装wget工具
                     yum install -y wget
                 fi
                 wget $3
@@ -81,14 +91,14 @@ function download_tar_gz(){
                 cd ${back_dir}
             else
                 # 进入此处，表示${src_dir}目录内有压缩包
-                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m发现压缩包$(pwd)/$download_file_name\033[0m"
+                echo_info 发现压缩包$(pwd)/$download_file_name
                 file_in_the_dir=$(pwd)
                 cd ${back_dir}
             fi
         fi
     else
         # 进入此处表示脚本所在目录有压缩包
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m发现压缩包$(pwd)/$download_file_name\033[0m"
+        echo_info 发现压缩包$(pwd)/$download_file_name
         file_in_the_dir=$(pwd)
     fi
 }
@@ -101,13 +111,13 @@ function multi_core_compile(){
     if [ $compilecore -ge 1 ];then
         make -j $compilecore && make -j $compilecore install
         if [ $? -ne 0 ];then
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m编译安装出错，请检查脚本\033[0m"
+            echo_error 编译安装出错，请检查脚本
             exit 1
         fi
     else
         make && make install
         if [ $? -ne 0 ];then
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m编译安装出错，请检查脚本\033[0m"
+            echo_error 编译安装出错，请检查脚本
             exit 1
         fi 
     fi
@@ -118,22 +128,22 @@ cd ${file_in_the_dir}
 untar_tgz goaccess-${version}.tar.gz
 
 
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装依赖程序\033[0m"
+echo_info 安装依赖程序
 yum install -y openssl-devel GeoIP-devel ncurses-devel epel-release gcc
 
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m配置编译参数\033[0m"
+echo_info 配置编译参数
 cd goaccess-${version}
 #./configure --enable-utf8 --enable-geoip=mmdb --with-openssl --with-getline --enable-tcb=memhash
 ./configure --enable-utf8 --enable-geoip=legacy --with-getline --enable-tcb=memhash
 
 multi_core_compile
 
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m设置配置文件 为 nginx 日志分析模式\033[0m"
+echo_info 设置配置文件为 nginx 日志分析模式
 sed -i 's@^#time-format %H:%M:%S@time-format %H:%M:%S@' /usr/local/etc/goaccess/goaccess.conf
 sed -i 's@^#date-format %d/%b/%Y@date-format %d/%b/%Y@' /usr/local/etc/goaccess/goaccess.conf
 sed -i 's@#log-format COMBINED@log-format COMBINED@' /usr/local/etc/goaccess/goaccess.conf
 
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mgoaccess 已编译安装成功，详细信息如下：\033[0m"
+echo_info goaccess 已编译安装成功，详细信息如下：
 echo -e "\033[37m                  配置文件路径：/usr/local/etc/goaccess/goaccess.conf\033[0m"
 echo -e "\033[37m                  设置输出html为中文的方法：\033[0m"
 echo -e "\033[37m                  \033[36mexport LANG=zh_CN.UTF-8\033[0m"

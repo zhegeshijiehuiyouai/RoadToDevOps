@@ -25,36 +25,46 @@ src_dir=00src00
 
 releasever=$(awk -F '"' '/VERSION_ID/{print $2}' /etc/os-release)
 
+# 带格式的echo函数
+function echo_info() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m$@\033[0m"
+}
+function echo_warning() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m$@\033[0m"
+}
+function echo_error() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
+}
 
 function init_mongodb(){
     systemctl daemon-reload
     systemctl start mongod
     if [ $? -ne 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31mmongodb启动出错，请检查！\033[0m"
+        echo_error mongodb启动出错，请检查！
         exit 2
     fi
     systemctl enable mongod &> /dev/null
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m设置mongodb用户\033[0m"
+    echo_info 设置mongodb用户
     mongo admin --eval "db.createUser({user:\"${user}\", pwd:\"${passwd}\", roles:[{role:\"root\", db:\"admin\"}]})" &> /dev/null
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m开启安全认证\033[0m"
+    echo_info 开启安全认证
     sed -i '/#security:/a security:\n  authorization: enabled' $1
 
     systemctl restart mongod
     if [ $? -ne 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31mmongodb重启出错，请检查mongod.conf！\033[0m"
+        echo_error mongodb重启出错，请检查mongod.conf！
         exit 3
     fi
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mmongodb 已安装配置完成，详细信息如下：\033[0m"
+    echo_info mongodb 已安装配置完成，详细信息如下：
     echo -e "\033[37m                  mongodb端口：${port}\033[0m"
     echo -e "\033[37m                  超管账号：${user}\033[0m"
     echo -e "\033[37m                  超管密码：${passwd}\033[0m"
 }
 
 function install_by_yum(){
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m生成mongodb repo文件\033[0m"
+    echo_info 生成mongodb repo文件
 cat > /etc/yum.repos.d/mongodb-org-${repo_version}.repo << EOF
 [mongodb-org-${repo_version}]
 name=MongoDB Repository
@@ -64,7 +74,7 @@ gpgcheck=0
 gpgkey=https://www.mongodb.org/static/pgp/server-${repo_version}.asc
 EOF
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37myum安装mongodb\033[0m"
+    echo_info yum安装mongodb
     if [ ! ${repo_version_mini} ];then
         yum install -y mongodb-org
     else
@@ -73,17 +83,17 @@ EOF
     fi
 
     if [ $? -ne 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31mmongodb安装出错，请检查！\033[0m"
+        echo_error mongodb安装出错，请检查！
         exit 1
     fi
 
     [ -d ${dbpath} ] || mkdir -p ${dbpath}
     if [ -d ${dbpath} ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m${dbpath} 目录已存在，退出\033[0m"
+        echo_error ${dbpath} 目录已存在，退出
         exit 10
     fi
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m优化mongodb配置\033[0m"
+    echo_info 优化mongodb配置
     sed -i '/bindIp: 127.0.0.1/a  #  maxIncomingConnections: 65536  #进程允许的最大连接数 默认值为65536' /etc/mongod.conf 
 cat > /tmp/mongo_install_temp_$(date +%F).sh << EOF
 sed -i 's/port: 27017/port: ${port}/g' /etc/mongod.conf
@@ -97,22 +107,22 @@ EOF
     rm -rf /tmp/mongo_install_temp_$(date +%F).sh
 
     init_mongodb /etc/mongod.conf
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m数据存储目录：${dbpath}\033[0m"
+    echo_info 数据存储目录：${dbpath}
 }
 
 
 function add_user_and_group(){
     if id -g ${1} >/dev/null 2>&1; then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m${1}组已存在，无需创建\033[0m"
+        echo_warning ${1}组已存在，无需创建
     else
         groupadd ${1}
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建${1}组\033[0m"
+        echo_info 创建${1}组
     fi
     if id -u ${1} >/dev/null 2>&1; then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m${1}用户已存在，无需创建\033[0m"
+        echo_warning ${1}用户已存在，无需创建
     else
         useradd -M -g ${1} -s /sbin/nologin ${1}
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建${1}用户\033[0m"
+        echo_info 创建${1}用户
     fi
 }
 
@@ -140,10 +150,10 @@ function download_tar_gz(){
         if [ $? -ne 0 ];then
             # 进入此处表示没有${src_dir}目录
             mkdir -p $1 && cd $1
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m下载 $download_file_name 至 $(pwd)/\033[0m"
+            echo_info 下载 $download_file_name 至 $(pwd)/
             # 检测是否有wget工具
             if [ ! -f /usr/bin/wget ];then
-                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装wget工具\033[0m"
+                echo_info 安装wget工具
                 yum install -y wget
             fi
             wget $2
@@ -156,10 +166,10 @@ function download_tar_gz(){
             ls $download_file_name &> /dev/null
             if [ $? -ne 0 ];then
             # 进入此处表示${src_dir}目录内没有压缩包
-                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m下载 $download_file_name 至 $(pwd)/\033[0m"
+                echo_info 下载 $download_file_name 至 $(pwd)/
                 # 检测是否有wget工具
                 if [ ! -f /usr/bin/wget ];then
-                    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装wget工具\033[0m"
+                    echo_info 安装wget工具
                     yum install -y wget
                 fi
                 wget $3
@@ -167,24 +177,24 @@ function download_tar_gz(){
                 cd ${back_dir}
             else
                 # 进入此处，表示${src_dir}目录内有压缩包
-                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m发现压缩包$(pwd)/$download_file_name\033[0m"
+                echo_info 发现压缩包$(pwd)/$download_file_name
                 file_in_the_dir=$(pwd)
                 cd ${back_dir}
             fi
         fi
     else
         # 进入此处表示脚本所在目录有压缩包
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m发现压缩包$(pwd)/$download_file_name\033[0m"
+        echo_info 发现压缩包$(pwd)/$download_file_name
         file_in_the_dir=$(pwd)
     fi
 }
 
 # 解压
 function untar_tgz(){
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m解压 $1 中\033[0m"
+    echo_info 解压 $1 中
     tar xf $1
     if [ $? -ne 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m解压出错，请检查！\033[0m"
+        echo_error 解压出错，请检查！
         exit 2
     fi
 }
@@ -197,7 +207,7 @@ function install_by_tgz(){
 
     [ -d $(dirname ${base_dir}) ] || mkdir -p $(dirname ${base_dir})
     if [ -d ${base_dir} ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m${base_dir} 目录已存在，退出\033[0m"
+        echo_error ${base_dir} 目录已存在，退出
         exit 10
     fi
     mv mongodb-linux-x86_64-rhel70-4.2.6 ${base_dir}
@@ -205,7 +215,7 @@ function install_by_tgz(){
     mkdir conf data logs
     chown -R ${sys_user}:${sys_user} ${base_dir}
     chmod -R 0755 ${base_dir}
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m生成配置文件mongod.conf\033[0m"
+    echo_info 生成配置文件mongod.conf
 cat > conf/mongod.conf <<EOF
 # mongod.conf
 
@@ -256,7 +266,7 @@ EOF
     # 上面新生成的文件的数组是root，所以需要修改
     chown -R ${sys_user}:${sys_user} ${base_dir}
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m生成mongodb的unit file文件\033[0m"
+    echo_info 生成mongodb的unit file文件
 cat >/usr/lib/systemd/system/mongod.service <<EOF
 [Unit]
 Description=MongoDB Database Server
@@ -298,7 +308,7 @@ EOF
     source /etc/profile
 
     init_mongodb ${base_dir}/conf/mongod.conf
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m数据存储目录：${base_dir}/data\033[0m"
+    echo_info 数据存储目录：${base_dir}/data
 
 }
 
@@ -307,17 +317,16 @@ function install_main_func(){
     read -p "请输入数字选择部署方式（如需退出请输入q）：" software
     case $software in
         1)
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m即将使用 \033[36myum\033[37m 部署mongodb\033[0m"
+            echo_info 即将使用 yum 部署mongodb
             # 等待1秒，给用户手动取消的时间
             sleep 1
             install_by_yum
             ;;
         2)
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m即将使用 \033[36m二进制包\033[37m 部署mongodb\033[0m"
+            echo_info 即将使用 二进制包 部署mongodb
             sleep 1
             install_by_tgz
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m由于bash特性限制，在本终端连接mongodb需要先手动执行  \033[1;36msource /etc/profile\033[0m  \033[37m加载环境变量\033[0m"
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m或者新开一个终端连接mongodb\033[0m"
+            echo_warning 由于bash特性限制，在本终端连接mongodb需要先手动执行 source /etc/profile 加载环境变量，或者新开一个终端连接mongodb
             ;;
         q|Q)
             exit 0

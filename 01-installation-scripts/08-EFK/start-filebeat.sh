@@ -1,14 +1,26 @@
 #!/bin/bash
+
+# 带格式的echo函数
+function echo_info() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m$@\033[0m"
+}
+function echo_warning() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m$@\033[0m"
+}
+function echo_error() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
+}
+
 [ -f /etc/timezone ] || echo "Asia/Shanghai" > /etc/timezone
 
 function check_server_in_host() {
     server=$1
     grep ${server} /etc/hosts &> /dev/null
     if [ $? -eq 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m${server} 主机信息：\033[0m"
+        echo_info ${server} 主机信息：
         grep "${server}" /etc/hosts
     else
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m/etc/hosts中未定义${server}主机\033[0m"
+        echo_error /etc/hosts中未定义${server}主机
         exit
     fi
 }
@@ -25,7 +37,7 @@ image=docker.elastic.co/beats/filebeat:7.9.1
 
 [ -d ${current_dir}/filebeat ] || mkdir -p ${current_dir}/filebeat
 if [ ! -f "${current_dir}/filebeat/filebeat.yml" ];then
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m写入配置文件：${current_dir}/filebeat/filebeat.yml\033[0m"
+echo_info 写入配置文件：${current_dir}/filebeat/filebeat.yml
 cat > ${current_dir}/filebeat/filebeat.yml << EOF
 filebeat.inputs:
   - type: log
@@ -68,8 +80,8 @@ output.elasticsearch:
 EOF
 fi
 
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m通过docker启动filebeat\033[0m"
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m容器名：${host}-filebeat\033[0m"
+echo_info 通过docker启动filebeat
+echo_info 容器名：${host}-filebeat
 docker run \
        --network host \
        -d \
@@ -85,5 +97,5 @@ docker run \
 if [ $? -ne 0 ];then
     exit 1
 fi
-echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mfilebeat已启动成功，以下是相关信息：\033[0m"
+echo_info filebeat已启动成功，以下是相关信息：
 echo -e "\033[37m                  日志采集目录：${log_dir}\033[0m"

@@ -22,40 +22,50 @@ sec_file_name=mima
 help_doc=add_user.sh
 ########################################
 
+# 带格式的echo函数
+function echo_info() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m$@\033[0m"
+}
+function echo_warning() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m$@\033[0m"
+}
+function echo_error() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
+}
 
 function add_user_and_group(){
     if id -g ${1} >/dev/null 2>&1; then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m${1}组已存在，无需创建\033[0m"
+        echo_warning ${1}组已存在，无需创建
     else
         groupadd ${1}
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建${1}组\033[0m"
+        echo_info 创建${1}组
     fi
     if id -u ${1} >/dev/null 2>&1; then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m${1}用户已存在，无需创建\033[0m"
+        echo_warning ${1}用户已存在，无需创建
     else
         useradd -g ${1} -s /sbin/nologin -d ${2} ${1}
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建${1}用户\033[0m"
+        echo_info 创建${1}用户
     fi
 }
 
 function init_some(){
     
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37myum安装vsftpd\033[0m"
+    echo_info yum安装vsftpd
     yum install -y vsftpd
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m检查数据目录是否存在\033[0m"
+    echo_info 检查数据目录是否存在
     [ -d ${sys_user_home_dir} ] || mkdir -p ${sys_user_home_dir}
     add_user_and_group ${sys_user} ${sys_user_home_dir}/${sys_user}
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m检查chroot_list是否存在\033[0m"
+    echo_info 检查chroot_list是否存在
     [ -f /etc/vsftpd/chroot_list ] || touch /etc/vsftpd/chroot_list
 }
 
 # 使用系统用户登录的vsftp
 function sys_user_vsftp(){
     init_some
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m修改系统用户密码\033[0m"
+    echo_info 修改系统用户密码
     echo ${sys_pass} | passwd --stdin ${sys_user} &> /dev/null
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m检查配置\033[0m"
+    echo_info 检查配置
     grep "\/sbin\/nologin" /etc/shells &> /dev/null
     if [ $? -ne 0 ];then
         echo "/sbin/nologin" >> /etc/shells
@@ -74,22 +84,33 @@ EOF
     chmod 700 ${sys_user_home_dir}/${sys_user}
     systemctl restart vsftpd
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mvsftp已成功配置启动，详细信息如下：\033[0m"
+    echo_info vsftp已成功配置启动，详细信息如下：
     echo -e "\033[37m                  与vsftp关联的系统用户：${sys_user}\033[0m"
     echo -e "\033[37m                  系统用户密码：${sys_pass}\033[0m"
     echo -e "\033[37m                  系统用户家目录：${sys_user_home_dir}\033[0m"
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建新增系统登录用户的脚本：/etc/vsftpd/${help_doc}\033[0m"
+    echo_info 创建新增系统登录用户的脚本：/etc/vsftpd/${help_doc}
 cat >/etc/vsftpd/${help_doc} <<EOT
 #!/bin/bash
+# 带格式的echo函数
+function echo_info() {
+    echo -e "[\033[36m\$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m\$@\033[0m"
+}
+function echo_warning() {
+    echo -e "[\033[36m\$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m\$@\033[0m"
+}
+function echo_error() {
+    echo -e "[\033[36m\$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m\$@\033[0m"
+}
+
 # 新增系统用户脚本
 if [ \$# -eq 0 ];then
-    echo -e "[\033[36m\$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m请输入要创建的用户名\033[0m"
+    echo_error 请输入要创建的用户名
     echo -e "\033[37m                  Usage: sh \$0 用户名 密码\033[0m"
     exit 0
 fi
 if [ \$# -eq 1 ];then
-    echo -e "[\033[36m\$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m请输入要创建用户的密码\033[0m"
+    echo_error 请输入要创建用户的密码
     echo -e "\033[37m                  Usage: sh \$0 用户名 密码\033[0m"
     exit 0
 fi
@@ -98,16 +119,16 @@ doc_vir_pass=\$2
 
 function add_user_and_group(){
     if id -g \${1} >/dev/null 2>&1; then
-        echo -e "[\033[36m\$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m\${1}组已存在，无需创建\033[0m"
+        echo_warning \${1}组已存在，无需创建
     else
         groupadd \${1}
-        echo -e "[\033[36m\$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建\${1}组\033[0m"
+        echo_info 创建\${1}组
     fi
     if id -u \${1} >/dev/null 2>&1; then
-        echo -e "[\033[36m\$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m\${1}用户已存在，无需创建\033[0m"
+        echo_warning \${1}用户已存在，无需创建
     else
         useradd -g \${1} -s /sbin/nologin -d \${2} \${1}
-        echo -e "[\033[36m\$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建\${1}用户\033[0m"
+        echo_info 创建\${1}用户
     fi
 }
 
@@ -115,7 +136,7 @@ add_user_and_group \$doc_vir_user ${sys_user_home_dir}/\$doc_vir_user
 echo \$doc_vir_pass | passwd --stdin \$doc_vir_user &> /dev/null
 
 if [ \$? -ne 0 ];then
-    echo -e "[\033[36m\$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m设置用户\$doc_vir_user的密码出错，请检查！\033[0m"
+    echo_error 设置用户\$doc_vir_user的密码出错，请检查！
     exit 30
 fi
 
@@ -127,10 +148,10 @@ EOF
 fi
 chmod 700 ${sys_user_home_dir}/\$doc_vir_user
 if [ \$? -ne 0 ];then
-    echo -e "[\033[36m\$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m修改权限失败，请检查！\033[0m"
+    echo_error 修改权限失败，请检查！
     exit 30
 fi
-echo -e "[\033[36m\$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m用户\$doc_vir_user已成功创建\033[0m"
+echo_info 用户\$doc_vir_user已成功创建
 
 EOT
 chmod +x /etc/vsftpd/${help_doc}
@@ -142,7 +163,7 @@ chmod +x /etc/vsftpd/${help_doc}
 function virtual_user_vsftp() {
     init_some
     cd /etc/vsftpd
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建虚拟用户密码文件\033[0m"
+    echo_info 创建虚拟用户密码文件
 
     # 密码文件，奇数行 为用户名，偶数行 为密码
 cat >${sec_file_name}.txt <<EOF
@@ -153,7 +174,7 @@ EOF
     db_load -T -t hash -f ${sec_file_name}.txt ${sec_file_name}.db
     chmod 600 ${sec_file_name}.db
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建pam配置文件\033[0m"
+    echo_info 创建pam配置文件
     [ -f /etc/pam.d/vsftpd.bak ] || cp /etc/pam.d/vsftpd /etc/pam.d/vsftpd.bak
 
 cat >/etc/pam.d/vsftpd <<EOF
@@ -161,7 +182,7 @@ auth sufficient /lib64/security/pam_userdb.so db=/etc/vsftpd/${sec_file_name}
 account sufficient /lib64/security/pam_userdb.so db=/etc/vsftpd/${sec_file_name}
 EOF
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m调整vsftpd配置文件\033[0m"
+    echo_info 调整vsftpd配置文件
     [ -f /etc/vsftpd/vsftpd.conf.bak ] || cp /etc/vsftpd/vsftpd.conf /etc/vsftpd/vsftpd.conf.bak
 
 cat >/etc/vsftpd/vsftpd.conf <<EOF
@@ -209,7 +230,7 @@ chroot_list_file=/etc/vsftpd/chroot_list
 allow_writeable_chroot=YES
 EOF
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建虚拟用户配置\033[0m"
+    echo_info 创建虚拟用户配置
     [ -d /etc/vsftpd/${vir_conf_dir} ] || mkdir -p /etc/vsftpd/${vir_conf_dir}
 
     if [ ! -f /etc/vsftpd/${vir_conf_dir}/${vir_user} ];then
@@ -242,28 +263,39 @@ EOF
 
     systemctl restart vsftpd
     if [ $? -ne 0 ];then
-        echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31mvsftpd启动失败，请检查！\033[0m"
+        echo_error vsftpd启动失败，请检查！
         exit 1
     fi
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mvsftp已成功配置启动，详细信息如下：\033[0m"
+    echo_info vsftp已成功配置启动，详细信息如下：
     echo -e "\033[37m                  与vsftp关联的系统用户：${sys_user}\033[0m"
     echo -e "\033[37m                  系统用户家目录：${sys_user_home_dir}/${sys_user}\033[0m"
     echo -e "\033[37m                  默认虚拟用户名：${vir_user}\033[0m"
     echo -e "\033[37m                  默认虚拟用户密码：${vir_pass}\033[0m"
     echo -e "\033[37m                  默认虚拟用户存储目录：${sys_user_home_dir}/${sys_user}/${vir_user}/\033[0m"
 
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m创建新增虚拟用户登录的脚本：/etc/vsftpd/${help_doc}\033[0m"
+    echo_info 创建新增虚拟用户登录的脚本：/etc/vsftpd/${help_doc}
 cat >/etc/vsftpd/${help_doc} <<EOT
 #!/bin/bash
+# 带格式的echo函数
+function echo_info() {
+    echo -e "[\033[36m\$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m\$@\033[0m"
+}
+function echo_warning() {
+    echo -e "[\033[36m\$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m\$@\033[0m"
+}
+function echo_error() {
+    echo -e "[\033[36m\$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m\$@\033[0m"
+}
+
 # 新增虚拟用户脚本
 if [ \$# -eq 0 ];then
-    echo -e "[\033[36m\$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m请输入要创建的用户名\033[0m"
+    echo_error 请输入要创建的用户名
     echo -e "\033[37m                  Usage: sh \$0 用户名 密码\033[0m"
     exit 0
 fi
 if [ \$# -eq 1 ];then
-    echo -e "[\033[36m\$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m请输入要创建用户的密码\033[0m"
+    echo_error 请输入要创建用户的密码
     echo -e "\033[37m                  Usage: sh \$0 用户名 密码\033[0m"
     exit 0
 fi
@@ -277,7 +309,7 @@ cat >>/etc/vsftpd/${sec_file_name}.txt <<EOF
 \$doc_vir_pass
 EOF
 else
-    echo -e "[\033[36m\$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m虚拟用户\$doc_vir_user已存在\033[0m"
+    echo_error 虚拟用户\$doc_vir_user已存在
     exit 0
 fi
 db_load -T -t hash -f /etc/vsftpd/${sec_file_name}.txt /etc/vsftpd/${sec_file_name}.db
@@ -312,10 +344,10 @@ chown -R ${sys_user}:${sys_user} ${sys_user_home_dir}/${sys_user}
 chmod 700 ${sys_user_home_dir}/${sys_user}/\$doc_vir_user
 
 if [ \$? -ne 0 ];then
-    echo -e "[\033[36m\$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m创建虚拟用户\$doc_vir_user失败，请检查！\033[0m"
+    echo_error 创建虚拟用户\$doc_vir_user失败，请检查！
     exit 30
 fi
-echo -e "[\033[36m\$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m虚拟用户\$doc_vir_user已成功创建\033[0m"
+echo_info 虚拟用户\$doc_vir_user已成功创建
 
 EOT
 chmod +x /etc/vsftpd/${help_doc}
@@ -326,13 +358,13 @@ function install_main_func(){
     read -p "请输入数字选择要安装类型（如需退出请输入q）：" software
     case $software in
         1)
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m即将安装使用 \033[36m系统用户\033[37m 登录的vsftp\033[0m"
+            echo_info 即将安装使用 系统用户 登录的vsftp
             # 等待1秒，给用户手动取消的时间
             sleep 1
             sys_user_vsftp
             ;;
         2)
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m即将安装使用 \033[36m虚拟用户\033[37m 登录的vsftp\033[0m"
+            echo_info 即将安装使用 虚拟用户 登录的vsftp
             sleep 1
             virtual_user_vsftp
             ;;
@@ -354,12 +386,12 @@ function install_lftp(){
     read -p "是否安装ftp客户端lftp（Y/n）：" yes_or_no
     case $yes_or_no in
         y|Y)
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m安装lftp中，请耐心等待\033[0m"
+            echo_info 安装lftp中，请耐心等待
             yum install -y lftp &> /dev/null
             if [ $? -eq 0 ];then
-                echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37mlftp安装成功！\033[0m"
+                echo_info lftp安装成功！
             else
-                echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31mlftp安装出错，请检查\033[0m"
+                echo_error lftp安装出错，请检查
             fi
             ;;
         n|N)
