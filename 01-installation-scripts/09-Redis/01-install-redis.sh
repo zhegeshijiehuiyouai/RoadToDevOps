@@ -200,7 +200,7 @@ rm -f /tmp/_redis_file1
 ######################
 echo_info 设置systemd unit file文件
 
-cat > /lib/systemd/system/redis.service << EOF
+cat > /usr/lib/systemd/system/redis.service << EOF
 [Unit]
 Description=Redis
 After=network.target
