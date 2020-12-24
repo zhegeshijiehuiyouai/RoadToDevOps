@@ -285,7 +285,6 @@ if [ $? -eq 0 ];then
     echo -e "\033[37m                  关闭命令：systemctl stop redis\033[0m"
     echo -e "\033[37m                  连接服务端：redis-cli\033[0m"
     echo -e "\033[37m                  部署版本：  ${FILE}\033[0m"
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m由于bash特性限制，在本终端连接redis-server需要先手动执行  \033[1;36msource /etc/profile\033[0m  \033[37m加载环境变量\033[0m"
     echo_warning 由于bash特性限制，在本终端连接redis-server需要先手动执行 source /etc/profile 加载环境变量，或者新开一个终端连接redis-server
 else
     echo_error 启动失败，请检查配置！
