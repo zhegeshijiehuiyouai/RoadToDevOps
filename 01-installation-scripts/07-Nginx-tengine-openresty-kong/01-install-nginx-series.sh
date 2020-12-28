@@ -95,7 +95,7 @@ function download_tar_gz(){
                     echo_info 安装wget工具
                     yum install -y wget
                 fi
-                wget $3
+                wget $2
                 file_in_the_dir=$(pwd)
                 cd ${back_dir}
             else
@@ -377,9 +377,38 @@ EOF
     echo_info 设置nginx配置文件语法高亮显示
     [ -d ~/.vim ] || mkdir -p ~/.vim
     \cp -rf contrib/vim/* ~/.vim/
+
+    echo_info 生成nginx.service文件用于systemd控制
+cat > /usr/lib/systemd/system/nginx.service <<EOF
+[Unit]
+Description=The nginx HTTP and reverse proxy server
+After=network.target remote-fs.target nss-lookup.target
+
+[Service]
+Type=forking
+PIDFile=${installdir}/logs/nginx.pid
+# Nginx will fail to start if /run/nginx.pid already exists but has the wrong
+# SELinux context. This might happen when running `nginx -t` from the cmdline.
+# https://bugzilla.redhat.com/show_bug.cgi?id=1268621
+ExecStartPre=/usr/bin/rm -f ${installdir}/logs/nginx.pid
+ExecStartPre=${installdir}/sbin/nginx -t
+ExecStart=${installdir}/sbin/nginx
+ExecReload=/bin/kill -s HUP $MAINPID
+KillSignal=SIGQUIT
+TimeoutStopSec=5
+KillMode=process
+PrivateTmp=true
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl daemon-reload
+
     echo_info Nginx已安装在 ${installdir} ，详细信息如下：
     ${installdir}/sbin/nginx -V
-    echo
+    echo_info 启动命令：
+    echo -e "\033[37m                  systemctl start nginx\033[0m"
 }
 
 # 编译安装tengine
@@ -406,9 +435,37 @@ function install_tengine(){
     [ -d ~/.vim ] || mkdir -p ~/.vim
     \cp -rf contrib/vim/* ~/.vim/
 
+    echo_info 生成tengine.service文件用于systemd控制
+cat > /usr/lib/systemd/system/tengine.service <<EOF
+[Unit]
+Description=The Tengine HTTP and reverse proxy server
+After=network.target remote-fs.target nss-lookup.target
+
+[Service]
+Type=forking
+PIDFile=${installdir}/logs/nginx.pid
+# Nginx will fail to start if /run/nginx.pid already exists but has the wrong
+# SELinux context. This might happen when running `nginx -t` from the cmdline.
+# https://bugzilla.redhat.com/show_bug.cgi?id=1268621
+ExecStartPre=/usr/bin/rm -f ${installdir}/logs/nginx.pid
+ExecStartPre=${installdir}/sbin/nginx -t
+ExecStart=${installdir}/sbin/nginx
+ExecReload=/bin/kill -s HUP $MAINPID
+KillSignal=SIGQUIT
+TimeoutStopSec=5
+KillMode=process
+PrivateTmp=true
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl daemon-reload
+
     echo_info tengine已安装在 ${installdir} ，详细信息如下：
     ${installdir}/sbin/nginx -V
-    echo
+    echo_info 启动命令：
+    echo -e "\033[37m                  systemctl start tengine\033[0m"
 }
 
 # yum安装openresty
