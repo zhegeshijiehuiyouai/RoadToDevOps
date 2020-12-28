@@ -80,7 +80,7 @@ function download_tar_gz(){
             if [ $? -ne 0 ];then
             # 进入此处表示${src_dir}目录内没有压缩包
                 echo -e "\033[32m[+] 下载 $download_file_name 至 $(pwd)/\033[0m"
-                wget $3
+                wget $2
                 file_in_the_dir=$(pwd)
                 cd ${back_dir}
             else

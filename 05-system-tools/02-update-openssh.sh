@@ -100,7 +100,7 @@ function download_tar_gz(){
                     echo_info 安装wget工具
                     yum install -y wget
                 fi
-                wget $3
+                wget $2
                 file_in_the_dir=$(pwd)
                 cd ${back_dir}
             else
