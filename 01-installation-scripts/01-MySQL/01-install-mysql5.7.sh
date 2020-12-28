@@ -306,7 +306,7 @@ lower_case_table_names = 1
 EOF
 
     # 设置systemctl控制
-    echo_info 设置systemd unit file文件
+    echo_info 生成mysql.service文件用于systemd控制
 
 cat > /lib/systemd/system/mysql.service << EOF
 [Unit]
@@ -319,6 +319,7 @@ ExecStop=${DIR}/${mysql_dir_name}/support-files/mysql.server stop
 ExecRestart=${DIR}/${mysql_dir_name}/support-files/mysql.server restart
 ExecReload=${DIR}/${mysql_dir_name}/support-files/mysql.server reload
 PrivateTmp=true
+Restart=always
 [Install]
 WantedBy=multi-user.target
 EOF

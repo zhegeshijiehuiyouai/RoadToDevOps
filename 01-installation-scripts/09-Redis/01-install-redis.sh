@@ -198,7 +198,7 @@ rm -f /tmp/_redis_file1
 
 
 ######################
-echo_info 设置systemd unit file文件
+echo_info 生成redis.service文件用于systemd控制
 
 cat > /usr/lib/systemd/system/redis.service << EOF
 [Unit]
@@ -210,7 +210,8 @@ User=redis
 Group=redis
 Type=forking
 ExecStart=${redis_home}/src/redis-server ${redis_home}/redis.conf
-ExecStop=${redis_home}/redis-shutdown 
+ExecStop=${redis_home}/redis-shutdown
+Restart=always
 
 [Install]
 WantedBy=multi-user.target

@@ -266,7 +266,8 @@ EOF
     # 上面新生成的文件的数组是root，所以需要修改
     chown -R ${sys_user}:${sys_user} ${base_dir}
 
-    echo_info 生成mongodb的unit file文件
+    echo_info 生成mongod.service文件用于systemd控制
+
 cat >/usr/lib/systemd/system/mongod.service <<EOF
 [Unit]
 Description=MongoDB Database Server
@@ -299,6 +300,7 @@ TasksMax=infinity
 TasksAccounting=false
 # Recommended limits for for mongod as specified in
 # http://docs.mongodb.org/manual/reference/ulimit/#recommended-settings
+Restart=always
 
 [Install]
 WantedBy=multi-user.target

@@ -187,7 +187,8 @@ EOF
     echo "export PATH=${basedir}/${zookeeperdir}/bin" >> /etc/profile.d/zookeeper.sh
     source /etc/profile
 
-    echo_info 生成/usr/lib/systemd/system/zookeeper.service
+    echo_info 生成zookeeper.service文件用于systemd控制
+
 cat >/usr/lib/systemd/system/zookeeper.service <<EOF
 [Unit]
 Description=Zookeeper server manager
@@ -199,6 +200,7 @@ Type=forking
 ExecStart=${basedir}/${zookeeperdir}/bin/zkServer.sh start
 ExecStop=${basedir}/${zookeeperdir}/bin/zkServer.sh stop
 ExecReload=${basedir}/${zookeeperdir}/bin/zkServer.sh restart
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
