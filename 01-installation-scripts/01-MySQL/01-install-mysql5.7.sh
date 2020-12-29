@@ -242,6 +242,7 @@ log-error=/var/log/mysqld.log
 pid-file=/var/run/mysqld/mysqld.pid
 # 跳过dns解析，提升连接速度
 skip-name-resolve
+expire_logs_days = 10
 EOF
 
     systemctl start mysqld  # 这里启动是为了生成临时密码
