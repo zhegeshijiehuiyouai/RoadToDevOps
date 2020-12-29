@@ -30,6 +30,7 @@ expire_logs_days = 30
 max_binlog_size  = 100M
 master_info_repository=TABLE
 relay_log_info_repository=TABLE
+skip_slave_start=1  # 从服务器崩溃之后，重新启动，不会自动复制。崩溃后启动复制，可能数据不一致
 EOF
 
 5、重启从没服务器mysql
