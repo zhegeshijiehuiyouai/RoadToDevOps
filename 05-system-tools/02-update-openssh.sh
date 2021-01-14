@@ -172,3 +172,10 @@ ssh -V
 echo_info 重启sshd服务
 systemctl daemon-reload
 systemctl restart sshd
+
+if [ $? -eq 0 ];then
+    echo_info sshd服务已成功重启
+    echo_info 脚本执行完毕
+else
+    echo_error sshd服务重启失败，请检查
+fi
