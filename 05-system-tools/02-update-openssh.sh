@@ -155,7 +155,7 @@ cd ${file_in_the_dir}
 untar_tgz openssh-${openssh_version}.tar.gz
 
 cd openssh-${openssh_version}
-./configure --prefix=/usr/ --sysconfdir=/etc/ssh --with-ssl-dir=/usr/local/lib64/ --with-zlib --with-pam --with-md5-password --with-ssl-engine --with-selinux
+./configure --prefix=/usr/ --sysconfdir=/etc/ssh --with-ssl-dir=/usr/local/lib64/ --with-zlib --with-pam --with-md5-password --with-ssl-engine
 multi_core_compile
 
 echo_info 优化sshd_config
