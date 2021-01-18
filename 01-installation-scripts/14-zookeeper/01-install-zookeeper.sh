@@ -166,7 +166,7 @@ EOF
 
     echo_info 配置PATH环境变量
     echo "ZOOKEEPER_HOME=${basedir}/${zookeeperdir}" >  /etc/profile.d/zookeeper.sh
-    echo "export PATH=${basedir}/${zookeeperdir}/bin" >> /etc/profile.d/zookeeper.sh
+    echo "export PATH=$PATH:${basedir}/${zookeeperdir}/bin" >> /etc/profile.d/zookeeper.sh
     source /etc/profile
 
     echo_info 生成zookeeper.service文件用于systemd控制
