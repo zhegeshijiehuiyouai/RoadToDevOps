@@ -28,7 +28,8 @@ rpm -Uvh ./*rpm
 │   ├── 11-vsftp
 │   ├── 12-MongoDB
 │   ├── 13-jdk
-│   └── 14-zookeeper
+│   ├── 14-zookeeper
+│   └── 15-maven
 ├── 02-elasticsearch-tools
 │   ├── 01-clean-single-es-index-by-date.sh
 │   └── 02-clean-date-format-es-index-by-date.sh

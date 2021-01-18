@@ -170,8 +170,8 @@ EOF
     echo_info 部署目录授权中
     chown -R ${sys_user}:${sys_user} ${basedir}/${zookeeperdir}
 
-    echo_info 配置PATH环境变量
-    echo "ZOOKEEPER_HOME=${basedir}/${zookeeperdir}" >  /etc/profile.d/zookeeper.sh
+    echo_info 配置环境变量
+    echo "export ZOOKEEPER_HOME=${basedir}/${zookeeperdir}" >  /etc/profile.d/zookeeper.sh
     echo "export PATH=$PATH:${basedir}/${zookeeperdir}/bin" >> /etc/profile.d/zookeeper.sh
     source /etc/profile
 
