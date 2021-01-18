@@ -1,5 +1,5 @@
 由于配置简单，但如果要由脚本实现，代码量太大，且配置项较多，故以文本内容进行说明
-# mysql主从配置操作
+# mysql GTID主从配置操作
 ## 1、mysql主服务器/etc/my.cnf修改，新增内容
 ```shell
 cat >> /etc/my.cnf <<EOF
