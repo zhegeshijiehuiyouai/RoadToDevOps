@@ -72,9 +72,38 @@ docker -v
 docker_compose_version=1.27.4
 
 echo_info 部署docker-compose中，请耐心等候
+
+back_task=/tmp/.display_dot_to_show_aliviness
+# 显示变化小点，表示没有卡死
+cat > $back_task << EOF
+function echo_warning() {
+    echo -e "[\033[36m\$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m\$@\033[0m"
+}
+cd /usr/local/bin
+while :
+do
+    countx=\$(ls -l | grep -E "\sdocker-compose$" | awk '{print \$1}' | grep -o x | wc -l)
+    if [ 3 -ne \$countx ];then
+        printf "."
+        sleep 1
+    else 
+        exit 0
+    fi
+
+    # 如果父进程消失了，表示用户手动取消，需要退出本脚本。head -1是必须的，不然会取到多个父shell pid
+    fatherpid=\$(ps -ef | grep /tmp/.display_dot_to_show_aliviness | grep -v grep | awk '{print \$3}' | head -1)
+    if [ 1 -eq \$fatherpid ];then
+        exit 1
+    fi
+done
+EOF
+
+/bin/bash $back_task &
+
 # 使用国内源加速下载
 curl -sL --connect-timeout 5 "https://get.daocloud.io/docker/compose/releases/download/${docker_compose_version}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 chmod +x /usr/local/bin/docker-compose
+echo  # 换行，与小点隔开
 echo_info docker-compose已部署成功，版本信息如下：
 docker-compose --version
 
