@@ -163,6 +163,8 @@ EOF
     if [ $port8080toggle -ne 0 ];then
         echo "admin.enableServer=false" >> conf/zoo.cfg
     fi
+    # 开启四字命令
+    echo "4lw.commands.whitelist=*" >> conf/zoo.cfg
 
     /bin/bash /tmp/zookeeper_install_temp_$(date +%F).sh
     rm -rf /tmp/zookeeper_install_temp_$(date +%F).sh
