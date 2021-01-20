@@ -30,7 +30,7 @@ sed -i '$d' /etc/resolv.conf
 # 包下载目录
 src_dir=$(pwd)/00src00
 # 部署目录的父目录，比如要部署到/data/zookeeper，那么basedir就是/data
-basedir=/data
+basedir=$(pwd)
 # 就是上面注释中的zookeeper，完整部署目录为${basedir}/${zookeeperdir}
 zookeeperdir=zookeeper-${zk_exact_version}
 # 端口
