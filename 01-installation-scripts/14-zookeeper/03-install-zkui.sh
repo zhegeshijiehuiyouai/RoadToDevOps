@@ -17,7 +17,7 @@ function show_summary() {
     echo -e "\033[37m                      serverPort -- zkui监听的端口\033[0m"
     echo -e "\033[37m                      zkServer   -- 管理的zk，zk集群可以用逗号隔开\033[0m"
     echo -e "\033[37m                      userSet    -- zkui的用户设置，role可以设置为ADMIN、USER，ADMIN有增删改的权限，USER只可以查看\033[0m"
-    echo -e "\033[37m                  启动命令 ：nohup java -jar zkui/target/zkui-2.0-SNAPSHOT-jar-with-dependencies.jar &>/dev/null &\033[0m"
+    echo -e "\033[37m                  启动命令 ：cd zkui; nohup java -jar target/zkui-2.0-SNAPSHOT-jar-with-dependencies.jar &>/dev/null &\033[0m"
     echo
 }
 
