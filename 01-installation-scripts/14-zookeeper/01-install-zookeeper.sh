@@ -159,7 +159,7 @@ sed -i 's#^clientPort=.*#clientPort=${zk_port}#g' conf/zoo.cfg
 EOF
     # 3.5版本以后，zookeeper会多一个8080端口，没什么用，把它禁用掉
     # 当前版本小于3.5，下面的值为0
-    port8080toggle=$(awk -v version=3.5 -v currentversion=3.2 'BEGIN{print(version>=currentversion)?"0":"1"}')
+    port8080toggle=$(awk -v version=3.5 -v currentversion=${zk_version} 'BEGIN{print(version>currentversion)?"0":"1"}')
     if [ $port8080toggle -ne 0 ];then
         echo "admin.enableServer=false" >> conf/zoo.cfg
     fi
