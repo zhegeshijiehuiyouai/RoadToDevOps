@@ -1,3 +1,5 @@
+#### ***本脚本在 CentOS 7.6 环境下开发***
+</br>
 ## 🔧 脚本用法
 - 本项目中的各脚本，请在 `/root/` 目录以外的任意普通目录执行，否则部分脚本无法执行成功，建议 `/data/` 目录（虽然大部分脚本在 `/root/` 目录也能执行成功）。  
 - 对于需要下载包的脚本，都提供了在线和离线安装的方法。离线安装的话，只需要将脚本和下载包放在同一目录即可。  
@@ -29,7 +31,8 @@ rpm -Uvh ./*rpm
 │   ├── 12-MongoDB
 │   ├── 13-jdk
 │   ├── 14-zookeeper
-│   └── 15-maven
+│   ├── 15-maven
+│   └── 16-kafka
 ├── 02-elasticsearch-tools
 │   ├── 01-clean-single-es-index-by-date.sh
 │   └── 02-clean-date-format-es-index-by-date.sh
