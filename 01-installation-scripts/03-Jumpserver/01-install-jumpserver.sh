@@ -1,5 +1,8 @@
 #!/bin/bash
 
+web_port=80
+ssh_port=2222
+
 # 带格式的echo函数
 function echo_info() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m$@\033[0m"
@@ -40,8 +43,8 @@ echo_info 通过docker启动容器，容器名为jms_all
 docker run --name jms_all -d \
        -v ${jumpserver_data_dir}:/opt/jumpserver/data \
        -v ${jumpserver_mysql_dir}:/var/lib/mysql \
-       -p 80:80 \
-       -p 2222:2222 \
+       -p ${web_port}:80 \
+       -p ${ssh_port}:2222 \
        -e SECRET_KEY=$SECRET_KEY \
        -e BOOTSTRAP_TOKEN=$BOOTSTRAP_TOKEN \
        --restart=always \
@@ -52,6 +55,6 @@ if [ $? -ne 0 ];then
 fi
 
 echo_info jumpserver已启动成功，以下是相关信息：
-echo -e "\033[37m                  端口：80\033[0m"
+echo -e "\033[37m                  端口：${web_port}\033[0m"
 echo -e "\033[37m                  存放key和token的文件：~/.bashrc ，不要修改文件中的 SECRET_KEY 和 BOOTSTRAP_TOKEN ，这样重新运行该脚本，新生成的jumpserver容器就可以获取之前的配置\033[0m"
 echo -e "\033[37m                  jumpserver数据目录：$(dirname ${jumpserver_data_dir})/ ，不要删除该目录，这样重新运行该脚本，新生成的jumpserver容器就可以获取之前的配置和数据\033[0m"
