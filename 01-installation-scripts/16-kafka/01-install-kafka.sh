@@ -1,6 +1,6 @@
 #!/bin/bash
 
-download_url=https://mirrors.cloud.tencent.com/apache/kafka/2.7.0/kafka-2.7.0-src.tgz
+download_url=https://mirrors.cloud.tencent.com/apache/kafka/2.7.0/kafka_2.13-2.7.0.tgz
 src_dir=$(pwd)/00src00
 
 # 带格式的echo函数
@@ -116,9 +116,9 @@ function install_kafka() {
         exit 1
     fi
 
-    bare_name=$(basename $download_url | sed 's/-src\.tgz//')
+    bare_name=$(basename $download_url | sed 's/\.tgz//')
 
-    echo_info 下载 ${bare_name}，更多版本可前往 https://mirrors.cloud.tencent.com/apache/kafka/ 下载
+    echo_info 下载 ${bare_name}，【 更多版本 】可前往 https://mirrors.cloud.tencent.com/apache/kafka/ 下载
     download_tar_gz $src_dir $download_url
 
     check_dir ${back_dir}/${bare_name}
@@ -130,6 +130,26 @@ function install_kafka() {
     cd ${back_dir}/${bare_name}
     add_user_and_group kafka
 
+    [ -d ${back_dir}/${bare_name}/logs ] || mkdir -p ${back_dir}/${bare_name}/logs
+    echo_info kafka配置调整
+
+    # 获取zk地址
+    insert_zk_addrs=""
+    for i in ${zk_addrs[@]};do
+        insert_zk_addrs=${insert_zk_addrs},$i
+    done
+    insert_zk_addrs=$(echo $insert_zk_addrs | sed 's#^.##g')
+
+    cat > /tmp/.my_kafka_config_change << EOF
+cd ${back_dir}/${bare_name}/config/
+sed -i 's#^log.dirs=.*#log.dirs=${back_dir}/${bare_name}/logs#g' server.properties
+sed -i 's#^zookeeper.connect=.*#zookeeper.connect=${insert_zk_addrs}#g' server.properties
+EOF
+    /bin/bash /tmp/.my_kafka_config_change
+    rm -f /tmp/.my_kafka_config_change
+
+    echo_info 对 ${back_dir}/${bare_name} 目录进行授权
+    chown -R kafka:kafka ${back_dir}/${bare_name}
 
     echo_info 生成kafka.service文件用于systemd控制
     cat >/usr/lib/systemd/system/kafka.service <<EOF
@@ -171,13 +191,15 @@ function accept_zk_addr() {
 }
 
 function check_zk_addr_is_legal() {
-    id=1
+    if [[ "${zk_addrs[0]}" == "" ]];then
+        echo_error 没有输入zookeeper地址
+        exit 5
+    fi
     for i in ${zk_addrs[@]};do
         if [[ ! $i =~ ^([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))(\.([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))){3}:[0-9]{1,5}/?.* ]];then
             echo_error $i 不符合zookeeper地址格式，退出
             exit 4
         fi
-        let id++
     done
 }
 
