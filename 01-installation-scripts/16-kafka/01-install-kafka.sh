@@ -2,6 +2,7 @@
 
 download_url=https://mirrors.cloud.tencent.com/apache/kafka/2.7.0/kafka_2.13-2.7.0.tgz
 src_dir=$(pwd)/00src00
+kafka_port=9092
 
 # 带格式的echo函数
 function echo_info() {
@@ -109,7 +110,106 @@ function check_dir() {
     fi
 }
 
+function check_port_2181() {
+    ss -tnlp | grep 2181 &>/dev/null
+    if [ $? -eq 0 ];then
+        echo_error zookeeper 2181 端口已被占用，无法继续，退出
+        exit 6
+    fi
+}
+function generate_kafka_service() {
+    echo_info 生成kafka.service文件用于systemd控制
+    cat >/usr/lib/systemd/system/kafka.service <<EOF
+[Unit]
+Description=Kafka, install script from https://github.com/zhegeshijiehuiyouai/RoadToDevOps
+
+[Service]
+User=kafka
+Group=kafka
+Type=simple
+ExecStart=${back_dir}/${bare_name}/bin/kafka-server-start.sh ${back_dir}/${bare_name}/config/server.properties
+ExecStop=${back_dir}/${bare_name}/bin/kafka-server-stop.sh
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
+EOF
+}
+
+function show_installed_kafka_info() {
+    echo_info kafka已部署完成，以下是kafka环境信息：
+    if [ $confirm_zk_choice -eq 2 ];then
+        # 外部zookeeper
+        echo -e "\033[37m                  zookeeper信息：外置zookeeper -- ${insert_zk_addrs}\033[0m"
+    elif [ $confirm_zk_choice -eq 3 ];then
+        # 内置zookeeper
+        echo -e "\033[37m                  zookeeper信息：内置zookeeper -- localhost:2181\033[0m"
+        echo -e "\033[37m                  zookeeper启动命令：systemctl start kafka-zookeeper\033[0m"
+    fi
+    echo -e "\033[37m                  kafka端口：${kafka_port}\033[0m"
+    echo -e "\033[37m                  kafka启动命令：systemctl start kafka\033[0m"
+}
+
+# 内置kafka
+function config_kafka_with_internal_zk() {
+        cat > /tmp/.my_kafka_config_change << EOF
+cd ${back_dir}/${bare_name}/config/
+sed -i 's#^log.dirs=.*#log.dirs=${back_dir}/${bare_name}/logs#g' server.properties
+sed -i 's@#listeners=PLAINTEXT://:9092@listeners=PLAINTEXT://:${kafka_port}@g' server.properties
+sed -i 's#^dataDir=.*#dataDir=${back_dir}/${bare_name}/${zookeeper_data_dir}#g' zookeeper.properties
+EOF
+    /bin/bash /tmp/.my_kafka_config_change
+    rm -f /tmp/.my_kafka_config_change
+
+    cat >/usr/lib/systemd/system/kakfa-zookeeper.service <<EOF
+[Unit]
+Description=Apache Zookeeper server (Kafka)
+Documentation=http://zookeeper.apache.org
+Requires=network.target remote-fs.target
+After=network.target remote-fs.target
+ 
+[Service]
+Type=simple
+User=kafka
+Group=kafka
+ExecStart=${back_dir}/${bare_name}/bin/zookeeper-server-start.sh ${back_dir}/${bare_name}/config/zookeeper.properties
+ExecStop=${back_dir}/${bare_name}/bin/zookeeper-server-stop.sh
+ 
+[Install]
+WantedBy=multi-user.target
+EOF
+    generate_kafka_service
+}
+
+# 外置kafka
+function config_kafka_with_external_zk() {
+    # 获取zk地址
+    insert_zk_addrs=""
+    for i in ${zk_addrs[@]};do
+        insert_zk_addrs=${insert_zk_addrs},$i
+    done
+    insert_zk_addrs=$(echo $insert_zk_addrs | sed 's#^.##g')
+
+    cat > /tmp/.my_kafka_config_change << EOF
+cd ${back_dir}/${bare_name}/config/
+sed -i 's#^log.dirs=.*#log.dirs=${back_dir}/${bare_name}/logs#g' server.properties
+sed -i 's@#listeners=PLAINTEXT://:9092@listeners=PLAINTEXT://:${kafka_port}@g' server.properties
+sed -i 's#^zookeeper.connect=.*#zookeeper.connect=${insert_zk_addrs}#g' server.properties
+EOF
+    /bin/bash /tmp/.my_kafka_config_change
+    rm -f /tmp/.my_kafka_config_change
+    
+    generate_kafka_service
+    systemctl daemon-reload
+}
+
 function install_kafka() {
+    # 如果使用自带zk，那么需要先检测2181端口是否被占用
+    if [ $confirm_zk_choice -eq 3 ];then
+        check_port_2181
+    fi
+
     java -version &> /dev/null
     if [ $? -ne 0 ];then
         echo_error 未检测到jdk，请先部署jdk
@@ -129,45 +229,23 @@ function install_kafka() {
 
     cd ${back_dir}/${bare_name}
     add_user_and_group kafka
-
     [ -d ${back_dir}/${bare_name}/logs ] || mkdir -p ${back_dir}/${bare_name}/logs
+
+########### 根据使用外部zk还是内置zk进行调整
     echo_info kafka配置调整
-
-    # 获取zk地址
-    insert_zk_addrs=""
-    for i in ${zk_addrs[@]};do
-        insert_zk_addrs=${insert_zk_addrs},$i
-    done
-    insert_zk_addrs=$(echo $insert_zk_addrs | sed 's#^.##g')
-
-    cat > /tmp/.my_kafka_config_change << EOF
-cd ${back_dir}/${bare_name}/config/
-sed -i 's#^log.dirs=.*#log.dirs=${back_dir}/${bare_name}/logs#g' server.properties
-sed -i 's#^zookeeper.connect=.*#zookeeper.connect=${insert_zk_addrs}#g' server.properties
-EOF
-    /bin/bash /tmp/.my_kafka_config_change
-    rm -f /tmp/.my_kafka_config_change
+    if [ $confirm_zk_choice -eq 2 ];then
+        # 外部zookeeper
+        config_kafka_with_external_zk
+    elif [ $confirm_zk_choice -eq 3 ];then
+        # 内置zookeeper
+        zookeeper_data_dir=zookeeper-data
+        [ -d ${back_dir}/${bare_name}/${zookeeper_data_dir} ] || mkdir -p ${back_dir}/${bare_name}/${zookeeper_data_dir}
+        config_kafka_with_internal_zk
+    fi
 
     echo_info 对 ${back_dir}/${bare_name} 目录进行授权
     chown -R kafka:kafka ${back_dir}/${bare_name}
-
-    echo_info 生成kafka.service文件用于systemd控制
-    cat >/usr/lib/systemd/system/kafka.service <<EOF
-[Unit]
-Description=Kafka, install script from https://github.com/zhegeshijiehuiyouai/RoadToDevOps
-
-[Service]
-User=kafka
-Group=kafka
-Type=simple
-ExecStart=${back_dir}/${bare_name}/bin/kafka-server-start.sh ${back_dir}/${bare_name}/config/server.properties
-ExecStop=${back_dir}/${bare_name}/bin/kafka-server-stop.sh
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-
-EOF
+    show_installed_kafka_info
 }
 
 function accept_zk_addr() {
@@ -206,8 +284,9 @@ function check_zk_addr_is_legal() {
 function start_the_installation_by_confirm_zk() {
     echo_info 
     echo kafka需要连接zookeeper，请选择zookeeper部署情况：
-    echo "1 - 未部署zookeeper"
-    echo "2 - 已部署zookeeper"
+    echo "1 - 未部署zookeeper，退出去部署zookeeper"
+    echo "2 - 已部署zookeeper，输入zookeeper地址"
+    echo "3 - 使用kafka自带的zookeeper"
     function input_confirm_zk_number() {
         read -p "输入数字选择(q 键退出)：" confirm_zk_choice
         case $confirm_zk_choice in
@@ -226,6 +305,9 @@ function start_the_installation_by_confirm_zk() {
             # 检测输入的地址是否是zookeeper地址的格式
             check_zk_addr_is_legal
             echo_info 开始部署kafka
+            install_kafka
+            ;;
+        3)
             install_kafka
             ;;
         q|Q)
