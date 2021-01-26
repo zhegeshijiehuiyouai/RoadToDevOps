@@ -29,7 +29,7 @@ bin/kafka-topics.sh --create --bootstrap-server ${kafka1} --replication-factor 3
 kafka2=192.168.1.2:9092
 kafka3=192.168.1.3:9092
 bin/kafka-topics.sh --list --bootstrap-server ${kafka2}
-bin/kafka-topics.sh --list --bootstrap-server ${kafka2}
+bin/kafka-topics.sh --list --bootstrap-server ${kafka3}
 ```
 
 #### 生产消息命令
