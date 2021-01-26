@@ -15,7 +15,10 @@ sed -i 's#^broker\.id=.*#broker.id=2#g' config/server.properties
 ```
 如果是单机部署的伪集群，那么还需要修改各个`kafka`配置文件中的`listeners`选项来修改端口，`log.dirs`选项来修改数据目录。
 
-## 2、验证
+## 2、统一zookeeper地址
+将各`kafka`连接的`zookeeper`地址配置成一样。
+
+## 3、验证
 - 在`kafka1`上创建`topic`
 ```shell
 kafka1=192.168.1.1:9092
