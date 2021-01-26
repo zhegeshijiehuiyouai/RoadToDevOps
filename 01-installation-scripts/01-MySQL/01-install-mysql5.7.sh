@@ -27,7 +27,7 @@ mysql_version=5.7.32
 # 部署目录的父目录
 DIR=$(pwd)
 # 部署目录的名字，最终的部署目录为${DIR}/${mysql_dir_name}
-mysql_dir_name=mysql
+mysql_dir_name=mysql-${mysql_version}
 
 # 解压后的名字
 FILE=mysql-${mysql_version}-linux-glibc2.12-x86_64
@@ -250,12 +250,19 @@ EOF
     init_account ${temp_pass} mysqld
 }
 
+function check_dir() {
+    if [ -d $1 ];then
+        echo_error 目录 $1 已存在，退出
+        exit 2
+    fi
+}
+
 function install_by_tgz(){
     download_tar_gz ${src_dir} https://cdn.mysql.com/Downloads/MySQL-5.7/${mysql_tgz}
     cd ${file_in_the_dir}
     untar_tgz ${mysql_tgz}
 
-
+    check_dir ${DIR}/${mysql_dir_name}
     mv ${FILE} ${DIR}/${mysql_dir_name}
 
     add_user_and_group mysql
