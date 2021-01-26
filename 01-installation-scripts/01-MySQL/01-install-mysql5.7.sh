@@ -342,7 +342,7 @@ EOF
         echo_error /usr/bin目录有未删除的mysql相关文件，请检查！
         exit 10
     fi
-    echo "export PATH=${PATH}:${DIR}/${mysql_dir_name}/bin" > /etc/profile.d/mysql.sh
+    echo "export PATH=\${PATH}:${DIR}/${mysql_dir_name}/bin" > /etc/profile.d/mysql.sh
     source /etc/profile
 
     # 进行账号、密码设置

@@ -306,8 +306,8 @@ Restart=always
 WantedBy=multi-user.target
 EOF
 
-    echo "PATH=$PATH:${base_dir}/bin" > /etc/profile.d/mongod.sh
-    source /etc/profile
+    echo_info 配置环境变量
+    echo "PATH=\$PATH:${base_dir}/bin" > /etc/profile.d/mongod.sh
 
     init_mongodb ${base_dir}/conf/mongod.conf
     echo_info 数据存储目录：${base_dir}/data

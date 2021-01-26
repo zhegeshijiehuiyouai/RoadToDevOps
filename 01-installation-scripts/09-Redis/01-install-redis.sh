@@ -264,7 +264,7 @@ chmod +x ${redis_home}/redis-shutdown
 
 echo_info 添加环境变量
 cat > /etc/profile.d/redis.sh << EOF
-export PATH=$PATH:${redis_home}/src
+export PATH=\$PATH:${redis_home}/src
 EOF
 
 chown -R redis:redis ${redis_home}

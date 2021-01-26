@@ -192,7 +192,7 @@ WantedBy=multi-user.target
 EOF
 
 # 添加环境变量，这样就能在任意地方使用mysql全套命令
-echo "export PATH=${PATH}:${DIR}/${mysql_dir_name}/bin" > /etc/profile.d/mysql.sh
+echo "export PATH=\${PATH}:${DIR}/${mysql_dir_name}/bin" > /etc/profile.d/mysql.sh
 source /etc/profile
 if [ -f /usr/local/bin/mysql ];then
     echo "/usr/local/bin目录有未删除的mysql相关文件，请检查！"
