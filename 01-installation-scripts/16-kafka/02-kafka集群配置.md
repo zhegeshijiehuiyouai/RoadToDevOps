@@ -35,10 +35,10 @@ bin/kafka-topics.sh --list --bootstrap-server ${kafka3}
 #### 生产消息命令
 ```shell
 kafka1=192.168.1.1:9092
-bin/kafka-console-consumer.sh --bootstrap-server ${kafka1} --topic test-cluster-topic --from-beginning
+bin/kafka-console-producer.sh --bootstrap-server ${kafka1} --topic test-cluster-topic
 ```
 #### 消费消息命令
 ```shell
 kafka2=192.168.1.2:9092
-bin/kafka-console-consumer.sh --bootstrap-server ${kafka2} --topic test-ken-io --from-beginning
+bin/kafka-console-consumer.sh --bootstrap-server ${kafka2} --topic test-cluster-topic --from-beginning
 ```
