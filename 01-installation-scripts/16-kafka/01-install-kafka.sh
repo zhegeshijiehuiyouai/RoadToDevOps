@@ -137,6 +137,29 @@ WantedBy=multi-user.target
 EOF
 }
 
+#-------------------------------------------------
+function input_machine_ip_fun() {
+    read input_machine_ip
+    machine_ip=${input_machine_ip}
+    if [[ ! $machine_ip =~ ^([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))(\.([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))){3} ]];then
+        echo_error 错误的ip格式，退出
+        exit 7
+    fi
+}
+function get_machine_ip() {
+    ip a | grep -E "bond" &> /dev/null
+    if [ $? eq 0 ];then
+        echo_warning 检测到绑定网卡（bond），请手动输入给 kafka 使用的 ip ：
+        input_machine_ip_fun
+    elif [ $(ip a | grep -E "inet.*e(ns|np|th).*[[:digit:]]+.*" | awk '{print $2}' | cut -d / -f 1 | wc -l) -gt 1 ];then
+        echo_warning 检测到多个 ip，请手动输入给 kafka 使用的 ip ：
+        input_machine_ip_fun
+    else
+        machine_ip=$(ip a | grep -E "inet.*e(ns|np|th).*[[:digit:]]+.*" | awk '{print $2}' | cut -d / -f 1)
+    fi
+}
+#-------------------------------------------------
+
 function show_installed_kafka_info() {
     echo_info kafka已部署完成，以下是kafka环境信息：
     if [ $confirm_zk_choice -eq 2 ];then
@@ -144,19 +167,30 @@ function show_installed_kafka_info() {
         echo -e "\033[37m                  zookeeper信息：外置zookeeper -- ${insert_zk_addrs}\033[0m"
     elif [ $confirm_zk_choice -eq 3 ];then
         # 内置zookeeper
-        echo -e "\033[37m                  zookeeper信息：内置zookeeper -- localhost:2181\033[0m"
+        echo -e "\033[37m                  zookeeper信息：内置zookeeper -- ${machine_ip}:2181\033[0m"
         echo -e "\033[37m                  zookeeper启动命令：systemctl start kafka-zookeeper\033[0m"
     fi
     echo -e "\033[37m                  kafka端口：${kafka_port}\033[0m"
     echo -e "\033[37m                  kafka启动命令：systemctl start kafka\033[0m"
 }
 
-# 内置kafka
-function config_kafka_with_internal_zk() {
-        cat > /tmp/.my_kafka_config_change << EOF
+function config_kafka_common() {
+    cat > /tmp/.my_kafka_config_change << EOF
 cd ${back_dir}/${bare_name}/config/
 sed -i 's#^log.dirs=.*#log.dirs=${back_dir}/${bare_name}/logs#g' server.properties
-sed -i 's@#listeners=PLAINTEXT://:9092@listeners=PLAINTEXT://:${kafka_port}@g' server.properties
+sed -i 's@^#listeners=PLAINTEXT://:9092.*@listeners=PLAINTEXT://${machine_ip}:${kafka_port}@g' server.properties
+# 下面这个可以不设置，不设置的话，取listeners的值
+# sed -i 's@^#advertised.listeners=PLAINTEXT://your.host.name:9092.*@advertised.listeners=PLAINTEXT://${machine_ip}:${kafka_port}@g' server.properties
+EOF
+    /bin/bash /tmp/.my_kafka_config_change
+    rm -f /tmp/.my_kafka_config_change
+}
+
+# 内置kafka
+function config_kafka_with_internal_zk() {
+    config_kafka_common
+    cat > /tmp/.my_kafka_config_change << EOF
+cd ${back_dir}/${bare_name}/config/
 sed -i 's#^dataDir=.*#dataDir=${back_dir}/${bare_name}/${zookeeper_data_dir}#g' zookeeper.properties
 EOF
     /bin/bash /tmp/.my_kafka_config_change
@@ -191,20 +225,19 @@ function config_kafka_with_external_zk() {
     done
     insert_zk_addrs=$(echo $insert_zk_addrs | sed 's#^.##g')
 
+    config_kafka_common
     cat > /tmp/.my_kafka_config_change << EOF
 cd ${back_dir}/${bare_name}/config/
-sed -i 's#^log.dirs=.*#log.dirs=${back_dir}/${bare_name}/logs#g' server.properties
-sed -i 's@#listeners=PLAINTEXT://:9092@listeners=PLAINTEXT://:${kafka_port}@g' server.properties
 sed -i 's#^zookeeper.connect=.*#zookeeper.connect=${insert_zk_addrs}#g' server.properties
 EOF
     /bin/bash /tmp/.my_kafka_config_change
     rm -f /tmp/.my_kafka_config_change
     
     generate_kafka_service
-    systemctl daemon-reload
 }
 
 function install_kafka() {
+    get_machine_ip
     # 如果使用自带zk，那么需要先检测2181端口是否被占用
     if [ $confirm_zk_choice -eq 3 ];then
         check_port_2181
@@ -245,6 +278,7 @@ function install_kafka() {
 
     echo_info 对 ${back_dir}/${bare_name} 目录进行授权
     chown -R kafka:kafka ${back_dir}/${bare_name}
+    systemctl daemon-reload
     show_installed_kafka_info
 }
 
