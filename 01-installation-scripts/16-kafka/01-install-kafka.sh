@@ -148,7 +148,7 @@ function input_machine_ip_fun() {
 }
 function get_machine_ip() {
     ip a | grep -E "bond" &> /dev/null
-    if [ $? eq 0 ];then
+    if [ $? -eq 0 ];then
         echo_warning 检测到绑定网卡（bond），请手动输入给 kafka 使用的 ip ：
         input_machine_ip_fun
     elif [ $(ip a | grep -E "inet.*e(ns|np|th).*[[:digit:]]+.*" | awk '{print $2}' | cut -d / -f 1 | wc -l) -gt 1 ];then
@@ -258,7 +258,10 @@ function install_kafka() {
 
     cd ${file_in_the_dir}
     untar_tgz $(basename ${download_url})
-    mv ${bare_name} ${back_dir}/${bare_name}
+
+    if [ ! "${file_in_the_dir}" == "${back_dir}" ];then
+        mv ${bare_name} ${back_dir}/${bare_name}
+    fi
 
     cd ${back_dir}/${bare_name}
     add_user_and_group kafka
