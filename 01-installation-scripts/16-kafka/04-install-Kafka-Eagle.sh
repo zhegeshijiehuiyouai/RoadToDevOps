@@ -128,13 +128,9 @@ function add_kafka_eagle_home_to_profile() {
 
 function config_ke() {
     echo_info 调整 Kafka Eagle 配置
-    cat > /tmp/.my_kafka_eagle_config_change << EOF
-cd ${back_dir}/kafka-eagle-web-${version}
-sed -i 's#^kafka.eagle.url=.*#kafka.eagle.url=jdbc:sqlite:${back_dir}/kafka-eagle-web-${version}/db/ke.db#g' conf/system-config.properties
-sed -i 's/^cluster2.kafka.eagle.offset.storage=zk/#&/g' conf/system-config.properties
-EOF
-    /bin/bash /tmp/.my_kafka_eagle_config_change
-    rm -f /tmp/.my_kafka_eagle_config_change
+    cd ${back_dir}/kafka-eagle-web-${version}
+    sed -i 's#^kafka.eagle.url=.*#kafka.eagle.url=jdbc:sqlite:'${back_dir}'/kafka-eagle-web-'${version}'/db/ke.db#g' conf/system-config.properties
+    sed -i 's/^cluster2.kafka.eagle.offset.storage=zk/#&/g' conf/system-config.properties
 }
 
 function show_summary() {

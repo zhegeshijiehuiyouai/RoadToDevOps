@@ -176,26 +176,18 @@ function show_installed_kafka_info() {
 }
 
 function config_kafka_common() {
-    cat > /tmp/.my_kafka_config_change << EOF
-cd ${back_dir}/${bare_name}/config/
-sed -i 's#^log.dirs=.*#log.dirs=${back_dir}/${bare_name}/logs#g' server.properties
-sed -i 's@^#listeners=PLAINTEXT://:9092.*@listeners=PLAINTEXT://${machine_ip}:${kafka_port}@g' server.properties
-# 下面这个可以不设置，不设置的话，取listeners的值
-# sed -i 's@^#advertised.listeners=PLAINTEXT://your.host.name:9092.*@advertised.listeners=PLAINTEXT://${machine_ip}:${kafka_port}@g' server.properties
-EOF
-    /bin/bash /tmp/.my_kafka_config_change
-    rm -f /tmp/.my_kafka_config_change
+    cd ${back_dir}/${bare_name}/config/
+    sed -i 's#^log.dirs=.*#log.dirs='${back_dir}'/'${bare_name}'/logs#g' server.properties
+    sed -i 's@^#listeners=PLAINTEXT://:9092.*@listeners=PLAINTEXT://'${machine_ip}':'${kafka_port}'@g' server.properties
+    # 下面这个可以不设置，不设置的话，取listeners的值
+    # sed -i 's@^#advertised.listeners=PLAINTEXT://your.host.name:9092.*@advertised.listeners=PLAINTEXT://'${machine_ip}':'${kafka_port}'@g' server.properties
 }
 
 # 内置kafka
 function config_kafka_with_internal_zk() {
     config_kafka_common
-    cat > /tmp/.my_kafka_config_change << EOF
-cd ${back_dir}/${bare_name}/config/
-sed -i 's#^dataDir=.*#dataDir=${back_dir}/${bare_name}/${zookeeper_data_dir}#g' zookeeper.properties
-EOF
-    /bin/bash /tmp/.my_kafka_config_change
-    rm -f /tmp/.my_kafka_config_change
+    cd ${back_dir}/${bare_name}/config/
+    sed -i 's#^dataDir=.*#dataDir=${back_dir}/'${bare_name}'/'${zookeeper_data_dir}'#g' zookeeper.properties
 
     cat >/usr/lib/systemd/system/kakfa-zookeeper.service <<EOF
 [Unit]
@@ -227,12 +219,8 @@ function config_kafka_with_external_zk() {
     insert_zk_addrs=$(echo $insert_zk_addrs | sed 's#^.##g')
 
     config_kafka_common
-    cat > /tmp/.my_kafka_config_change << EOF
-cd ${back_dir}/${bare_name}/config/
-sed -i 's#^zookeeper.connect=.*#zookeeper.connect=${insert_zk_addrs}#g' server.properties
-EOF
-    /bin/bash /tmp/.my_kafka_config_change
-    rm -f /tmp/.my_kafka_config_change
+    cd ${back_dir}/${bare_name}/config/
+    sed -i 's#^zookeeper.connect=.*#zookeeper.connect='${insert_zk_addrs}'#g' server.properties
     
     generate_kafka_service
 }

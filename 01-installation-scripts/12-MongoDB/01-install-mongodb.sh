@@ -95,16 +95,12 @@ EOF
 
     echo_info 优化mongodb配置
     sed -i '/bindIp: 127.0.0.1/a  #  maxIncomingConnections: 65536  #进程允许的最大连接数 默认值为65536' /etc/mongod.conf 
-cat > /tmp/mongo_install_temp_$(date +%F).sh << EOF
-sed -i 's/port: 27017/port: ${port}/g' /etc/mongod.conf
-sed -i 's/bindIp: 127.0.0.1/bindIp: ${bind_ip}/g' /etc/mongod.conf
-sed -i 's#dbPath: /var/lib/mongo#dbPath: ${dbpath}#g' /etc/mongod.conf
-sed -i 's#ExecStartPre=/usr/bin/mkdir -p /var/run/mongodb#ExecStartPre=/usr/bin/mkdir -p ${dbpath}#g' /usr/lib/systemd/system/mongod.service
-sed -i 's#ExecStartPre=/usr/bin/chown mongod:mongod /var/run/mongodb#ExecStartPre=/usr/bin/chown ${sys_user}:${sys_user} ${dbpath}#g' /usr/lib/systemd/system/mongod.service
-sed -i 's#ExecStartPre=/usr/bin/chmod 0755 /var/run/mongodb#ExecStartPre=/usr/bin/chmod 0755 ${dbpath}#g' /usr/lib/systemd/system/mongod.service
-EOF
-    /bin/bash /tmp/mongo_install_temp_$(date +%F).sh
-    rm -rf /tmp/mongo_install_temp_$(date +%F).sh
+    sed -i 's/port: 27017/port: '${port}'/g' /etc/mongod.conf
+    sed -i 's/bindIp: 127.0.0.1/bindIp: '${bind_ip}'/g' /etc/mongod.conf
+    sed -i 's#dbPath: /var/lib/mongo#dbPath: '${dbpath}'#g' /etc/mongod.conf
+    sed -i 's#ExecStartPre=/usr/bin/mkdir -p /var/run/mongodb#ExecStartPre=/usr/bin/mkdir -p '${dbpath}'#g' /usr/lib/systemd/system/mongod.service
+    sed -i 's#ExecStartPre=/usr/bin/chown mongod:mongod /var/run/mongodb#ExecStartPre=/usr/bin/chown '${sys_user}':'${sys_user}' '${dbpath}'#g' /usr/lib/systemd/system/mongod.service
+    sed -i 's#ExecStartPre=/usr/bin/chmod 0755 /var/run/mongodb#ExecStartPre=/usr/bin/chmod 0755 '${dbpath}'#g' /usr/lib/systemd/system/mongod.service
 
     init_mongodb /etc/mongod.conf
     echo_info 数据存储目录：${dbpath}

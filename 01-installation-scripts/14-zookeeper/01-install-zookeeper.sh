@@ -153,10 +153,8 @@ function install_single_zk(){
     cd ${basedir}/${zookeeperdir}   
 
     cp conf/zoo_sample.cfg conf/zoo.cfg
-cat > /tmp/zookeeper_install_temp_$(date +%F).sh <<EOF
-sed -i 's#^dataDir=.*#dataDir=${basedir}/${zookeeperdir}/data#g' conf/zoo.cfg
-sed -i 's#^clientPort=.*#clientPort=${zk_port}#g' conf/zoo.cfg
-EOF
+    sed -i 's#^dataDir=.*#dataDir='${basedir}'/'${zookeeperdir}'/data#g' conf/zoo.cfg
+    sed -i 's#^clientPort=.*#clientPort='${zk_port}'#g' conf/zoo.cfg
     # 3.5版本以后，zookeeper会多一个8080端口，没什么用，把它禁用掉
     # 当前版本小于3.5，下面的值为0
     port8080toggle=$(awk -v version=3.5 -v currentversion=${zk_version} 'BEGIN{print(version>currentversion)?"0":"1"}')
@@ -165,9 +163,6 @@ EOF
     fi
     # 开启四字命令
     echo "4lw.commands.whitelist=*" >> conf/zoo.cfg
-
-    /bin/bash /tmp/zookeeper_install_temp_$(date +%F).sh
-    rm -rf /tmp/zookeeper_install_temp_$(date +%F).sh
 
     echo_info 部署目录授权中
     chown -R ${sys_user}:${sys_user} ${basedir}/${zookeeperdir}
