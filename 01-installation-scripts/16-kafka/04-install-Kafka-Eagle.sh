@@ -141,7 +141,7 @@ function show_summary() {
     echo_info 配置文件 ：kafka-eagle-web-${version}/conf/system-config.properties
     echo -e "\033[37m                  主要配置项：\033[0m"
     echo -e "\033[37m                      kafka.eagle.zk.cluster.alias        -- 管理kafka的zk集群分组别名（kafka eagle支持监控多组kafka）\033[0m"
-    echo -e "\033[37m                      cluster1.zk.list                    -- zk的地址，如有多个，用逗号隔开。如果没有cluster2，可将cluster2注释掉\033[0m"
+    echo -e "\033[37m                      cluster1.zk.list                    -- zk的地址，格式：ip:port[/path]。如有多个，用逗号隔开。如果没有cluster2，可将cluster2注释掉\033[0m"
     echo -e "\033[37m                      kafka.eagle.webui.port              -- kafka eagle web服务的端口\033[0m"
     echo -e "\033[37m                      cluster1.kafka.eagle.offset.storage -- 消费者偏移量存储方式，0.9 版本之前的kafka存储在zk，之后的存储在kafka\033[0m"
     echo -e "\033[37m                      kafka xxxxx jdbc driver address     -- 数据库，默认sqlite，可改为mysql\033[0m"

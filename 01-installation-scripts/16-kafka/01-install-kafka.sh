@@ -3,6 +3,7 @@
 download_url=https://mirrors.cloud.tencent.com/apache/kafka/2.7.0/kafka_2.13-2.7.0.tgz
 src_dir=$(pwd)/00src00
 kafka_port=9092
+kafka_jmx_port=9988
 
 # 带格式的echo函数
 function echo_info() {
@@ -264,6 +265,9 @@ function install_kafka() {
     fi
 
     cd ${back_dir}/${bare_name}
+    echo_info 开启 kafka jmx
+    sed -i '/^# limitations under the License./a export JMX_PORT='${kafka_jmx_port}'' bin/kafka-server-start.sh
+
     add_user_and_group kafka
     [ -d ${back_dir}/${bare_name}/logs ] || mkdir -p ${back_dir}/${bare_name}/logs
 
