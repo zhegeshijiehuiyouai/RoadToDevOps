@@ -3,7 +3,7 @@
 #######################################
 # 通用配置
 user=root
-passwd=654321
+passwd=Xx_996Buhao
 port=27017
 bind_ip=0.0.0.0
 sys_user=mongod
@@ -58,6 +58,7 @@ function init_mongodb(){
     fi
 
     echo_info mongodb 已安装配置完成，详细信息如下：
+    echo -e "\033[37m                  启动命令：systemctl start mongod\033[0m"
     echo -e "\033[37m                  mongodb端口：${port}\033[0m"
     echo -e "\033[37m                  超管账号：${user}\033[0m"
     echo -e "\033[37m                  超管密码：${passwd}\033[0m"
@@ -88,10 +89,6 @@ EOF
     fi
 
     [ -d ${dbpath} ] || mkdir -p ${dbpath}
-    if [ -d ${dbpath} ];then
-        echo_error ${dbpath} 目录已存在，退出
-        exit 10
-    fi
 
     echo_info 优化mongodb配置
     sed -i '/bindIp: 127.0.0.1/a  #  maxIncomingConnections: 65536  #进程允许的最大连接数 默认值为65536' /etc/mongod.conf 
@@ -312,6 +309,10 @@ EOF
 
 
 function install_main_func(){
+    if [ -d ${dbpath} ];then
+        echo_error ${dbpath} 目录已存在，退出
+        exit 10
+    fi
     read -p "请输入数字选择部署方式（如需退出请输入q）：" software
     case $software in
         1)
