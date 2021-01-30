@@ -80,7 +80,7 @@ function input_machine_ip_fun() {
     machine_ip=${input_machine_ip}
     if [[ ! $machine_ip =~ ^([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))(\.([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))){3} ]];then
         echo_error 错误的ip格式，退出
-        exit 7
+        exit 8
     fi
 }
 function get_machine_ip() {
@@ -95,6 +95,20 @@ function get_machine_ip() {
         machine_ip=$(ip a | grep -E "inet.*e(ns|np|th).*[[:digit:]]+.*" | awk '{print $2}' | cut -d / -f 1)
     fi
 }
+
+function is_run_docker_rabbitmq() {
+    docker version &> /dev/null
+    if [ $? -ne 0 ];then
+        echo_error 您尚未安装 docker，退出
+        exit 9
+    fi
+    docker ps -a | awk '{print $NF}' | grep rabbitmq &>/dev/null
+    if [ $? -eq 0 ];then
+        echo_error 已存在 rabbitmq 容器，退出
+        exit 10
+    fi
+}
+
 #-------------------------------------------------
 
 function install_by_rpm() {
@@ -149,9 +163,59 @@ function install_by_rpm() {
 }
 
 function install_by_docker() {
-    docker run -d -p 5672:5672 -p 15672:15672 --name rabbitmq rabbitmq:management
+    get_machine_ip
+
+    container_name=rabbitmq
+    echo -e -n "容器id  ："
+    docker run -d --hostname ${container_name} \
+               --name ${container_name} \
+               -e RABBITMQ_DEFAULT_USER=${rabbitmq_ui_user} \
+               -e RABBITMQ_DEFAULT_PASS=${rabbitmq_ui_password} \
+               -v ${rabbitmq_home}:/var/lib/rabbitmq \
+               -p ${rabbitmq_ui_port}:15672 \
+               -p ${rabbitmq_port}:5672 \
+               rabbitmq:management
+    echo 容器name：${container_name}
+
+    echo_info RabbitMQ已部署，信息如下：
+    echo -e "\033[37m                  启动命令：docker start rabbitmq\033[0m"
+    echo -e "\033[37m                  RabbitMQ 管理后台：http://${machine_ip}:${rabbitmq_ui_port}\033[0m"
+    # 如果存在数据目录，那么启动命令中设置的账号密码可能失效
+    if [ -d ${rabbitmq_home} ];then
+        echo -e "\033[1;31m                  由于存在挂载目录 ${rabbitmq_home}，用户名：${rabbitmq_ui_user} 密码：${rabbitmq_ui_password} 可能不正确！\033[0m"
+        echo -e "\033[1;31m                  请以之前部署的 rabbitmq 账号密码为准\033[0m"
+    else
+        echo -e "\033[37m                  用户名：${rabbitmq_ui_user} 密码：${rabbitmq_ui_password}\033[0m"
+    fi
 }
 
+function install_main_func(){
+    read -p "请输入数字选择安装类型（如需退出请输入q）：" software
+    case $software in
+        1)
+            # 安装前先判断是否已经安装了rabbitmq
+            is_installed_rabbitmq
+            echo_info 即将使用 yum 安装rabbitmq
+            # 等待1秒，给用户手动取消的时间
+            sleep 1
+            install_by_rpm
+            ;;
+        2)
+            is_run_docker_rabbitmq
+            echo_info 即将使用 docker 安装rabbitmq
+            sleep 1
+            install_by_docker
+            ;;
+        q|Q)
+            exit 0
+            ;;
+        *)
+            install_main_func
+            ;;
+    esac
+}
 
-is_installed_rabbitmq
-install_by_rpm
+echo -e "\033[31m本脚本支持两种部署方式：\033[0m"
+echo -e "\033[36m[1]\033[32m yum安装rabbitmq\033[0m"
+echo -e "\033[36m[2]\033[32m docker安装rabbitmq\033[0m"
+install_main_func
