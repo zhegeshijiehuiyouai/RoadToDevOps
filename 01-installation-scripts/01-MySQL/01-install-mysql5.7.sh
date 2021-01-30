@@ -361,7 +361,6 @@ function install_main_func(){
             install_by_rpm
             ;;
         2)
-            echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m即将使用 \033[36m二进制包\033[37m 安装mysql\033[0m"
             echo_info 即将使用 二进制包 安装mysql
             sleep 1
             install_by_tgz
