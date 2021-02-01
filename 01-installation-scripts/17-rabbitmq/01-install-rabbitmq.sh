@@ -6,7 +6,7 @@ rabbitmq_ui_port=15672  # web服务的端口
 rabbitmq_home=/data/rabbitmq
 rabbitmq_port=5672  # client 端通信口
 rabbitmq_cluster_port=$(( ${rabbitmq_port} + 2000 ))  # 集群通信端口
-rabbitmq_node_name=rabbit@$HOSTNAME
+rabbitmq_node_name=rabbit # rabbitmq节点名
 
 
 # 带格式的echo函数
@@ -64,7 +64,7 @@ RABBITMQ_NODE_PORT=${rabbitmq_port}
 # 集群端口
 RABBITMQ_DIST_PORT=${rabbitmq_cluster_port}
 RABBITMQ_NODE_IP_ADDRESS=${machine_ip}
-RABBITMQ_NODENAME=${rabbitmq_node_name}
+RABBITMQ_NODENAME=${rabbitmq_node_name}@$HOSTNAME
 EOF
     cat > /etc/rabbitmq/rabbitmq.conf <<EOF
 # 数据管理端口（默认端口为5672），这里的优先级比/etc/rabbitmq/rabbitmq-env.conf中的
