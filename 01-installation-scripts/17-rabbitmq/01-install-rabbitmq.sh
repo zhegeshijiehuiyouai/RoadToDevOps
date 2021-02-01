@@ -5,6 +5,8 @@ rabbitmq_ui_password=huiyouai
 rabbitmq_ui_port=15672  # web服务的端口
 rabbitmq_home=/data/rabbitmq
 rabbitmq_port=5672  # client 端通信口
+rabbitmq_cluster_port=$(( ${rabbitmq_port} + 2000 ))  # 集群通信端口
+rabbitmq_node_name=rabbit@$HOSTNAME
 
 
 # 带格式的echo函数
@@ -60,9 +62,9 @@ RABBITMQ_LOG_BASE=${rabbitmq_home}/log
 HOME=${rabbitmq_home}
 RABBITMQ_NODE_PORT=${rabbitmq_port}
 # 集群端口
-RABBITMQ_DIST_PORT=$(( ${rabbitmq_port} + 2000 ))
+RABBITMQ_DIST_PORT=${rabbitmq_cluster_port}
 RABBITMQ_NODE_IP_ADDRESS=${machine_ip}
-RABBITMQ_NODENAME=rabbit@$HOSTNAME
+RABBITMQ_NODENAME=${rabbitmq_node_name}
 EOF
     cat > /etc/rabbitmq/rabbitmq.conf <<EOF
 # 数据管理端口（默认端口为5672），这里的优先级比/etc/rabbitmq/rabbitmq-env.conf中的
@@ -158,12 +160,19 @@ function install_by_rpm() {
     echo_info RabbitMQ已部署，信息如下：
     echo -e "\033[37m                  启动命令：systemctl start rabbitmq-server\033[0m"
     echo -e "\033[37m                  epmd 停止命令：epmd -kill\033[0m"
+    echo -e "\033[37m                  rabbitmq 端口：${rabbitmq_port}\033[0m"
+    echo -e "\033[37m                  rabbitmq 集群端口：${rabbitmq_cluster_port}\033[0m"
     echo -e "\033[37m                  RabbitMQ 管理后台：http://${machine_ip}:${rabbitmq_ui_port}\033[0m"
     echo -e "\033[37m                  用户名：${rabbitmq_ui_user} 密码：${rabbitmq_ui_password}\033[0m"
 }
 
 function install_by_docker() {
     get_machine_ip
+    docker_echo_flag=0
+
+    if [ -d ${rabbitmq_home} ];then
+        docker_echo_flag=1
+    fi
 
     container_name=rabbitmq
     echo -e -n "容器id  ："
@@ -172,6 +181,7 @@ function install_by_docker() {
                -e RABBITMQ_DEFAULT_USER=${rabbitmq_ui_user} \
                -e RABBITMQ_DEFAULT_PASS=${rabbitmq_ui_password} \
                -v ${rabbitmq_home}:/var/lib/rabbitmq \
+               -p ${rabbitmq_cluster_port}:25672 \
                -p ${rabbitmq_ui_port}:15672 \
                -p ${rabbitmq_port}:5672 \
                rabbitmq:management
@@ -180,8 +190,10 @@ function install_by_docker() {
     echo_info RabbitMQ已部署，信息如下：
     echo -e "\033[37m                  启动命令：docker start rabbitmq\033[0m"
     echo -e "\033[37m                  RabbitMQ 管理后台：http://${machine_ip}:${rabbitmq_ui_port}\033[0m"
+    echo -e "\033[37m                  rabbitmq 端口：${rabbitmq_port}\033[0m"
+    echo -e "\033[37m                  rabbitmq 集群端口：${rabbitmq_cluster_port}\033[0m"
     # 如果存在数据目录，那么启动命令中设置的账号密码可能失效
-    if [ -d ${rabbitmq_home} ];then
+    if [ ${docker_echo_flag} -eq 1 ];then
         echo -e "\033[1;31m                  由于存在挂载目录 ${rabbitmq_home}，用户名：${rabbitmq_ui_user} 密码：${rabbitmq_ui_password} 可能不正确！\033[0m"
         echo -e "\033[1;31m                  请以之前部署的 rabbitmq 账号密码为准\033[0m"
     else
