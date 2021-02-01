@@ -58,6 +58,22 @@ function echo_summary() {
     echo -e "\033[37m                  与其他节点通信端口：${es_transport_port}\033[0m"
 }
 
+function is_installed_es() {
+    ps -ef | grep elasticsearch | grep -v grep &> /dev/null
+    if [ $? -eq 0 ];then
+        echo_error 检测到本机上已部署 elasticsearch，退出
+        exit 1
+    fi
+    if [ -d /etc/elasticsearch ];then
+        echo_error 检测到 /etc/elasticsearch 目录，本机可能已部署了 elasticsearch，请退出检查
+        exit 5
+    fi
+    if [ -d ${es_home} ];then
+        echo_error 检测到 ${es_home} 目录，本机可能已部署了 elasticsearch，请退出检查
+        exit 6
+    fi
+}
+
 function install_by_yum() {
     check_dir ${es_home}
     echo_info 创建数据目录 ${es_home}
@@ -83,4 +99,65 @@ EOF
     echo_summary
 }
 
-install_by_yum
+function is_run_docker_es() {
+    docker version &> /dev/null
+    if [ $? -ne 0 ];then
+        echo_error 您尚未安装 docker，退出
+        exit 3
+    fi
+    docker ps -a | awk '{print $NF}' | grep rabbitmq &>/dev/null
+    if [ $? -eq 0 ];then
+        echo_error 已存在 rabbitmq 容器，退出
+        exit 4
+    fi
+}
+
+function install_by_docker() {
+    is_run_docker_es
+    
+    [ -f /etc/timezone ] || echo "Asia/Shanghai" > /etc/timezone
+    container_name=elasticsearch
+    echo -e -n "容器id  ："
+    docker run -d --hostname ${container_name} \
+               --name ${container_name} \
+               -v /etc/localtime:/etc/localtime \
+               -v /etc/timezone:/etc/timezone \
+               -p ${es_port}:9200 \
+               -p ${es_transport_port}:9300 \
+               -e "discovery.type=single-node" \
+               elasticsearch:7.10.1
+    echo 容器name：${container_name}
+}
+
+
+
+function install_main_func(){
+    read -p "请输入数字选择安装类型（如需退出请输入q）：" software
+    case $software in
+        1)
+            # 安装前先判断是否已经安装了rabbitmq
+            is_installed_es
+            echo_info 即将使用 yum 安装elasticsearch
+            # 等待1秒，给用户手动取消的时间
+            sleep 1
+            install_by_yum
+            ;;
+        2)
+            is_run_docker_es
+            echo_info 即将使用 docker 安装elasticsearch
+            sleep 1
+            install_by_docker
+            ;;
+        q|Q)
+            exit 0
+            ;;
+        *)
+            install_main_func
+            ;;
+    esac
+}
+
+echo -e "\033[31m本脚本支持两种部署方式：\033[0m"
+echo -e "\033[36m[1]\033[32m yum安装elasticsearch\033[0m"
+echo -e "\033[36m[2]\033[32m docker安装elasticsearch\033[0m"
+install_main_func

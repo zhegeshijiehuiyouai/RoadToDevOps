@@ -113,7 +113,7 @@ function is_run_docker_rabbitmq() {
 
 #-------------------------------------------------
 
-function install_by_rpm() {
+function install_by_yum() {
     if [ ! -f /etc/yum.repos.d/rabbitmq_erlang.repo ];then
         echo_info 创建erlang.repo库
         curl -s https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh | sudo bash
@@ -210,7 +210,7 @@ function install_main_func(){
             echo_info 即将使用 yum 安装rabbitmq
             # 等待1秒，给用户手动取消的时间
             sleep 1
-            install_by_rpm
+            install_by_yum
             ;;
         2)
             is_run_docker_rabbitmq
