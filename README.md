@@ -34,7 +34,8 @@ rpm -Uvh ./*rpm
 │   ├── 14-zookeeper
 │   ├── 15-maven
 │   ├── 16-kafka
-│   └── 17-rabbitmq
+│   ├── 17-rabbitmq
+│   └── 18-Elasticsearch
 ├── 02-elasticsearch-tools
 │   ├── 01-clean-single-es-index-by-date.sh
 │   └── 02-clean-date-format-es-index-by-date.sh
