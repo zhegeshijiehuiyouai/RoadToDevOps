@@ -48,7 +48,8 @@ rpm -Uvh ./*rpm
 │   └── 02-Create-LVM
 ├── 05-system-tools
 │   ├── 01-check-package-manager.sh
-│   └── 02-update-openssh.sh
+│   ├── 02-update-openssh.sh
+│   └── 03-init-system.sh
 ├── 06-Antivirus-tool
 │   └── 01-kill_miner_proc.sh
 └── README.md
