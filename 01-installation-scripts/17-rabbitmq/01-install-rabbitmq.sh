@@ -104,9 +104,10 @@ function is_run_docker_rabbitmq() {
         echo_error 您尚未安装 docker，退出
         exit 9
     fi
-    docker ps -a | awk '{print $NF}' | grep rabbitmq &>/dev/null
+    container_name=rabbitmq
+    docker ps -a | awk '{print $NF}' | grep ${container_name} &>/dev/null
     if [ $? -eq 0 ];then
-        echo_error 已存在 rabbitmq 容器，退出
+        echo_error 已存在 ${container_name} 容器，退出
         exit 10
     fi
 }
@@ -174,7 +175,6 @@ function install_by_docker() {
         docker_echo_flag=1
     fi
 
-    container_name=rabbitmq
     echo -e -n "容器id  ："
     docker run -d --hostname ${container_name} \
                --name ${container_name} \
@@ -188,14 +188,13 @@ function install_by_docker() {
     echo 容器name：${container_name}
 
     echo_info RabbitMQ已部署，信息如下：
-    echo -e "\033[37m                  启动命令：docker start rabbitmq\033[0m"
+    echo -e "\033[37m                  启动命令：docker start ${container_name}\033[0m"
     echo -e "\033[37m                  RabbitMQ 管理后台：http://${machine_ip}:${rabbitmq_ui_port}\033[0m"
     echo -e "\033[37m                  rabbitmq 端口：${rabbitmq_port}\033[0m"
     echo -e "\033[37m                  rabbitmq 集群端口：${rabbitmq_cluster_port}\033[0m"
     # 如果存在数据目录，那么启动命令中设置的账号密码可能失效
     if [ ${docker_echo_flag} -eq 1 ];then
-        echo -e "\033[1;31m                  由于存在挂载目录 ${rabbitmq_home}，用户名：${rabbitmq_ui_user} 密码：${rabbitmq_ui_password} 可能不正确！\033[0m"
-        echo -e "\033[1;31m                  请以之前部署的 rabbitmq 账号密码为准\033[0m"
+        echo_warning 由于存在挂载目录 ${rabbitmq_home}，用户名：${rabbitmq_ui_user} 密码：${rabbitmq_ui_password} 可能不正确！请以之前部署的 rabbitmq 账号密码为准.
     else
         echo -e "\033[37m                  用户名：${rabbitmq_ui_user} 密码：${rabbitmq_ui_password}\033[0m"
     fi

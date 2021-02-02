@@ -105,28 +105,45 @@ function is_run_docker_es() {
         echo_error 您尚未安装 docker，退出
         exit 3
     fi
-    docker ps -a | awk '{print $NF}' | grep rabbitmq &>/dev/null
+    
+    container_name=elasticsearch
+    docker ps -a | awk '{print $NF}' | grep ${container_name} &>/dev/null
     if [ $? -eq 0 ];then
-        echo_error 已存在 rabbitmq 容器，退出
+        echo_error 已存在 ${container_name} 容器，退出
         exit 4
     fi
 }
 
 function install_by_docker() {
     is_run_docker_es
-    
+    docker_echo_flag=0
+    if [ -d ${rabbitmq_home} ];then
+        docker_echo_flag=1
+    fi
+
     [ -f /etc/timezone ] || echo "Asia/Shanghai" > /etc/timezone
-    container_name=elasticsearch
+
     echo -e -n "容器id  ："
     docker run -d --hostname ${container_name} \
                --name ${container_name} \
                -v /etc/localtime:/etc/localtime \
                -v /etc/timezone:/etc/timezone \
+               -e TAKE_FILE_OWNERSHIP=111 \
+               -v ${es_home}/data:/usr/share/elasticsearch/data \
                -p ${es_port}:9200 \
                -p ${es_transport_port}:9300 \
                -e "discovery.type=single-node" \
                elasticsearch:7.10.1
     echo 容器name：${container_name}
+
+    echo_info Elasticsearch 已部署，信息如下：
+    echo -e "\033[37m                  启动命令：docker start ${container_name}\033[0m"
+    echo -e "\033[37m                  elasticsearch 端口：${es_port}\033[0m"
+    echo -e "\033[37m                  elasticsearch 节点间通信端口：${es_transport_port}\033[0m"
+    # 如果存在数据目录，则提示一下
+    if [ ${docker_echo_flag} -eq 1 ];then
+        echo_warning 此次运行的容器使用了之前存在的 elasticsearch 目录 ${es_home}
+    fi
 }
 
 
