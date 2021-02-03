@@ -43,7 +43,7 @@ function config_es() {
     grep "transport.tcp.port" /etc/elasticsearch/elasticsearch.yml &> /dev/null
     if [ $? -ne 0 ];then
         sed -i '/^http.port:.*/atransport.tcp.port: '${es_transport_port}'' /etc/elasticsearch/elasticsearch.yml
-        sed -i '/^http.port:.*/a# 与其它节点交互的端口' /etc/elasticsearch/elasticsearch.yml
+        sed -i '/^http.port:.*/a# 与其它节点沟通的端口' /etc/elasticsearch/elasticsearch.yml
         sed -i '/^http.port:.*/a#' /etc/elasticsearch/elasticsearch.yml
     else
         sed -i 's/^transport.tcp.port:.*/transport.tcp.port: '${es_transport_port}'/g' /etc/elasticsearch/elasticsearch.yml
