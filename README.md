@@ -36,7 +36,8 @@ rpm -Uvh ./*rpm
 │   ├── 16-kafka
 │   ├── 17-rabbitmq
 │   ├── 18-Elasticsearch
-│   └── 19-rsyncd
+│   ├── 19-rsyncd
+│   └── 20-nfs
 ├── 02-elasticsearch-tools
 │   ├── 01-clean-single-es-index-by-date.sh
 │   └── 02-clean-date-format-es-index-by-date.sh
