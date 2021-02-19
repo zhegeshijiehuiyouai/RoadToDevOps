@@ -291,11 +291,18 @@ http {
 
     server {
         listen       80;
-        server_name  localhost;
+        server_name  your_domain;
 
         #charset koi8-r;
-
-        #access_log  logs/host.access.log  main;
+################日志切割################
+        if ($time_iso8601 ~ "^(\d{4})-(\d{2})-(\d{2})")
+        {
+            set $ng_year $1;
+            set $ng_month $2;
+            set $ng_day $3;
+        }
+        access_log  logs/your_domain-$ng_year$ng_month$ng_day.access.log;
+        error_log logs/your_domain.error.log;
 
         location / {
             root   html;
