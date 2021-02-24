@@ -16,9 +16,15 @@ src_dir=$(pwd)/00src00
 tomcat_version=8.5.63
 # tomcat部署的目录，如果要部署多个tomcat在同一台服务器，可修改此变量
 tomcat_home=$(pwd)/tomcat-${tomcat_version}
-tomcat_port=8080
+tomcat_shutdown_port=8005
+tomcat_http_port=8080
 # 启动服务的用户
 sys_user=tomcat
+unit_file_name=tomcat.service
+# 内存配置
+Xms=512M
+Xmx=1024M
+
 
 
 # 解压
@@ -116,7 +122,7 @@ function is_run_tomcat() {
         exit 2
     fi
 
-    ps -ef | grep tomcat | grep -v grep &> /dev/null
+    ps -ef | grep ${tomcat_home} | grep -v grep &> /dev/null
     if [ $? -eq 0 ];then
         echo_error 检测到tomcat正在运行中，退出
         exit 3
@@ -128,8 +134,8 @@ function is_run_tomcat() {
 }
 
 function generate_unit_file_and_start() {
-    echo_info 生成tomcat.service文件用于systemd控制
-    cat >/usr/lib/systemd/system/tomcat.service <<EOF
+    echo_info 生成${unit_file_name}文件用于systemd控制
+    cat >/usr/lib/systemd/system/${unit_file_name} <<EOF
 [Unit]
 Description=Apache Tomcat Web Application Container -- script from https://github.com/zhegeshijiehuiyouai/RoadToDevOps
 After=syslog.target network.target
@@ -140,7 +146,7 @@ Type=forking
 Environment=JAVA_HOME=$JAVA_HOME
 Environment=CATALINA_HOME=${tomcat_home}
 Environment=CATALINA_BASE=${tomcat_home}
-Environment='CATALINA_OPTS=-Xms512M -Xmx1024M -server -XX:+UseParallelGC'
+Environment='CATALINA_OPTS=-Xms${Xms} -Xmx${Xmx} -server -XX:+UseParallelGC -Djava.awt.headless=true'
 
 ExecStart=${tomcat_home}/bin/startup.sh
 ExecStop=${tomcat_home}/bin/shutdown.sh
@@ -157,14 +163,14 @@ EOF
     chown -R ${sys_user}:${sys_user} ${tomcat_home}
     systemctl daemon-reload
     echo_info 启动tomcat
-    systemctl start tomcat
+    systemctl start ${unit_file_name}
     if [ $? -ne 0 ];then
         echo_error tomcat启动失败，请检查
         exit 5
     fi
     echo_info tomcat已成功部署并启动，相关信息如下：
-    echo -e "\033[37m                  启动命令：systemctl start tomcat\033[0m"
-    echo -e "\033[37m                  端口：${tomcat_port}\033[0m"
+    echo -e "\033[37m                  启动命令：systemctl start ${unit_file_name}\033[0m"
+    echo -e "\033[37m                  端口：${tomcat_http_port}\033[0m"
     echo -e "\033[37m                  部署目录：${tomcat_home}\033[0m"
 
 }
@@ -181,7 +187,8 @@ function install_tomcat() {
     echo_info 清理默认项目
     rm -rf ${tomcat_home}/webapps/*
     echo_info 调整tomcat配置
-    sed -i 's/Connector port=\"8080\"/Connector port=\"'${tomcat_port}'\"/' ${tomcat_home}/conf/server.xml
+    sed -i 's/Connector port=\"8080\"/Connector port=\"'${tomcat_http_port}'\"/' ${tomcat_home}/conf/server.xml
+    sed -i 's/Server port=\"8005\" shutdown="SHUTDOWN"/Server port="'${tomcat_shutdown_port}'" shutdown="SHUTDOWN"/' ${tomcat_home}/conf/server.xml
 
     generate_unit_file_and_start
 }
