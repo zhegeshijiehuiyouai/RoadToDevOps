@@ -52,7 +52,7 @@ function untar_tgz(){
     tar xf $1
     if [ $? -ne 0 ];then
         echo_error 解压出错，请检查！
-        exit 2
+        exit 1
     fi
 }
 
@@ -143,7 +143,7 @@ function init_account(){
     # mysql启动失败的话退出
     if [ $? -ne 0 ];then
         echo_error mysql启动失败，请查看错误信息
-        exit 1
+        exit 2
     fi
 
     # mysql启动成功后的操作
@@ -189,7 +189,7 @@ function install_by_rpm(){
         echo_info 已成功安装mysql，即将进行一些优化配置
     else
         echo_error 安装出错，请检查！
-        exit 5
+        exit 3
     fi
 
     if [ -f /etc/my.cnf ];then
@@ -253,7 +253,7 @@ EOF
 function check_dir() {
     if [ -d $1 ];then
         echo_error 目录 $1 已存在，退出
-        exit 2
+        exit 4
     fi
 }
 
@@ -336,11 +336,11 @@ EOF
     echo_info 配置PATH环境变量
     if [ -f /usr/local/bin/mysql ];then
         echo_error /usr/local/bin目录有未删除的mysql相关文件，请检查！
-        exit 10
+        exit 5
     fi
     if [ -f /usr/bin/mysql ];then
         echo_error /usr/bin目录有未删除的mysql相关文件，请检查！
-        exit 10
+        exit 6
     fi
     echo "export PATH=\${PATH}:${DIR}/${mysql_dir_name}/bin" > /etc/profile.d/mysql.sh
     source /etc/profile
@@ -351,7 +351,22 @@ EOF
     echo_warning 由于bash特性限制，在本终端连接mysql需要先手动执行 source /etc/profile 加载环境变量，或者新开一个终端连接mysql
 }
 
+function is_run_mysql() {
+    ps -ef | grep mysql | grep -v grep &> /dev/null
+    if [ $? -eq 0 ];then
+        echo_error 检测到mysql正在运行中，退出
+        exit 7
+    fi
+
+    if [ -d ${DIR}/${mysql_dir_name} ];then
+        echo_error 检测到目录${DIR}/${mysql_dir_name}，请检查是否重复安装，退出
+        exit 8
+    fi
+}
+
 function install_main_func(){
+    is_run_mysql
+
     read -p "请输入数字选择安装类型（如需退出请输入q）：" software
     case $software in
         1)
