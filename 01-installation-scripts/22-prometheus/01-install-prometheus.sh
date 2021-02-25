@@ -149,7 +149,7 @@ After=network.target
 [Service]
 Type=simple
 User=prometheus
-Group=tomcat
+Group=prometheus
 ExecStart=${prometheus_home}/prometheus --config.file=${prometheus_home}/prometheus.yml --storage.tsdb.path=${prometheus_home}/data --web.console.libraries=${prometheus_home}/console_libraries --web.console.templates=${prometheus_home}/console --web.listen-address=:${prometheus_port} --web.external-url=http://${machine_ip}:${prometheus_port}/ 
 Restart=always
 
