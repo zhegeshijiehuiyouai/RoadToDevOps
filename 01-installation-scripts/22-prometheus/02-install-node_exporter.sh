@@ -254,6 +254,8 @@ function download_and_config() {
     untar_tgz node_exporter-${node_exporter_version}.linux-amd64.tar.gz
     mv node_exporter-${node_exporter_version}.linux-amd64 ${node_exporter_home}
 
+    add_user_and_group ${sys_user}
+
     generate_unit_file_and_start
 }
 
