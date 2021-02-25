@@ -148,8 +148,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=prometheus
-Group=prometheus
+User=${sys_user}
+Group=${sys_user}
 ExecStart=${prometheus_home}/prometheus --config.file=${prometheus_home}/prometheus.yml --storage.tsdb.path=${prometheus_home}/data --web.console.libraries=${prometheus_home}/console_libraries --web.console.templates=${prometheus_home}/console --web.listen-address=:${prometheus_port} --web.external-url=http://${machine_ip}:${prometheus_port}/ 
 Restart=always
 
@@ -177,7 +177,7 @@ function download_and_config() {
     cd ${file_in_the_dir}
     untar_tgz prometheus-${prometheus_version}.linux-amd64.tar.gz
     mv prometheus-${prometheus_version}.linux-amd64 ${prometheus_home}
-    mkdir -p ${prometheus_home}/data
+    mkdir -p ${prometheus_home}/{data,rules}
 
     sed -i 's/localhost:9090/localhost:'${prometheus_port}'/' ${prometheus_home}/prometheus.yml
 
