@@ -1,16 +1,5 @@
 #!/bin/bash
 
-# 带格式的echo函数
-function echo_info() {
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m$@\033[0m"
-}
-function echo_warning() {
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m$@\033[0m"
-}
-function echo_error() {
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
-}
-
 # 包下载目录
 src_dir=$(pwd)/00src00
 tomcat_version=8.5.63
@@ -25,7 +14,16 @@ unit_file_name=tomcat.service
 Xms=512M
 Xmx=1024M
 
-
+# 带格式的echo函数
+function echo_info() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m$@\033[0m"
+}
+function echo_warning() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m$@\033[0m"
+}
+function echo_error() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
+}
 
 # 解压
 function untar_tgz(){
