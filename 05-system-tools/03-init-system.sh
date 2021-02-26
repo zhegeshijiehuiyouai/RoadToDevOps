@@ -1,4 +1,5 @@
 #!/bin/bash
+# 本脚本适用于CentOS7
 
 # 带格式的echo函数
 function echo_info() {
@@ -45,5 +46,11 @@ net.ipv4.ip_forward = 1
 fs.file-max = 6815744
 EOF
 sysctl -p &> /dev/null
+
+echo_info 关闭防火墙，如有需求请使用iptables规则，不要使用firewalld
+systemctl stop firewalld
+systemctl disable firewalld
+echo_info 关闭selinux
+sed -i 's/^SELINUX=.*/SELINUX=disabled/' /etc/selinux/config
 
 echo_warning 各系统参数已调整完毕，请执行 source /etc/profile 刷新环境变量；或者重新打开一个终端，在新终端里操作
