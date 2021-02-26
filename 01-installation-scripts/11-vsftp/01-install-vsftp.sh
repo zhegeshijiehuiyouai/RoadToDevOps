@@ -74,6 +74,8 @@ function sys_user_vsftp(){
     sed -i 's/^#chroot_list_enable.*/chroot_list_enable=YES/' /etc/vsftpd/vsftpd.conf
     sed -i 's/^anonymous_enable=YES/anonymous_enable=NO/' /etc/vsftpd/vsftpd.conf
     echo "allow_writeable_chroot=YES" >> /etc/vsftpd/vsftpd.conf
+    echo "#pasv_min_port=10240 #（Default: 0 (use any port)） pasv使用的最小端口" >> /etc/vsftpd/vsftpd.conf
+    echo "#pasv_max_port=20480 #（Default: 0 (use any port)） pasv使用的最大端口" >> /etc/vsftpd/vsftpd.conf
     
     grep ${sys_user} /etc/vsftpd/chroot_list
     if [ $? -ne 0 ];then
@@ -208,6 +210,8 @@ xferlog_std_format=YES
 ascii_upload_enable=YES
 #启用ASCII模式下载数据。默认值为NO
 ascii_download_enable=YES
+#pasv_min_port=10240 #（Default: 0 (use any port)） pasv使用的最小端口
+#pasv_max_port=20480 #（Default: 0 (use any port)） pasv使用的最大端口
 #使vsftpd处于独立启动监听端口模式
 listen=YES
 #启用虚拟用户
