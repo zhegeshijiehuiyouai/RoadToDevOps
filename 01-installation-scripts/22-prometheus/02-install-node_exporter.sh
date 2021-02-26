@@ -238,6 +238,7 @@ EOF
         echo_error node_exporter启动失败，请检查
         exit 1
     fi
+    systemctl enable ${unit_file_name} &> /dev/null
 
     generate_config_sample
     chown -R ${sys_user}:${sys_user} ${node_exporter_home}

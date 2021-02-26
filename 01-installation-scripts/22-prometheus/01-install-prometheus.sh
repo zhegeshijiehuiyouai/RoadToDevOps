@@ -165,6 +165,8 @@ EOF
         echo_error prometheus启动失败，请检查
         exit 1
     fi
+    systemctl enable ${unit_file_name} &> /dev/null
+
     echo_info prometheus已成功部署并启动，相关信息如下：
     echo -e "\033[37m                  启动命令：systemctl start ${unit_file_name}\033[0m"
     echo -e "\033[37m                  端口：${prometheus_port}\033[0m"

@@ -182,6 +182,7 @@ EOF
         echo_error grafana启动失败，请检查
         exit 1
     fi
+    systemctl enable ${unit_file_name} &> /dev/null
 
     # 由于grafana-cli中将插件目录写死了，所以做这条软链接。
     # 又由于启动grafana后才会生成插件目录，所以本命令写在启动之后
