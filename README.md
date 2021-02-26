@@ -39,7 +39,8 @@ rpm -Uvh ./*rpm
 │   ├── 19-rsyncd
 │   ├── 20-nfs
 │   ├── 21-tomcat
-│   └── 22-prometheus
+│   ├── 22-prometheus
+│   └── 23-grafana
 ├── 02-elasticsearch-tools
 │   ├── 01-clean-single-es-index-by-date.sh
 │   └── 02-clean-date-format-es-index-by-date.sh
