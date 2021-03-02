@@ -210,39 +210,26 @@ default-character-set=utf8
 socket=/var/lib/mysql/mysql.sock
 
 [mysqld]
-#
-# Remove leading # and set to the amount of RAM for the most important data
-# cache in MySQL. Start at 70% of total RAM for dedicated server, else 10%.
-# innodb_buffer_pool_size = 128M
-#
-# Remove leading # to turn on a very important data integrity option: logging
-# changes to the binary log between backups.
-# log_bin
-#
-# Remove leading # to set options mainly useful for reporting servers.
-# The server defaults are faster for transactions and fast SELECTs.
-# Adjust sizes as needed, experiment to find the optimal values.
-# join_buffer_size = 128M
-# sort_buffer_size = 2M
-# read_rnd_buffer_size = 2M
+#skip-grant-tables
+# 跳过dns解析，提升连接速度
+skip-name-resolve
 port=${PORT}
+socket=${DIR}/${mysql_dir_name}/data/mysql.sock
+basedir=${DIR}/${mysql_dir_name}
+datadir=${DIR}/${mysql_dir_name}/data
 max_connections=200
 character-set-server=utf8
 default-storage-engine=INNODB
 max_allowed_packet=16M
+# 不区分大小写
 lower_case_table_names = 1
+# 日志过期时间，默认30天
+binlog_expire_logs_seconds = 2592000
 
 datadir=/var/lib/mysql
 socket=/var/lib/mysql/mysql.sock
-
-# Disabling symbolic-links is recommended to prevent assorted security risks
-symbolic-links=0
-
 log-error=/var/log/mysqld.log
 pid-file=/var/run/mysqld/mysqld.pid
-# 跳过dns解析，提升连接速度
-skip-name-resolve
-expire_logs_days = 10
 EOF
 
     systemctl start mysqld  # 这里启动是为了生成临时密码
@@ -310,7 +297,10 @@ max_connections=200
 character-set-server=utf8
 default-storage-engine=INNODB
 max_allowed_packet=16M
+# 不区分大小写
 lower_case_table_names = 1
+# 日志过期时间，默认30天
+binlog_expire_logs_seconds = 2592000
 EOF
 
     # 设置systemctl控制
