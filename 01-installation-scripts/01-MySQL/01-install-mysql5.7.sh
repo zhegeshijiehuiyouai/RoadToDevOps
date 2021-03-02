@@ -21,6 +21,7 @@ PORT=3306
 my_root_passwd=123456
 # mysql版本
 mysql_version=5.7.33
+unit_file_name=mysqld.service
 
 #****************以上为通用变量*****************************
 #****************以下为二进制部署才需要的变量******************
@@ -136,10 +137,9 @@ function add_user_and_group(){
 
 function init_account(){
     login_pass=$1
-    systemd_service_name=$2
 
-    systemctl enable ${systemd_service_name}.service >/dev/null 2>&1
-    systemctl start ${systemd_service_name}.service
+    systemctl enable ${unit_file_name} >/dev/null 2>&1
+    systemctl start ${unit_file_name}
     # mysql启动失败的话退出
     if [ $? -ne 0 ];then
         echo_error mysql启动失败，请查看错误信息
@@ -150,20 +150,16 @@ function init_account(){
     source /etc/profile
 
     echo_info 设置密码
-    if [ ${systemd_service_name} == mysqld ];then
-        mysql -uroot -p"${login_pass}" --connect-expired-password -e "set global validate_password_policy=0;set global validate_password_mixed_case_count=0;set global validate_password_number_count=3;set global validate_password_special_char_count=0;set global validate_password_length=3;" &> /dev/null
-    fi
+    mysql -uroot -p"${login_pass}" --connect-expired-password -e "set global validate_password_policy=0;set global validate_password_mixed_case_count=0;set global validate_password_number_count=3;set global validate_password_special_char_count=0;set global validate_password_length=3;" &> /dev/null
     mysql -uroot -p"${login_pass}" --connect-expired-password -e "SET PASSWORD = PASSWORD('${my_root_passwd}');flush privileges;" &> /dev/null
+    
     echo_info 重启mysql
-    systemctl restart ${systemd_service_name}
+    systemctl restart ${unit_file_name}
     echo_info 设置所有主机均可访问mysql
-    if [ ${systemd_service_name} == mysqld ];then
-        mysql -uroot -p"${my_root_passwd}" -e "set global validate_password_policy=0;set global validate_password_mixed_case_count=0;set global validate_password_number_count=3;set global validate_password_special_char_count=0;set global validate_password_length=3;grant all on *.* to root@'%' identified by '${my_root_passwd}' WITH GRANT OPTION;" &> /dev/null
-    else
-        mysql -uroot -p"${my_root_passwd}" -e "grant all on *.* to root@'%' identified by '${my_root_passwd}' WITH GRANT OPTION;" &> /dev/null
-    fi
+    mysql -uroot -p"${my_root_passwd}" -e "set global validate_password_policy=0;set global validate_password_mixed_case_count=0;set global validate_password_number_count=3;set global validate_password_special_char_count=0;set global validate_password_length=3;grant all on *.* to root@'%' identified by '${my_root_passwd}' WITH GRANT OPTION;" &> /dev/null
+
     echo_info 重启mysql
-    systemctl restart ${systemd_service_name}
+    systemctl restart ${unit_file_name}
 
     echo_info mysql已启动成功！相关信息如下：
     echo -e "\033[37m                  端口：${PORT}\033[0m"
@@ -171,9 +167,9 @@ function init_account(){
     echo -e "\033[37m                  密码：${my_root_passwd}\033[0m"
 
     echo_info mysql控制命令：
-    echo -e "\033[37m                  启动：systemctl start ${systemd_service_name}\033[0m"
-    echo -e "\033[37m                  重启：systemctl restart ${systemd_service_name}\033[0m"
-    echo -e "\033[37m                  停止：systemctl stop ${systemd_service_name}\033[0m"
+    echo -e "\033[37m                  启动：systemctl start ${unit_file_name}\033[0m"
+    echo -e "\033[37m                  重启：systemctl restart ${unit_file_name}\033[0m"
+    echo -e "\033[37m                  停止：systemctl stop ${unit_file_name}\033[0m"
 }
 
 ########## rpm安装mysql
@@ -232,7 +228,7 @@ EOF
 
     systemctl start mysqld  # 这里启动是为了生成临时密码
     temp_pass=$(grep 'temporary password' /var/log/mysqld.log | awk '{print $NF}')
-    init_account ${temp_pass} mysqld
+    init_account ${temp_pass}
 }
 
 function check_dir() {
@@ -301,9 +297,9 @@ lower_case_table_names = 1
 EOF
 
     # 设置systemctl控制
-    echo_info 生成mysql.service文件用于systemd控制
+    echo_info 生成${unit_file_name}文件用于systemd控制
 
-cat > /lib/systemd/system/mysql.service << EOF
+cat > /lib/systemd/system/${unit_file_name} << EOF
 [Unit]
 Description=mysql
 After=network.target
@@ -333,7 +329,7 @@ EOF
     source /etc/profile
 
     # 进行账号、密码设置
-    init_account ${init_password} mysql
+    init_account ${init_password}
 
     echo_warning 由于bash特性限制，在本终端连接mysql需要先手动执行 source /etc/profile 加载环境变量，或者新开一个终端连接mysql
 }
