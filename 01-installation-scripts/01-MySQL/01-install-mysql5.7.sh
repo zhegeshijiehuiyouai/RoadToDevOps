@@ -179,7 +179,7 @@ function init_account(){
 ########## rpm安装mysql
 function install_by_rpm(){
     [ -f /var/log/mysqld.log ] && :>/var/log/mysqld.log
-    download_tar_gz ${src_dir} https://dev.mysql.com/get/Downloads/MySQL-5.7/mysql-${mysql_version}-1.el7.x86_64.rpm-bundle.tar
+    download_tar_gz ${src_dir} http://mirrors.163.com/mysql/Downloads/MySQL-5.7/mysql-${mysql_version}-1.el7.x86_64.rpm-bundle.tar
     cd ${file_in_the_dir}
     untar_tgz mysql-${mysql_version}-1.el7.x86_64.rpm-bundle.tar
     echo_info 使用rpm包安装mysql
@@ -223,8 +223,6 @@ default-storage-engine=INNODB
 max_allowed_packet=16M
 # 不区分大小写
 lower_case_table_names = 1
-# 日志过期时间，默认30天
-binlog_expire_logs_seconds = 2592000
 
 datadir=/var/lib/mysql
 socket=/var/lib/mysql/mysql.sock
@@ -245,7 +243,8 @@ function check_dir() {
 }
 
 function install_by_tgz(){
-    download_tar_gz ${src_dir} https://cdn.mysql.com/Downloads/MySQL-5.7/${mysql_tgz}
+    download_tar_gz ${src_dir} http://mirrors.163.com/mysql/Downloads/MySQL-5.7/${mysql_tgz}
+    #download_tar_gz ${src_dir} https://mirrors.cloud.tencent.com/mysql/downloads/MySQL-5.7/${mysql_tgz}
     cd ${file_in_the_dir}
     untar_tgz ${mysql_tgz}
 
@@ -299,8 +298,6 @@ default-storage-engine=INNODB
 max_allowed_packet=16M
 # 不区分大小写
 lower_case_table_names = 1
-# 日志过期时间，默认30天
-binlog_expire_logs_seconds = 2592000
 EOF
 
     # 设置systemctl控制
