@@ -4,7 +4,7 @@
 # 测试系统：CentOS7.6
 # mysql安装文件：二进制包
 #
-# mysql下载地址：https://cdn.mysql.com/Downloads/MySQL-5.7/mysql-5.7.32-linux-glibc2.12-x86_64.tar.gz
+# mysql下载地址：https://cdn.mysql.com/Downloads/MySQL-5.7/mysql-5.7.33-linux-glibc2.12-x86_64.tar.gz
 # 或者官网下载
 #
 # 将本脚本和二进制包放在同一目录下，脚本会在本目录下创建mysql作为mysql安装目录
@@ -20,7 +20,7 @@ PORT=3306
 # mysql部署好后，root的默认密码
 my_root_passwd=123456
 # mysql版本
-mysql_version=5.7.32
+mysql_version=5.7.33
 
 #****************以上为通用变量*****************************
 #****************以下为二进制部署才需要的变量******************
