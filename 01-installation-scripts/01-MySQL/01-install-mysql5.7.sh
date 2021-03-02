@@ -166,7 +166,7 @@ function init_account(){
     systemctl restart ${systemd_service_name}
 
     echo_info mysql已启动成功！相关信息如下：
-    echo -e "\033[37m                  端口号：${PORT}\033[0m"
+    echo -e "\033[37m                  端口：${PORT}\033[0m"
     echo -e "\033[37m                  账号：root\033[0m"
     echo -e "\033[37m                  密码：${my_root_passwd}\033[0m"
 
