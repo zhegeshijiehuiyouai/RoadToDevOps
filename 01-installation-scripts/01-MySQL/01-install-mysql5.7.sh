@@ -342,7 +342,7 @@ EOF
 }
 
 function is_run_mysql() {
-    ps -ef | grep mysql | grep -v grep &> /dev/null
+    ps -ef | grep "${DIR}/${mysql_dir_name}" | grep -v grep &> /dev/null
     if [ $? -eq 0 ];then
         echo_error 检测到mysql正在运行中，退出
         exit 7
@@ -355,8 +355,6 @@ function is_run_mysql() {
 }
 
 function install_main_func(){
-    is_run_mysql
-
     read -p "请输入数字选择安装类型（如需退出请输入q）：" software
     case $software in
         1)
@@ -378,6 +376,8 @@ function install_main_func(){
             ;;
     esac
 }
+
+is_run_mysql
 
 echo -e "\033[31m本脚本支持两种部署方式：\033[0m"
 echo -e "\033[36m[1]\033[32m rpm包部署mysql\033[0m"
