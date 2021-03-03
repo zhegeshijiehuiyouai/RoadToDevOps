@@ -194,6 +194,7 @@ EOF
     echo -e "\033[37m                  部署目录：${grafana_home}\033[0m"
     echo -e "\033[37m                  grafana访问地址：http://${machine_ip}:${grafana_port}/\033[0m"
     echo -e "\033[37m                  默认账号密码：admin / admin\033[0m"
+    echo -e "\033[37m                  模板获取网址：https://grafana.com/grafana/dashboards\033[0m"
     echo -e "\033[37m                  推荐模板id - 主机基础监控：9276/\033[0m"
 }
 
