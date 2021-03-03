@@ -17,7 +17,7 @@ redis_pass=OrcMu4tDie
 # 源码下载目录
 src_dir=$(pwd)/00src00
 # redis版本
-redis_version=6.0.8
+redis_version=6.2.1
 # 部署目录的父目录
 DIR=$(pwd)
 # 部署的目录名，完整的部署目录为${DIR}/${redis_dir_name}
