@@ -150,13 +150,12 @@ function init_account(){
     source /etc/profile
 
     echo_info 设置密码
-    mysql -uroot -p"${login_pass}" --connect-expired-password -e "set global validate_password_policy=0;set global validate_password_mixed_case_count=0;set global validate_password_number_count=3;set global validate_password_special_char_count=0;set global validate_password_length=3;" &> /dev/null
     mysql -uroot -p"${login_pass}" --connect-expired-password -e "SET PASSWORD = PASSWORD('${my_root_passwd}');flush privileges;" &> /dev/null
     
     echo_info 重启mysql
     systemctl restart ${unit_file_name}
     echo_info 设置所有主机均可访问mysql
-    mysql -uroot -p"${my_root_passwd}" -e "set global validate_password_policy=0;set global validate_password_mixed_case_count=0;set global validate_password_number_count=3;set global validate_password_special_char_count=0;set global validate_password_length=3;grant all on *.* to root@'%' identified by '${my_root_passwd}' WITH GRANT OPTION;" &> /dev/null
+    mysql -uroot -p"${my_root_passwd}" -e "grant all on *.* to root@'%' identified by '${my_root_passwd}' WITH GRANT OPTION;" &> /dev/null
 
     echo_info 重启mysql
     systemctl restart ${unit_file_name}
@@ -174,10 +173,13 @@ function init_account(){
 
 ########## rpm安装mysql
 function install_by_rpm(){
-    [ -f /var/log/mysqld.log ] && :>/var/log/mysqld.log
+    rm -f /var/log/mysqld.log
     download_tar_gz ${src_dir} http://mirrors.163.com/mysql/Downloads/MySQL-5.7/mysql-${mysql_version}-1.el7.x86_64.rpm-bundle.tar
     cd ${file_in_the_dir}
     untar_tgz mysql-${mysql_version}-1.el7.x86_64.rpm-bundle.tar
+
+    echo_info 安装依赖
+    yum install -y perl-Data-Dumper perl-JSON
     echo_info 使用rpm包安装mysql
     rpm -Uvh ./mysql-community-*rpm 
     #yum install -y ./mysql-community-*rpm 
