@@ -204,7 +204,7 @@ cat > /etc/my.cnf << EOF
 socket=/var/lib/mysql/mysql.sock
 
 [mysql]
-default-character-set=utf8
+default-character-set=utf8mb4
 socket=/var/lib/mysql/mysql.sock
 
 [mysqld]
@@ -216,7 +216,7 @@ socket=${DIR}/${mysql_dir_name}/data/mysql.sock
 basedir=${DIR}/${mysql_dir_name}
 datadir=${DIR}/${mysql_dir_name}/data
 max_connections=200
-character-set-server=utf8
+character-set-server=utf8mb4
 default-storage-engine=INNODB
 max_allowed_packet=16M
 # 不区分大小写
@@ -280,7 +280,7 @@ cat > /etc/my.cnf << EOF
 socket=${DIR}/${mysql_dir_name}/data/mysql.sock
 
 [mysql]
-default-character-set=utf8
+default-character-set=utf8mb4
 socket=${DIR}/${mysql_dir_name}/data/mysql.sock
 
 [mysqld]
@@ -291,7 +291,7 @@ socket=${DIR}/${mysql_dir_name}/data/mysql.sock
 basedir=${DIR}/${mysql_dir_name}
 datadir=${DIR}/${mysql_dir_name}/data
 max_connections=200
-character-set-server=utf8
+character-set-server=utf8mb4
 default-storage-engine=INNODB
 max_allowed_packet=16M
 # 不区分大小写
