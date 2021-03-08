@@ -53,4 +53,18 @@ systemctl disable firewalld
 echo_info 关闭selinux
 sed -i 's/^SELINUX=.*/SELINUX=disabled/' /etc/selinux/config
 
+echo_info 调整sshd配置
+grep -E "^UseDNS" /etc/ssh/sshd_config &> /dev/null
+if [ $? -eq 0 ];then
+    sed -i 's/UseDNS.*/UseDNS no/g' /etc/ssh/sshd_config
+else
+    grep -E "^#UseDNS" /etc/ssh/sshd_config &> /dev/null
+    if [ $? -eq 0 ];then
+        sed -i 's/#UseDNS.*/UseDNS no/g' /etc/ssh/sshd_config
+    else
+        echo "UseDNS no" >> /etc/ssh/sshd_config
+    fi
+fi
+systemctl restart sshd
+
 echo_warning 各系统参数已调整完毕，请执行 source /etc/profile 刷新环境变量；或者重新打开一个终端，在新终端里操作
