@@ -70,4 +70,7 @@ systemctl restart sshd
 echo_info 配置timezone
 echo "Asia/Shanghai" > /etc/timezone
 
+echo_info 调整命令提示符显示格式
+echo "PS1='\[\e]0;\u@\h: \w\a\]\[\033[01;31m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\\$ '" > /etc/profile.d/PS.sh
+
 echo_warning 各系统参数已调整完毕，请执行 source /etc/profile 刷新环境变量；或者重新打开一个终端，在新终端里操作
