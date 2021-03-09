@@ -295,13 +295,13 @@ http {
 
         #charset koi8-r;
 ################日志切割################
-        if ($time_iso8601 ~ "^(\d{4})-(\d{2})-(\d{2})")
+        if (\$time_iso8601 ~ "^(\d{4})-(\d{2})-(\d{2})")
         {
-            set $ng_year $1;
-            set $ng_month $2;
-            set $ng_day $3;
+            set \$ng_year \$1;
+            set \$ng_month \$2;
+            set \$ng_day \$3;
         }
-        access_log  logs/your_domain-$ng_year$ng_month$ng_day.access.log;
+        access_log  logs/your_domain-\$ng_year\$ng_month\$ng_day.access.log;
         error_log logs/your_domain.error.log;
 
         location / {
