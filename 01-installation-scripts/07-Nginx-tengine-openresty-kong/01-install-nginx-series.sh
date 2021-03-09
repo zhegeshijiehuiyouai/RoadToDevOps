@@ -195,6 +195,7 @@ function install_nginx(){
     echo_info 多核编译
     multi_core_compile
 
+    echo
     echo_info 优化nginx.conf
     worker_connections=$(expr 65535 / $cpucores)
 cat > ${installdir}/conf/nginx.conf << EOF
@@ -395,12 +396,12 @@ After=network.target remote-fs.target nss-lookup.target
 Type=forking
 PIDFile=${installdir}/logs/nginx.pid
 # Nginx will fail to start if /run/nginx.pid already exists but has the wrong
-# SELinux context. This might happen when running `nginx -t` from the cmdline.
+# SELinux context. This might happen when running "nginx -t" from the cmdline.
 # https://bugzilla.redhat.com/show_bug.cgi?id=1268621
 ExecStartPre=/usr/bin/rm -f ${installdir}/logs/nginx.pid
 ExecStartPre=${installdir}/sbin/nginx -t
 ExecStart=${installdir}/sbin/nginx
-ExecReload=/bin/kill -s HUP $MAINPID
+ExecReload=/bin/kill -s HUP \$MAINPID
 KillSignal=SIGQUIT
 TimeoutStopSec=5
 KillMode=process
@@ -412,8 +413,7 @@ WantedBy=multi-user.target
 EOF
 systemctl daemon-reload
 
-    echo_info Nginx已安装在 ${installdir} ，详细信息如下：
-    ${installdir}/sbin/nginx -V
+    echo_info Nginx已安装在 ${installdir}
     echo_info 启动命令：
     echo -e "\033[37m                  systemctl start nginx\033[0m"
 }
@@ -438,6 +438,7 @@ function install_tengine(){
     echo_info 多核编译
     multi_core_compile
 
+    echo
     echo_info 设置tengine配置文件语法高亮显示
     [ -d ~/.vim ] || mkdir -p ~/.vim
     \cp -rf contrib/vim/* ~/.vim/
@@ -452,12 +453,12 @@ After=network.target remote-fs.target nss-lookup.target
 Type=forking
 PIDFile=${installdir}/logs/nginx.pid
 # Nginx will fail to start if /run/nginx.pid already exists but has the wrong
-# SELinux context. This might happen when running `nginx -t` from the cmdline.
+# SELinux context. This might happen when running "nginx -t" from the cmdline.
 # https://bugzilla.redhat.com/show_bug.cgi?id=1268621
 ExecStartPre=/usr/bin/rm -f ${installdir}/logs/nginx.pid
 ExecStartPre=${installdir}/sbin/nginx -t
 ExecStart=${installdir}/sbin/nginx
-ExecReload=/bin/kill -s HUP $MAINPID
+ExecReload=/bin/kill -s HUP \$MAINPID
 KillSignal=SIGQUIT
 TimeoutStopSec=5
 KillMode=process
@@ -469,8 +470,8 @@ WantedBy=multi-user.target
 EOF
 systemctl daemon-reload
 
-    echo_info tengine已安装在 ${installdir} ，详细信息如下：
-    ${installdir}/sbin/nginx -V
+    echo
+    echo_info tengine已安装在 ${installdir}
     echo_info 启动命令：
     echo -e "\033[37m                  systemctl start tengine\033[0m"
 }
