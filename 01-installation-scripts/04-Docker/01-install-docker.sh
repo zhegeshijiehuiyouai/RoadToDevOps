@@ -56,6 +56,8 @@ echo_info docker已部署成功，版本信息如下：
 docker -v
 
 ######## 部署docker-compose
+echo_info 部署docker-compose中，请耐心等候
+
 curl_timeout=2
 # 设置dns超时时间，避免没网情况下等很久
 echo "options timeout:${curl_timeout} attempts:1 rotate" >> /etc/resolv.conf
@@ -71,8 +73,6 @@ sed -i '$d' /etc/resolv.conf
 # 2020.12.13测试发现，当前最新版本部署有bug，故手动指定docker-compose版本
 # 2021.03.08测试已ok，并新增请求头
 # docker_compose_version=1.28.5
-
-echo_info 部署docker-compose中，请耐心等候
 
 back_task=/tmp/.display_dot_to_show_aliviness
 # 显示变化小点，表示没有卡死
