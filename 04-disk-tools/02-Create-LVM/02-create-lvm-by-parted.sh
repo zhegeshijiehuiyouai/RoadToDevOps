@@ -44,14 +44,14 @@ done
 echo_info 即将使用这些磁盘创建lvm：$disk
 
 echo_info 创建pv
-pvcreate $disk
+pvcreate $disk &> /dev/null
 echo_info 创建vg
-vgcreate $vgname $disk
+vgcreate $vgname $disk &> /dev/null
 echo_info 创建lv
-lvcreate -l 100%VG -n $lvmname $vgname
+lvcreate -l 100%VG -n $lvmname $vgname &> /dev/null
 
 echo_info 创建xfs文件系统
-mkfs.xfs /dev/$vgname/$lvmname
+mkfs.xfs /dev/$vgname/$lvmname &> /dev/null
 if [ $? == 0 ]
 then 
 	mkdir -p $partition
