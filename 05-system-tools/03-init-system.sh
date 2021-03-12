@@ -1,6 +1,8 @@
 #!/bin/bash
 # 本脚本适用于CentOS7
 
+
+
 # 带格式的echo函数
 function echo_info() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m$@\033[0m"
@@ -11,6 +13,47 @@ function echo_warning() {
 function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
+
+function yum_install_basic_packages() {
+    echo_info 安装常用软件包
+    yum install -y vim wget net-tools telnet
+}
+
+echo_info 检测是否能连接到互联网
+ping -c 1 -w 1 114.114.114.114 &> /dev/null
+if [ $? -eq 0 ];then
+    echo_info 已连接到互联网，将执行有网络模式下的优化
+    online=0
+
+    echo_info 检测DNS服务器是否配置
+    grep -E "^nameserver" /etc/resolv.conf &> /dev/null
+    if [ $? -ne 0 ];then
+        echo_info 添加DNS服务器配置
+        echo "nameserver 114.114.114.114" >> /etc/resolv.conf
+    else
+        echo_info 系统已配置DNS服务器
+    fi
+
+    echo_info 配置阿里云yum仓库
+    rm -rf /etc/yum.repos.d/*
+    wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
+    wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
+    yum_install_basic_packages
+else
+    echo_warning 无法连接到互联网，将执行无网络模式下的优化
+    online=1
+    
+    echo_info 检测是否有离线yum仓库
+    timeout 7 yum makecache &> /dev/null
+    if [ $? -eq 0 ];then
+        echo_info 离线yum仓库可用
+        off_yum=0
+        yum_install_basic_packages
+    else
+        echo_warning 离线yum仓库不可用
+        off_yum=1
+    fi
+fi
 
 echo_info 配置历史命令格式
 cat > /etc/profile.d/init.sh << EOF
@@ -72,5 +115,16 @@ echo "Asia/Shanghai" > /etc/timezone
 
 echo_info 调整命令提示符显示格式
 echo "PS1='\[\e]0;\u@\h: \w\a\]\[\033[01;31m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\\$ '" > /etc/profile.d/PS.sh
+
+echo 
+
+if [ -L /usr/bin/vi ];then
+        echo_info 配置visudo语法高亮
+        echo_info 已设置vi软链接 $(ls -lh /usr/bin/vi | awk '{for (i=9;i<=NF;i++)printf("%s ", $i);print ""}')
+elif [ -f /usr/bin/vim ];then
+    echo_info 配置visudo语法高亮
+    mv -f /usr/bin/vi /usr/bin/vi_bak
+    ln -s /usr/bin/vim /usr/bin/vi
+fi
 
 echo_warning 各系统参数已调整完毕，请执行 source /etc/profile 刷新环境变量；或者重新打开一个终端，在新终端里操作
