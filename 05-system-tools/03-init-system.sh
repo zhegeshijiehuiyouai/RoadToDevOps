@@ -116,8 +116,6 @@ echo "Asia/Shanghai" > /etc/timezone
 echo_info 调整命令提示符显示格式
 echo "PS1='\[\e]0;\u@\h: \w\a\]\[\033[01;31m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\\$ '" > /etc/profile.d/PS.sh
 
-echo 
-
 if [ -L /usr/bin/vi ];then
         echo_info 配置visudo语法高亮
         echo_info 已设置vi软链接 $(ls -lh /usr/bin/vi | awk '{for (i=9;i<=NF;i++)printf("%s ", $i);print ""}')
