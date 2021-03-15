@@ -125,17 +125,17 @@ EOF
 }
 
 function echo_summary() {
-    echo_info nfs 已配置并启动完毕，相关使用命令如下：
-    echo 客户端挂载 nfs 命令：
+    echo_info nfs已配置并启动完毕，相关使用命令如下：
+    echo 客户端挂载nfs命令：
     echo -e "\033[45mmount -t nfs -o soft,intr,timeo=5,retry=5 ${machine_ip}:${share_dirs[0]} MOUNT_POINT\033[0m"
     # soft：(默认值)当服务器端失去响应后，访问其上文件的应用程序将收到一个错误信号而不是被挂起。
     # timeo：与服务器断开后，尝试连接服务器的间隔时间，默认600（60秒）
     # intr：允许通知中断一个NFS调用。当服务器没有应答需要放弃的时候有用处
     # retry：失败后重试次数
 
-    echo 服务端取消 nfs 共享目录命令：
-    echo -e "\033[45mexportfs -u ${machine_ip}:${share_dirs[0]}\033[0m"
-    echo 停止 nfs 命令：
+    echo 服务端取消nfs共享目录命令：
+    echo -e "\033[45mexportfs -u ${net_ip}/24:${share_dirs[0]}\033[0m"
+    echo 停止nfs命令：
     echo -e "\033[45msystemctl stop nfs\033[0m"
 }
 
