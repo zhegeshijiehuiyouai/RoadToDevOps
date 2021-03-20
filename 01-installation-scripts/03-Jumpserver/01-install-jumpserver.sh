@@ -14,10 +14,10 @@ function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
 
-jumpserver_data_dir=/data/jumpserver/data
-jumpserver_mysql_dir=/data/jumpserver/mysql
-[ -d $jumpserver_data_dir ] || mkdir -p $jumpserver_data_dir
-[ -d $jumpserver_mysql_dir ] || mkdir -p $jumpserver_mysql_dir
+# jumpserver_data_dir=/data/jumpserver/data
+# jumpserver_mysql_dir=/data/jumpserver/mysql
+# [ -d $jumpserver_data_dir ] || mkdir -p $jumpserver_data_dir
+# [ -d $jumpserver_mysql_dir ] || mkdir -p $jumpserver_mysql_dir
 
 source ~/.bashrc
 echo_info 准备生成key和token
@@ -40,9 +40,9 @@ fi
 
 # docker启动命令
 echo_info 通过docker启动容器，容器名为jms_all
+    #    -v ${jumpserver_data_dir}:/opt/jumpserver/data \
+    #    -v ${jumpserver_mysql_dir}:/var/lib/mysql \
 docker run --name jms_all -d \
-       -v ${jumpserver_data_dir}:/opt/jumpserver/data \
-       -v ${jumpserver_mysql_dir}:/var/lib/mysql \
        -p ${web_port}:80 \
        -p ${ssh_port}:2222 \
        -e SECRET_KEY=$SECRET_KEY \
@@ -56,5 +56,5 @@ fi
 
 echo_info jumpserver已启动成功，以下是相关信息：
 echo -e "\033[37m                  端口：${web_port}\033[0m"
-echo -e "\033[37m                  存放key和token的文件：~/.bashrc ，不要修改文件中的 SECRET_KEY 和 BOOTSTRAP_TOKEN ，这样重新运行该脚本，新生成的jumpserver容器就可以获取之前的配置\033[0m"
-echo -e "\033[37m                  jumpserver数据目录：$(dirname ${jumpserver_data_dir})/ ，不要删除该目录，这样重新运行该脚本，新生成的jumpserver容器就可以获取之前的配置和数据\033[0m"
+# echo -e "\033[37m                  存放key和token的文件：~/.bashrc ，不要修改文件中的 SECRET_KEY 和 BOOTSTRAP_TOKEN ，这样重新运行该脚本，新生成的jumpserver容器就可以获取之前的配置\033[0m"
+# echo -e "\033[37m                  jumpserver数据目录：$(dirname ${jumpserver_data_dir})/ ，不要删除该目录，这样重新运行该脚本，新生成的jumpserver容器就可以获取之前的配置和数据\033[0m"
