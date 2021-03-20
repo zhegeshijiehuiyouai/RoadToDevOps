@@ -1,5 +1,6 @@
 #!/bin/bash
 #
+# 8u202为最后一个免费版
 # 说明：如果下载速度慢，可先将rpm包下载下来，移动至和该脚本同一目录，然后再执行该脚本
 #
 
@@ -80,16 +81,16 @@ function download_tar_gz(){
     fi
 }
 
-download_tar_gz $src_dir https://github.com/frekele/oracle-java/releases/download/8u212-b10/jdk-8u212-linux-x64.rpm
+download_tar_gz $src_dir https://github.com/frekele/oracle-java/releases/download/8u202-b08/jdk-8u202-linux-x64.rpm
 
 cd ${file_in_the_dir}
-rpm -Uvh jdk-8u212-linux-x64.rpm
+rpm -Uvh jdk-8u202-linux-x64.rpm
 
 echo_info 配置环境变量
 cat > /etc/profile.d/java.sh << EOF
 #set java environment
-export JAVA_HOME=/usr/java/jdk1.8.0_212-amd64
-export JAVA_BIN=/usr/java/jdk1.8.0_212-amd64/bin
+export JAVA_HOME=/usr/java/jdk1.8.0_202-amd64
+export JAVA_BIN=/usr/java/jdk1.8.0_202-amd64/bin
 export CLASSPATH=.:/lib/dt.jar:/lib/tools.jar
 EOF
 source /etc/profile
