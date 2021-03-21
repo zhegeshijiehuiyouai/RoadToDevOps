@@ -15,6 +15,8 @@ function echo_error() {
 # 所有需要下载的文件都下载到当前目录下的${src_dir}目录中
 src_dir=00src00
 
+mydir=$(pwd)
+
 ##################从官网获取最新版本号##################
 echo_info 从官网获取最新版本中
 
@@ -22,7 +24,7 @@ echo_info 从官网获取最新版本中
 version_nginx_hint="（官网最新版）"
 version_tengine_hint="（官网最新版）"
 
-nginx_default_version=1.19.7
+nginx_default_version=1.19.8
 # nginx的版本(从官网获取最新版)
 curl_timeout=2
 # 设置dns超时时间，避免没网情况下等很久
@@ -179,7 +181,7 @@ function install_nginx(){
     # 用tag标识部署什么，后续脚本中调用
     tag=nginx
     # 部署目录
-    installdir=/data/${tag}
+    installdir=${mydir}/${tag}
 
     download ${tag} ${tag}-${nginx_version}.tar.gz
     cd ${file_in_the_dir}
@@ -289,6 +291,19 @@ http {
     ssi_silent_errors off;
     ssi_types text/shtml;
 
+#############该server作用为防恶意解析#####
+    server { 
+        listen 80 default;
+        # 如果https也需要防恶意解析，则将本server中的注释取消
+        # listen 443 default_server;
+        server_name _;
+
+        # ssl on;
+        # ssl_certificate #随便设置一个ssl证书;
+        # ssl_certificate_key #随便设置一个ssl证书的key;
+
+        return 403;
+    } 
 
     server {
         listen       80;
@@ -378,9 +393,13 @@ http {
     #        index  index.html index.htm;
     #    }
     #}
-
+    include conf.d/*.conf;
 }
 EOF
+
+    echo_info 创建自配置目录
+    mkdir -p ${installdir}/conf/conf.d
+    chown -R ${tag}:${tag} ${installdir}
 
     echo_info 设置nginx配置文件语法高亮显示
     [ -d ~/.vim ] || mkdir -p ~/.vim
@@ -423,7 +442,7 @@ function install_tengine(){
     # 用tag标识部署什么，后续脚本中调用
     tag=tengine
     # 部署目录
-    installdir=/data/${tag}
+    installdir=${mydir}/${tag}
     download ${tag} ${tag}-${tengine_version}.tar.gz
     cd ${file_in_the_dir}
     untar_tgz ${tag}-${tengine_version}.tar.gz
