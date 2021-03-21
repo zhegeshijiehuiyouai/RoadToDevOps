@@ -294,7 +294,7 @@ http {
         listen       80;
         server_name  your_domain;
 
-        #charset koi8-r;
+        charset utf-8;
 ################日志切割################
         if (\$time_iso8601 ~ "^(\d{4})-(\d{2})-(\d{2})")
         {
