@@ -35,7 +35,7 @@ if [ $? -eq 0 ];then
     fi
 
     echo_info 配置阿里云yum仓库
-    rm -rf /etc/yum.repos.d/*
+    # rm -rf /etc/yum.repos.d/*
     wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
     wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
     yum_install_basic_packages
@@ -91,10 +91,11 @@ EOF
 sysctl -p &> /dev/null
 
 echo_info 关闭防火墙，如有需求请使用iptables规则，不要使用firewalld
-systemctl stop firewalld
-systemctl disable firewalld
+systemctl stop firewalld &> /dev/null
+systemctl disable firewalld &> /dev/null
 echo_info 关闭selinux
 sed -i 's/^SELINUX=.*/SELINUX=disabled/' /etc/selinux/config
+setenforce 0
 
 echo_info 调整sshd配置
 grep -E "^UseDNS" /etc/ssh/sshd_config &> /dev/null
