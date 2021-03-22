@@ -16,7 +16,7 @@ function echo_error() {
 
 function yum_install_basic_packages() {
     echo_info 安装常用软件包
-    yum install -y vim wget net-tools telnet
+    yum install -y vim net-tools telnet # wget需要提前安装，故此处注释掉
 }
 
 echo_info 检测是否能连接到互联网
@@ -35,7 +35,8 @@ if [ $? -eq 0 ];then
     fi
 
     echo_info 配置阿里云yum仓库
-    # rm -rf /etc/yum.repos.d/*
+    yum install -y wget
+    rm -rf /etc/yum.repos.d/*
     wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
     wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
     yum_install_basic_packages
