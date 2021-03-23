@@ -10,9 +10,9 @@ sys_pass=9090960
 sys_user_home_dir=/data/vsftp-data
 
 # 默认虚拟用户名
-vir_user=my
+vir_user=myvuser
 # 默认虚拟用户密码
-vir_pass=9090960
+vir_pass=fuza9090960
 # 虚拟用户配置的目录（在/etc/vsfptd/下面）
 vir_conf_dir=vsftpd_user_conf
 # 密码文件名（/etc/vsftpd下面）
@@ -90,6 +90,8 @@ EOF
     echo -e "\033[37m                  与vsftp关联的系统用户：${sys_user}\033[0m"
     echo -e "\033[37m                  系统用户密码：${sys_pass}\033[0m"
     echo -e "\033[37m                  系统用户家目录：${sys_user_home_dir}\033[0m"
+
+    systemctl enable vsftpd
 
     echo_info 创建新增系统登录用户的脚本：/etc/vsftpd/${help_doc}
 cat >/etc/vsftpd/${help_doc} <<EOT
@@ -277,6 +279,8 @@ EOF
     echo -e "\033[37m                  默认虚拟用户名：${vir_user}\033[0m"
     echo -e "\033[37m                  默认虚拟用户密码：${vir_pass}\033[0m"
     echo -e "\033[37m                  默认虚拟用户存储目录：${sys_user_home_dir}/${sys_user}/${vir_user}/\033[0m"
+
+    systemctl enable vsftpd
 
     echo_info 创建新增虚拟用户登录的脚本：/etc/vsftpd/${help_doc}
 cat >/etc/vsftpd/${help_doc} <<EOT
