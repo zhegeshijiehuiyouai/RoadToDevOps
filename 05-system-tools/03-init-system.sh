@@ -56,6 +56,16 @@ else
     fi
 fi
 
+echo_info 配置hosts文件，解封github
+cat >> /etc/hosts <<EOF
+
+# generate by https://github.com/zhegeshijiehuiyouai/RoadToDevOps
+140.82.113.3    github.com 
+199.232.69.194  github.global.ssl.fastly.net
+185.199.108.153 assets-cdn.github.com
+185.199.108.133 user-images.githubusercontent.com
+EOF
+
 echo_info 配置历史命令格式
 cat > /etc/profile.d/init.sh << EOF
 # 历史命令格式
