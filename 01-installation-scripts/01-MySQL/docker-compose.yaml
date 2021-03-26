@@ -1,0 +1,18 @@
+version: '3'
+services:
+  mysql:
+    container_name: mysql
+    image: mysql:5.7.33
+    restart: always
+    command:
+      --lower_case_table_names=1
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_general_ci
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: yourpassword
+    ports:
+    - "3306:3306"
+    volumes:
+    - /data/mysql/data:/var/lib/mysql

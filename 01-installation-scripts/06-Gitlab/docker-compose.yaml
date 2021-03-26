@@ -1,0 +1,39 @@
+version: "3"
+services:
+  gitlab:
+    image: 'gitlab/gitlab-ce:13.9.4-ce.0'
+    restart: always
+    hostname: 'gitlab'
+    container_name: 'gitlab'
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url "http://yourdomain"
+        gitlab_rails['gitlab_shell_ssh_port'] = 22
+        gitlab_rails['time_zone'] = 'Asia/Shanghai'
+        # email setting
+        gitlab_rails['smtp_enable'] = true
+        gitlab_rails['smtp_address'] = "smtp.163.com"
+        gitlab_rails['smtp_port'] = 25
+        gitlab_rails['smtp_user_name'] = "xxx@163.com"
+        gitlab_rails['smtp_password'] = "xxx"
+        gitlab_rails['smtp_domain'] = "163.com"
+        gitlab_rails['smtp_authentication'] = "login"
+        gitlab_rails['smtp_enable_starttls_auto'] = true
+        gitlab_rails['gitlab_email_from'] = "xxx@163.com"
+        gitlab_rails['smtp_tls'] = false
+        gitlab_rails['smtp_openssl_verify_mode'] = 'peer'
+        user["git_user_email"] = "xxx@163.com"
+    ports:
+      - '9980:80'
+      - '9443:443'
+      - '9922:22'
+    volumes:
+      - '/data/gitlab/config:/etc/gitlab'
+      - '/data/gitlab/logs:/var/log/gitlab'
+      - '/data/gitlab/data:/var/opt/gitlab'
+    networks:
+      - gitlab_net
+
+networks:
+  gitlab_net:
+    name: gitlab_net
