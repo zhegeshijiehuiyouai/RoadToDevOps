@@ -41,7 +41,8 @@ rpm -Uvh ./*rpm
 │   ├── 21-tomcat
 │   ├── 22-prometheus
 │   ├── 23-grafana
-│   └── 24-PostgreSQL
+│   ├── 24-PostgreSQL
+│   └── 25-RocketMQ
 ├── 02-elasticsearch-tools
 │   ├── 01-clean-single-es-index-by-date.sh
 │   └── 02-clean-date-format-es-index-by-date.sh
