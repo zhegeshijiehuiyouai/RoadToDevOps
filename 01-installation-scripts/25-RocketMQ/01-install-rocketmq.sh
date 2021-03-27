@@ -165,7 +165,7 @@ After=network.target
 Type=simple
 
 #ExecStart和ExecStop分别在systemctl start和systemctl stop时候调动
-ExecStart=${rocketmq_home}/bin/mqnamesrv
+ExecStart=${rocketmq_home}/bin/mqnamesrv -c ${rocketmq_home}/conf/namesrv.properties
 ExecStop=${rocketmq_home}/bin/mqshutdown namesrv
 
 [Install]
@@ -214,12 +214,20 @@ function binary_install() {
     mkdir -p {logs,store/{commitlog,consumequeue}}
     sed -i 's#${user.home}#'${rocketmq_home}'/logs#g' ${rocketmq_home}/conf/*.xml
 
+    echo_info 修改broker初始化堆栈大小
+    sed -i 's#JAVA_OPT="${JAVA_OPT} -server -Xms.*#JAVA_OPT="${JAVA_OPT} -server -Xms'${broker_java_xms}' -Xmx'${broker_java_xmx}' -Xmn'${broker_java_xmn}'"#g' ${rocketmq_home}/bin/runbroker.sh
+
     get_machine_ip
     grep "${nameserver_dns_name}" /etc/hosts &> /dev/null
     if [ $? -ne 0 ];then
         echo_info 配置hosts文件
         echo "${machine_ip}    ${nameserver_dns_name}" >> /etc/hosts
     fi
+
+    echo_info 生成nameserver配置文件
+    cat > ${rocketmq_home}/conf/namesrv.properties << EOF
+listenPort=${nameserver_port}
+EOF
 
     echo_info 优化broker配置文件
     cat > ${rocketmq_home}/conf/2m-2s-async/broker-a.properties << EOF
