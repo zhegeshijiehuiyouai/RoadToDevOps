@@ -1,0 +1,13 @@
+# 初始密码：cat /data/nexus/data/admin.password
+version: '3.1'
+services:
+  nexus:
+    image: sonatype/nexus3:3.30.0
+    container_name: nexus
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    ports:
+      - 59081:8081
+    volumes:
+      - /data/nexus/data:/nexus-data  # 宿主机上需要对目录授权 chown -R 200 /data/nexus/data

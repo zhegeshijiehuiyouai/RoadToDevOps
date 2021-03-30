@@ -335,6 +335,14 @@ http {
             index  index.html index.htm;
         }
 
+        # 反向代理简单配置
+        # location /proxy_url/ {
+        #     proxy_pass http://ip:port/proxy_url/;
+        #     #这个头有时很关键
+        #     proxy_set_header Host $http_host;
+        # }
+
+
         #error_page  404              /404.html;
 
         # redirect server error pages to the static page /50x.html
