@@ -331,9 +331,10 @@ http {
         error_log logs/your_domain.error.log;
         
 #-------------------- IP白名单 -----------------
-        if ($remote_addr !~ ^(182.150.30.43|127.0.0.1)) {
-            return 403;
-        }
+#        allow 123.123.123.123;
+#        allow 124.124.124.124;
+#
+#        deny all;
 #------------------------------------------------
 
         location / {
@@ -341,12 +342,12 @@ http {
             index  index.html index.htm;
         }
 
-        # 反向代理简单配置
-        # location /proxy_url/ {
-        #     proxy_pass http://ip:port/proxy_url/;
-        #     #这个头有时很关键
-        #     proxy_set_header Host $http_host;
-        # }
+#########反向代理简单配置
+#        location /proxy_url/ {
+#            proxy_pass http://ip:port/proxy_url/;
+#            #这个头有时很关键
+#            proxy_set_header Host $http_host;
+#        }
 
 
         #error_page  404              /404.html;
