@@ -329,6 +329,12 @@ http {
         }
         access_log  logs/your_domain-\$ng_year\$ng_month\$ng_day.access.log;
         error_log logs/your_domain.error.log;
+        
+#-------------------- IP白名单 -----------------
+        if ($remote_addr !~ ^(182.150.30.43|127.0.0.1)) {
+            return 403;
+        }
+#------------------------------------------------
 
         location / {
             root   html;
