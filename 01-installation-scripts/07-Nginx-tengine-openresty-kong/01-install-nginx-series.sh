@@ -303,7 +303,17 @@ http {
         # ssl_certificate_key #随便设置一个ssl证书的key;
 
         return 403;
-    } 
+    }
+
+#############http转https#########
+#    server {
+#        listen  80;
+#        server_name xxx;
+#        location / {
+#            # 不要将request_uri换为uri，这样将存在漏洞。可通过传入%0d%0a传入换行符，控制响应头及响应体。
+#            return 302 https://$host$request_uri;
+#        }
+#    }
 
     server {
         listen       80;
