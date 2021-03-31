@@ -43,7 +43,8 @@ rpm -Uvh ./*rpm
 │   ├── 23-grafana
 │   ├── 24-PostgreSQL
 │   ├── 25-RocketMQ
-│   └── 26-Nexus
+│   ├── 26-Nexus
+│   └── 27-yapi
 ├── 02-elasticsearch-tools
 │   ├── 01-clean-single-es-index-by-date.sh
 │   └── 02-clean-date-format-es-index-by-date.sh

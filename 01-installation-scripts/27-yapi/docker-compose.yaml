@@ -1,0 +1,33 @@
+# 账号：admin@docker.yapi
+# 密码：adm1n
+version: '3'
+
+services:
+  yapi-web:
+    image: jayfong/yapi:1.9.2
+    container_name: yapi-web
+    ports:
+      - 40001:3000
+    environment:
+      - YAPI_ADMIN_ACCOUNT=admin@docker.yapi
+      - YAPI_ADMIN_PASSWORD=adm1n
+      - YAPI_CLOSE_REGISTER=true
+      - YAPI_DB_SERVERNAME=yapi-mongo
+      - YAPI_DB_PORT=27017
+      - YAPI_DB_DATABASE=yapi
+      - YAPI_MAIL_ENABLE=false
+      - YAPI_LDAP_LOGIN_ENABLE=false
+      - YAPI_PLUGINS=[{"name":"interface-oauth2-token","name":"add-user"}]
+    depends_on:
+      - yapi-mongo
+    links:
+      - yapi-mongo
+    restart: unless-stopped
+  yapi-mongo:
+    image: mongo:4.4.4
+    container_name: yapi-mongo
+    volumes:
+      - /data/yapi/data/db:/data/db
+    expose:
+      - 27017
+    restart: unless-stopped
