@@ -1,5 +1,7 @@
 #!/bin/bash
 
+jk_home=$(pwd)/jenkins
+
 # 带格式的echo函数
 function echo_info() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m$@\033[0m"
@@ -14,8 +16,8 @@ function echo_error() {
 
 echo_info 设置timezone
 echo "Asia/Shanghai" > /etc/timezone
-script_dir=/data/jjenkins/scripts
-jenkins_out_home=/data/jenkins/data
+script_dir=${jk_home}/scripts
+jenkins_out_home=${jk_home}/data
 [ -d $script_dir ] || mkdir -p $script_dir
 [ -d $jenkins_out_home ] || mkdir -p $jenkins_out_home
 
