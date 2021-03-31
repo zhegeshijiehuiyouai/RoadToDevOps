@@ -14,8 +14,8 @@ function echo_error() {
 
 echo_info 设置timezone
 echo "Asia/Shanghai" > /etc/timezone
-script_dir=/data/script
-jenkins_out_home=/data/jenkins
+script_dir=/data/jjenkins/scripts
+jenkins_out_home=/data/jenkins/data
 [ -d $script_dir ] || mkdir -p $script_dir
 [ -d $jenkins_out_home ] || mkdir -p $jenkins_out_home
 
