@@ -217,7 +217,7 @@ worker_rlimit_nofile 65535;
 #error_log  logs/error.log  notice;
 #error_log  logs/error.log  info;
 
-#pid        logs/nginx.pid;
+pid         ${installdir}/logs/nginx.pid;
 
 
 events {
@@ -438,6 +438,10 @@ EOF
     [ -d ~/.vim ] || mkdir -p ~/.vim
     \cp -rf contrib/vim/* ~/.vim/
 
+    # 清理包
+    cd ${installdir}
+    rm -rf ${file_in_the_dir}/${tag}-${nginx_version}
+
     echo_info 生成nginx.service文件用于systemd控制
 cat > /usr/lib/systemd/system/nginx.service <<EOF
 [Unit]
@@ -450,13 +454,13 @@ PIDFile=${installdir}/logs/nginx.pid
 # Nginx will fail to start if /run/nginx.pid already exists but has the wrong
 # SELinux context. This might happen when running "nginx -t" from the cmdline.
 # https://bugzilla.redhat.com/show_bug.cgi?id=1268621
-ExecStartPre=/usr/bin/rm -f ${installdir}/logs/nginx.pid
+# ExecStartPre=/usr/bin/rm -f ${installdir}/logs/nginx.pid
 ExecStartPre=${installdir}/sbin/nginx -t
 ExecStart=${installdir}/sbin/nginx
 ExecReload=/bin/kill -s HUP \$MAINPID
 KillSignal=SIGQUIT
 TimeoutStopSec=5
-KillMode=process
+KillMode=mixed
 PrivateTmp=true
 Restart=always
 
@@ -490,10 +494,18 @@ function install_tengine(){
     echo_info 多核编译
     multi_core_compile
 
+    # 清理包
+    cd ${installdir}
+    rm -rf ${file_in_the_dir}/${tag}-${tengine_version}
+
     echo
     echo_info 设置tengine配置文件语法高亮显示
     [ -d ~/.vim ] || mkdir -p ~/.vim
     \cp -rf contrib/vim/* ~/.vim/
+
+    # 清理包
+    cd ${installdir}
+    rm -rf ${file_in_the_dir}/${tag}-${nginx_version}
 
     echo_info 生成tengine.service文件用于systemd控制
 cat > /usr/lib/systemd/system/tengine.service <<EOF
