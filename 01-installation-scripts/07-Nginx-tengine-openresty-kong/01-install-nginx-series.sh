@@ -14,8 +14,9 @@ function echo_error() {
 
 # 所有需要下载的文件都下载到当前目录下的${src_dir}目录中
 src_dir=00src00
-
 mydir=$(pwd)
+# 修改过后的server_token
+server_token_name=O_O
 
 ##################从官网获取最新版本号##################
 echo_info 从官网获取最新版本中
@@ -192,6 +193,9 @@ function install_nginx(){
 
     add_user_and_group ${tag}
     cd ${tag}-${nginx_version}
+    # 修改server_token
+    sed -i 's@#define NGINX_VER          "nginx/" NGINX_VERSION@#define NGINX_VER          "'${server_token_name}'"@' src/core/nginx.h
+
     echo_info 配置编译参数
     ./configure --prefix=${installdir} --user=${tag} --group=${tag} --with-pcre --with-http_ssl_module --with-http_v2_module --with-stream --with-http_stub_status_module
     echo_info 多核编译
@@ -230,7 +234,11 @@ http {
                       '"\$http_user_agent" "\$http_x_forwarded_for"';
 
     access_log  logs/access.log  main;
-    server_tokens off;
+
+    # 因为我们修改了server_token，所以这行要注释掉，如果指定了off，那么即使修改了，还是会显示nginx，这和nginx取值的逻辑有关
+    # 详见 https://blog.csdn.net/Leopard_89/article/details/50778477
+    # server_tokens off;
+    
 #######################gzip压缩功能设置###############################
 #########禁止nginx页面返回版本信息##############
     gzip on; #开启Gzip
