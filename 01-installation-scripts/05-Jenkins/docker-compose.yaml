@@ -1,0 +1,20 @@
+version: '3.1'
+services:
+  jenkins:
+    image: jenkinszh/jenkins-zh:2.267
+    container_name: jenkins
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    ports:
+      - 59080:8080
+    volumes:
+      - ./scripts:/data/script
+      - ./data:/var/jenkins_home  # 宿主机上需要对目录授权  chown -R 1000 ./data
+    networks:
+      - gitlab_net
+
+# 要和gitlab配置CICD，所以用gitlab的网络
+networks:
+  gitlab_net:
+    name: gitlab_net

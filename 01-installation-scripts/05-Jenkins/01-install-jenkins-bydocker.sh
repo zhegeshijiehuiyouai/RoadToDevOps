@@ -22,14 +22,14 @@ jenkins_out_home=${jk_home}/data
 [ -d $jenkins_out_home ] || mkdir -p $jenkins_out_home
 
 echo_info 通过docker启动jenkins中文社区版
-# 这个是中文社区的镜像，官方镜是 jenkins/jenkins:lts
+# 这个是中文社区的镜像，官方镜是 jenkins/jenkins
 docker run -u root --name=jenkins --restart=always -d --network=host \
        -v ${jenkins_out_home}:/var/jenkins_home \
        -v ${script_dir}:/data/script \
        -v /var/run/docker.sock:/var/run/docker.sock \
        -v /etc/localtime:/etc/localtime \
        -v /etc/timezone:/etc/timezone \
-       jenkinszh/jenkins-zh:lts
+       jenkinszh/jenkins-zh:2.267
 
 if [ $? -ne 0 ];then
     exit 1

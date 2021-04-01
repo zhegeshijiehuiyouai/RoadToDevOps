@@ -1,3 +1,4 @@
+# 备份命令：docker exec gitlab gitlab-rake gitlab:backup:create
 version: "3"
 services:
   gitlab:
@@ -28,9 +29,9 @@ services:
       - '9443:443'
       - '9922:22'
     volumes:
-      - '/data/gitlab/config:/etc/gitlab'
-      - '/data/gitlab/logs:/var/log/gitlab'
-      - '/data/gitlab/data:/var/opt/gitlab'
+      - './config:/etc/gitlab'
+      - './logs:/var/log/gitlab'
+      - './data:/var/opt/gitlab'
     networks:
       - gitlab_net
 
