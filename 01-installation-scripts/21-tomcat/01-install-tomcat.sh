@@ -149,8 +149,8 @@ Environment='CATALINA_OPTS=-Xms${Xms} -Xmx${Xmx} -server -XX:+UseParallelGC -Dja
 ExecStart=${tomcat_home}/bin/startup.sh
 ExecStop=${tomcat_home}/bin/shutdown.sh
 
-User=tomcat
-Group=tomcat
+User=${sys_user}
+Group=${sys_user}
 RestartSec=10
 Restart=always
 
