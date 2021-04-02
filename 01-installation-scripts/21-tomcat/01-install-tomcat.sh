@@ -2,7 +2,7 @@
 
 # 包下载目录
 src_dir=$(pwd)/00src00
-tomcat_version=8.5.63
+tomcat_version=8.5.64
 # tomcat部署的目录，如果要部署多个tomcat在同一台服务器，可修改此变量
 tomcat_home=$(pwd)/tomcat-${tomcat_version}
 tomcat_shutdown_port=8005
