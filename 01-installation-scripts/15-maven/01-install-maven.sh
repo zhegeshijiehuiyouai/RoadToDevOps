@@ -111,7 +111,7 @@ mkdir -p ${back_dir}/maven/repository
 
 echo_info 配置本地仓库
 sed -i '/  <!-- localRepository/i\  <localRepository>'${back_dir}'/maven/repository</localRepository>' ${back_dir}/maven/conf/settings.xml
-sed -i '/  <!-- localRepository/i\  <updatePolicy>always</updatePolicy>' ${back_dir}/maven/conf/settings.xml
+# sed -i '/  <!-- localRepository/i\  <updatePolicy>always</updatePolicy>' ${back_dir}/maven/conf/settings.xml
 
 echo_info 配置仓库镜像地址
 cat > /tmp/.temp_repo_file <<EOF
