@@ -140,6 +140,7 @@ function config_rocketmq_console() {
     sed -i 's#^rocketmq\.config\.namesrvAddr=.*#rocketmq.config.namesrvAddr='${rocketmq_namesrv_ip}'#' src/main/resources/application.properties
     sed -i 's#^rocketmq\.config\.dataPath=.*#rocketmq.config.dataPath='${rocketmq_console_data_path}'#' src/main/resources/application.properties
     sed -i 's#^rocketmq\.config\.loginRequired=.*#rocketmq.config.loginRequired=true#' src/main/resources/application.properties
+    sed -i 's#\${user.home}#'${rocketmq_console_home}'/logs#g' src/main/resources/logback.xml
     cat > ${rocketmq_console_data_path}/users.properties << EOF
 # 该文件支持热修改，即添加和修改用户时，不需要重新启动console
 # 格式， 每行定义一个用户， username=password[,N]  #N是可选项，可以为0 (普通用户)； 1 （管理员）
@@ -156,6 +157,19 @@ function check_ip_legeal() {
     #     echo_error 错误的ip格式，退出
     #     exit 4
     # fi
+}
+
+function get_machine_ip() {
+    ip a | grep -E "bond" &> /dev/null
+    if [ $? -eq 0 ];then
+        echo_warning 检测到绑定网卡（bond），请手动输入使用的 ip ：
+        input_machine_ip_fun
+    elif [ $(ip a | grep -E "inet.*e(ns|np|th).*[[:digit:]]+.*" | awk '{print $2}' | cut -d / -f 1 | wc -l) -gt 1 ];then
+        echo_warning 检测到多个 ip，请手动输入使用的 ip ：
+        input_machine_ip_fun
+    else
+        machine_ip=$(ip a | grep -E "inet.*e(ns|np|th).*[[:digit:]]+.*" | awk '{print $2}' | cut -d / -f 1)
+    fi
 }
 
 function generate_unit_file() {
@@ -175,9 +189,12 @@ WantedBy=multi-user.target
 EOF
 
     systemctl daemon-reload
+    get_machine_ip
     echo_info rockermq-console已部署完毕，相关信息如下：
-    echo -e "\033[37m                  端口：${nameserver_port}\033[0m"
-    echo -e "\033[37m                  nameserver启动：systemctl start ${unit_file_name}\033[0m"
+    echo -e "\033[37m                  启动命令：systemctl start ${unit_file_name}\033[0m"
+    echo -e "\033[37m                  访问地址：http://${machine_ip}:${rocketmq_console_port}\033[0m"
+    echo -e "\033[37m                  登录账号：${rocketmq_web_user}"
+    echo -e "\033[37m                  登录密码：${rocketmq_web_pass}"
 }
 
 function download_and_compile() {
