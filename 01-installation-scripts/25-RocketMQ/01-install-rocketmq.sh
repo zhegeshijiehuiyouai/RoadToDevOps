@@ -198,7 +198,7 @@ EOF
 }
 
 function binary_install() {
-    download_tar_gz ${src_dir} https://www.apache.org/dyn/closer.cgi?path=rocketmq/4.8.0/rocketmq-all-4.8.0-bin-release.zip
+    download_tar_gz ${src_dir} https://mirrors.tuna.tsinghua.edu.cn/apache/rocketmq/${rocketmq_version}/rocketmq-all-${rocketmq_version}-bin-release.zip
     echo_info 检测解压工具
     unar -v &> /dev/null
     if [ $? -ne 0 ];then
