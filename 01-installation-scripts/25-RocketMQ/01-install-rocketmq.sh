@@ -212,7 +212,7 @@ function binary_install() {
     echo_info 修改rocketmq日志目录
     cd ${rocketmq_home}
     mkdir -p {logs,store/{commitlog,consumequeue}}
-    sed -i 's#${user.home}#'${rocketmq_home}'/logs#g' ${rocketmq_home}/conf/*.xml
+    sed -i 's#\${user.home}#'${rocketmq_home}'/logs#g' ${rocketmq_home}/conf/*.xml
 
     echo_info 修改broker初始化堆栈大小
     sed -i 's#JAVA_OPT="${JAVA_OPT} -server -Xms.*#JAVA_OPT="${JAVA_OPT} -server -Xms'${broker_java_xms}' -Xmx'${broker_java_xmx}' -Xmn'${broker_java_xmn}'"#g' ${rocketmq_home}/bin/runbroker.sh
