@@ -303,12 +303,15 @@ http {
     server { 
         listen 80 default;
         # 如果https也需要防恶意解析，则将本server中的注释取消
-        # listen 443 default_server;
+        # listen 443 default_server ssl;
         server_name _;
 
-        # ssl on;
-        # ssl_certificate #随便设置一个ssl证书;
-        # ssl_certificate_key #随便设置一个ssl证书的key;
+        # ssl_certificate /data/nginx/ssl/www.xxx.com/www.crt; #随便设置一个ssl证书;
+        # ssl_certificate_key /data/nginx/ssl/www.xxx.com/www.key; #随便设置一个ssl证书的key;
+        # ssl_session_timeout 5m;
+        # ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+        # ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:HIGH:!aNULL:!MD5:!RC4:!DHE;
+        # ssl_prefer_server_ciphers on;
 
         return 403;
     }
@@ -412,14 +415,12 @@ http {
     #    listen       443 ssl;
     #    server_name  localhost;
 
-    #    ssl_certificate      cert.pem;
-    #    ssl_certificate_key  cert.key;
-
-    #    ssl_session_cache    shared:SSL:1m;
-    #    ssl_session_timeout  5m;
-
-    #    ssl_ciphers  HIGH:!aNULL:!MD5;
-    #    ssl_prefer_server_ciphers  on;
+    # ssl_certificate /data/nginx/ssl/www.xxx.com/www.crt; #ssl证书;
+    # ssl_certificate_key /data/nginx/ssl/www.xxx.com/www.key; #ssl证书的key;
+    # ssl_session_timeout 5m;
+    # ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+    # ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:HIGH:!aNULL:!MD5:!RC4:!DHE;
+    # ssl_prefer_server_ciphers on;
 
     #    location / {
     #        root   html;
