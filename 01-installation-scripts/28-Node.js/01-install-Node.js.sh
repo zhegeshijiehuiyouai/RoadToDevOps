@@ -97,9 +97,6 @@ function check_nodejs_dir() {
 }
 
 function main() {
-    echo_info 卸载yum安装的Node.js
-    yum remove -y nodejs
-
     check_nodejs_dir
     download_tar_gz ${src_dir} https://nodejs.org/dist/${nodejs_version}/node-${nodejs_version}-linux-x64.tar.xz
     cd ${file_in_the_dir}
@@ -113,9 +110,11 @@ function main() {
     echo "export NODE_HOME=${mydir}/node-${nodejs_version}" > /etc/profile.d/nodejs.sh
     echo "export PATH=\$PATH:${mydir}/node-${nodejs_version}/bin" >> /etc/profile.d/nodejs.sh
 
-    echo_info yum部署yarn
-    curl --silent --location https://dl.yarnpkg.com/rpm/yarn.repo > /etc/yum.repos.d/yarn.repo
-    yum install -y yarn
+    echo_info 配置镜像
+    npm config set registry=https://registry.npm.taobao.org/
+
+    echo_info npm部署yarn
+    npm install -g yarn
 
     echo_warning 由于bash特性限制，在本终端使用 node 等命令，需要先手动执行 source /etc/profile 加载环境变量，或者新开一个终端
     source /etc/profile
