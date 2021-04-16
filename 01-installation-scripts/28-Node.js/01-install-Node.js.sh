@@ -109,6 +109,7 @@ function main() {
     echo_info 配置环境变量
     echo "export NODE_HOME=${mydir}/node-${nodejs_version}" > /etc/profile.d/nodejs.sh
     echo "export PATH=\$PATH:${mydir}/node-${nodejs_version}/bin" >> /etc/profile.d/nodejs.sh
+    source /etc/profile
 
     echo_info 配置镜像
     npm config set registry=https://registry.npm.taobao.org/
@@ -117,7 +118,7 @@ function main() {
     npm install -g yarn
 
     echo_warning 由于bash特性限制，在本终端使用 node 等命令，需要先手动执行 source /etc/profile 加载环境变量，或者新开一个终端
-    source /etc/profile
+  
 
     echo_info Node.js已部署完毕，部署目录：${mydir}/node-${nodejs_version}
     echo_info node版本
