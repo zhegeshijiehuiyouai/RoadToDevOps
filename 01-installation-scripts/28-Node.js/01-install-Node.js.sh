@@ -97,6 +97,9 @@ function check_nodejs_dir() {
 }
 
 function main() {
+    echo_info 卸载yum安装的Node.js
+    yum remove -y nodejs
+
     check_nodejs_dir
     download_tar_gz ${src_dir} https://nodejs.org/dist/${nodejs_version}/node-${nodejs_version}-linux-x64.tar.xz
     cd ${file_in_the_dir}
