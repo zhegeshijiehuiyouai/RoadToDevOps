@@ -5,6 +5,7 @@ src_dir=$(pwd)/00src00
 postgre_port=5432
 postgre_version_yum=11
 postgre_version_src=11.11
+mydir=$(pwd)
 # 部署postgre的目录
 postgre_home=$(pwd)/postgre-${postgre_version_yum}
 sys_user=postgres
@@ -20,6 +21,22 @@ function echo_warning() {
 }
 function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
+}
+
+# 这次的函数添加的用户是可登录的
+function add_user_and_group(){
+    if id -g ${1} >/dev/null 2>&1; then
+        echo_warning ${1}组已存在，无需创建
+    else
+        groupadd ${1}
+        echo_info 创建${1}组
+    fi
+    if id -u ${1} >/dev/null 2>&1; then
+        echo_warning ${1}用户已存在，无需创建
+    else
+        useradd -M -g ${1} -s /sbin/bash ${1}
+        echo_info 创建${1}用户
+    fi
 }
 
 # 解压
@@ -92,21 +109,6 @@ function download_tar_gz(){
         # 进入此处表示脚本所在目录有压缩包
         echo_info 发现压缩包$(pwd)/$download_file_name
         file_in_the_dir=$(pwd)
-    fi
-}
-
-function add_user_and_group(){
-    if id -g ${1} >/dev/null 2>&1; then
-        echo_warning ${1}组已存在，无需创建
-    else
-        groupadd ${1}
-        echo_info 创建${1}组
-    fi
-    if id -u ${1} >/dev/null 2>&1; then
-        echo_warning ${1}用户已存在，无需创建
-    else
-        useradd -M -g ${1} -s /sbin/nologin ${1}
-        echo_info 创建${1}用户
     fi
 }
 
@@ -231,8 +233,59 @@ WantedBy=multi-user.target
 EOF
 }
 
+# 多核编译
+function multi_core_compile(){
+    echo_info 多核编译
+    assumeused=$(w | grep 'load average' | awk -F': ' '{print $2}' | awk -F'.' '{print $1}')
+    cpucores=$(cat /proc/cpuinfo | grep -c processor)
+    compilecore=$(($cpucores - $assumeused - 1))
+    if [ $compilecore -ge 1 ];then
+        make -j $compilecore && make -j $compilecore install
+        if [ $? -ne 0 ];then
+            echo_error 编译安装出错，请检查脚本
+            exit 1
+        fi
+    else
+        make && make install
+        if [ $? -ne 0 ];then
+            echo_error 编译安装出错，请检查脚本
+            exit 1
+        fi 
+    fi
+}
+
 function install_postgresql_by_src() {
-    echo a
+    echo_info 安装编译工具
+    yum install -y gcc make readline readline-devel zlib zlib-devel
+    download_tar_gz ${src_dir} https://ftp.postgresql.org/pub/source/v${postgre_version_src}/postgresql-${postgre_version_src}.tar.gz
+    cd ${file_in_the_dir}
+    untar_tgz postgresql-${postgre_version_src}.tar.gz
+    cd postgresql-${postgre_version_src}
+    ./configure --prefix=${postgre_home}
+    multi_core_compile
+    add_user_and_group ${sys_user}
+    
+    mkdir -p ${postgre_home}/{data,logs}
+    echo_info postgresql目录授权
+    chown -R ${sys_user}:${sys_user} ${postgre_home}
+    
+    echo_info 设置环境变量
+    cat > /etc/profile.d/postgresql.sh << EOF
+export PGHOME=${postgre_home}
+export PGDATA=${postgre_home}/data
+export PATH=\$PGHOME/bin:\$PATH
+export MANPATH=\$PGHOME/share/man:\$MANPATH
+export LANG=en_US.utf8
+export DATE='`date +"%Y-%m-%d %H:%M:%S"`'
+export LD_LIBRARY_PATH=\$PGHOME/lib:\$LD_LIBRARY_PATH
+EOF
+    source /etc/profile
+
+    su - ${sys_user} << EOF
+echo_info 初始化数据库
+initdb -D ${postgre_home}/data
+pg_ctl -D ${postgre_home}/data -l ${postgre_home}/logs/logfile start
+EOF
 }
 
 function is_run_postgresql() {
