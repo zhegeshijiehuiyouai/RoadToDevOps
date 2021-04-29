@@ -162,6 +162,7 @@ function get_machine_ip() {
 #-------------------------------------------------
 
 function show_installed_kafka_info() {
+    echo_warning 由于bash特性限制，在本终端使用 kafka 的命令，需要先手动执行 source /etc/profile 加载环境变量，或者新开一个终端
     echo_info kafka已部署完成，以下是kafka环境信息：
     if [ $confirm_zk_choice -eq 2 ];then
         # 外部zookeeper
@@ -255,6 +256,9 @@ function install_kafka() {
     cd ${back_dir}/${bare_name}
     echo_info 开启 kafka jmx
     sed -i '/^# limitations under the License./a export JMX_PORT='${kafka_jmx_port}'' bin/kafka-server-start.sh
+
+    echo_info 配置环境变量
+    echo "export PATH=\$PATH:${back_dir}/${bare_name}/bin" > /etc/profile.d/kafka.sh
 
     add_user_and_group kafka
     [ -d ${back_dir}/${bare_name}/logs ] || mkdir -p ${back_dir}/${bare_name}/logs
