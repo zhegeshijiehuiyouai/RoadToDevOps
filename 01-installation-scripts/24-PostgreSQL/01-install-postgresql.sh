@@ -2,14 +2,15 @@
 
 # 包下载目录
 src_dir=$(pwd)/00src00
-postgre_port=5432
-postgre_version_yum=11
-postgre_version_src=11.11
+postgresql_port=5432
+# 请保持下面两个大版本号一致，这里大版本都是11
+postgresql_version_yum=11
+postgresql_version_src=11.11
 mydir=$(pwd)
 # 部署postgre的目录
-postgre_home=$(pwd)/postgre-${postgre_version_yum}
+postgresql_home=$(pwd)/postgresql-${postgresql_version_yum}
 sys_user=postgres
-unit_file_name=postgresql-${postgre_version_src}.service
+unit_file_name=postgresql-${postgresql_version_yum}.service
 
 
 # 带格式的echo函数
@@ -34,7 +35,7 @@ function add_user_and_group(){
     if id -u ${1} >/dev/null 2>&1; then
         echo_warning ${1}用户已存在，无需创建
     else
-        useradd -M -g ${1} -s /sbin/bash ${1}
+        useradd -g ${1} -s /bin/bash ${1}
         echo_info 创建${1}用户
     fi
 }
@@ -112,32 +113,14 @@ function download_tar_gz(){
     fi
 }
 
-function install_postgresql_by_yum() {
-    PG_CONFIG_FILE_PARAM=/var/lib/pgsql/${postgre_version_yum}/data/postgresql.conf
-    PG_CONFIG_FILE_CONN=/var/lib/pgsql/${postgre_version_yum}/data/pg_hba.conf
-
-    echo_info 安装浙大 postgresql 源
-    rpm -Uvh http://mirrors.zju.edu.cn/postgresql/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
-
-    echo_info 安装PostgreSQL ${postgre_version_yum}
-    yum install -y postgresql${postgre_version_yum}-server
-
-    echo_info 配置数据目录
-    mkdir -p ${postgre_home}
-    mv /var/lib/pgsql/* ${postgre_home}/
-    chown -R postgres:postgres ${postgre_home}
-    rm -rf /var/lib/pgsql
-    ln -s ${postgre_home} /var/lib/pgsql
-    chown -R postgres:postgres /var/lib/pgsql
-
-    echo_info 初始化postgresql
-    postgresql-${postgre_version_yum}-setup initdb
-    echo_info 启动postgresql
-    systemctl start postgresql-${postgre_version_yum}
-
+function config_tune() {
     echo_info 配置postgresql命令提示符
     echo "\set PROMPT1 '%n@%/=> '" > ~/.psqlrc
-    echo "\set PROMPT1 '%n@%/=> '" > /home/postgres/.psqlrc # yum安装用户默认为postgres，这里不使用变量
+    if [ ! ${sys_user} == "postgres" ];then
+        echo "\set PROMPT1 '%n@%/=> '" > /home/${sys_user}/.psqlrc
+    else
+        echo "\set PROMPT1 '%n@%/=> '" > /home/postgres/.psqlrc # yum安装用户默认为postgres，这里不使用变量
+    fi
 
     echo_info 设置非postgres用户也可以登录数据库
     grep -E "^# peer改为trust，不用切换用户postgres就可以登录" ${PG_CONFIG_FILE_CONN} &> /dev/null
@@ -159,17 +142,43 @@ function install_postgresql_by_yum() {
     echo_info 设置postgresql端口
     grep -E "^port[[:space:]]*=[[:space:]]*5432" ${PG_CONFIG_FILE_PARAM} &> /dev/null
     if [ $? -ne 0 ];then
-        sed -i '/^#port[[:space:]]\+=[[:space:]]\+5432[[:space:]]\+#/a port = '${postgre_port}'' ${PG_CONFIG_FILE_PARAM}
+        sed -i '/^#port[[:space:]]\+=[[:space:]]\+5432[[:space:]]\+#/a port = '${postgresql_port}'' ${PG_CONFIG_FILE_PARAM}
     fi
+}
+
+function install_postgresql_by_yum() {
+    echo_info 安装浙大 postgresql 源
+    rpm -Uvh http://mirrors.zju.edu.cn/postgresql/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+
+    echo_info 安装PostgreSQL ${postgresql_version_yum}
+    yum install -y postgresql${postgresql_version_yum}-server
+
+    echo_info 配置数据目录
+    mkdir -p ${postgresql_home}
+    mv /var/lib/pgsql/* ${postgresql_home}/
+    chown -R postgres:postgres ${postgresql_home}
+    rm -rf /var/lib/pgsql
+    ln -s ${postgresql_home} /var/lib/pgsql
+    chown -R postgres:postgres /var/lib/pgsql
+
+    echo_info 初始化postgresql
+    postgresql-${postgresql_version_yum}-setup initdb
+    echo_info 启动postgresql
+    systemctl start postgresql-${postgresql_version_yum}
+
+    PG_CONFIG_FILE_PARAM=/var/lib/pgsql/${postgresql_version_yum}/data/postgresql.conf
+    PG_CONFIG_FILE_CONN=/var/lib/pgsql/${postgresql_version_yum}/data/pg_hba.conf
+    config_tune
 
     echo_info 重启postgresql
     systemctl daemon-reload
-    systemctl restart postgresql-${postgre_version_yum}
+    systemctl restart postgresql-${postgresql_version_yum}
 
     echo_info postgresql已部署完毕并成功启动，以下是相关信息：
-    echo -e "\033[37m                  端口：${postgre_port}\033[0m"
-    if [ ${postgre_port} -ne 5432 ];then
-        echo -e "\033[37m                  登录命令：psql -U postgres -p ${postgre_port} [-d postgres]\033[0m"
+    echo -e "\033[37m                  端口：${postgresql_port}\033[0m"
+    echo -e "\033[37m                  启动命令：systemctl start postgresql-${postgresql_version_yum}\033[0m"
+    if [ ${postgresql_port} -ne 5432 ];then
+        echo -e "\033[37m                  登录命令：psql -U postgres -p ${postgresql_port} [-d postgres]\033[0m"
     else
         echo -e "\033[37m                  登录命令：psql -U postgres [-d postgres]\033[0m"
     fi
@@ -177,56 +186,30 @@ function install_postgresql_by_yum() {
 
 function generate_unit_file() {
 cat > /usr/lib/systemd/system/${unit_file_name} << EOF
-# It's not recommended to modify this file in-place, because it will be
-# overwritten during package upgrades.  It is recommended to use systemd
-# "dropin" feature;  i.e. create file with suffix .conf under
-# /etc/systemd/system/postgresql-11.service.d directory overriding the
-# unit's defaults. You can also use "systemctl edit postgresql-11"
-# Look at systemd.unit(5) manual page for more info.
-
-# Note: changing PGDATA will typically require adjusting SELinux
-# configuration as well.
-
-# Note: do not use a PGDATA pathname containing spaces, or you will
-# break postgresql-setup.
 [Unit]
-Description=PostgreSQL 11 database server
-Documentation=https://www.postgresql.org/docs/11/static/
-After=syslog.target
+Description=PostgreSQL ${postgresql_version_yum} database server
 After=network.target
 
 [Service]
-Type=notify
+Type=forking
 
-User=postgres
-Group=postgres
+User=${sys_user}
+Group=${sys_user}
 
 # Note: avoid inserting whitespace in these Environment= lines, or you may
 # break postgresql-setup.
 
 # Location of database directory
-Environment=PGDATA=/var/lib/pgsql/11/data/
-
-# Where to send early-startup messages from the server (before the logging
-# options of postgresql.conf take effect)
-# This is normally controlled by the global default set by systemd
-# StandardOutput=syslog
+Environment=PGDATA=${postgresql_home}/data
 
 # Disable OOM kill on the postmaster
 OOMScoreAdjust=-1000
 Environment=PG_OOM_ADJUST_FILE=/proc/self/oom_score_adj
 Environment=PG_OOM_ADJUST_VALUE=0
 
-ExecStartPre=/usr/pgsql-11/bin/postgresql-11-check-db-dir ${PGDATA}
-ExecStart=/usr/pgsql-11/bin/postmaster -D ${PGDATA}
-ExecReload=/bin/kill -HUP $MAINPID
-KillMode=mixed
-KillSignal=SIGINT
- 
-
-# Do not set any timeout value, so that systemd will not kill postmaster
-# during crash recovery.
-TimeoutSec=0
+ExecStart=${postgresql_home}/bin/pg_ctl start -D \${PGDATA} -s -l ${postgresql_home}/logs/logfile
+ExecStop=${postgresql_home}/bin/pg_ctl stop -D \${PGDATA} -s -m fast
+ExecReload=${postgresql_home}/bin/pg_ctl reload -D \${PGDATA} -s
 
 [Install]
 WantedBy=multi-user.target
@@ -257,22 +240,22 @@ function multi_core_compile(){
 function install_postgresql_by_src() {
     echo_info 安装编译工具
     yum install -y gcc make readline readline-devel zlib zlib-devel
-    download_tar_gz ${src_dir} https://ftp.postgresql.org/pub/source/v${postgre_version_src}/postgresql-${postgre_version_src}.tar.gz
+    download_tar_gz ${src_dir} https://ftp.postgresql.org/pub/source/v${postgresql_version_src}/postgresql-${postgresql_version_src}.tar.gz
     cd ${file_in_the_dir}
-    untar_tgz postgresql-${postgre_version_src}.tar.gz
-    cd postgresql-${postgre_version_src}
-    ./configure --prefix=${postgre_home}
+    untar_tgz postgresql-${postgresql_version_src}.tar.gz
+    cd postgresql-${postgresql_version_src}
+    ./configure --prefix=${postgresql_home}
     multi_core_compile
     add_user_and_group ${sys_user}
     
-    mkdir -p ${postgre_home}/{data,logs}
+    mkdir -p ${postgresql_home}/{data,logs}
     echo_info postgresql目录授权
-    chown -R ${sys_user}:${sys_user} ${postgre_home}
+    chown -R ${sys_user}:${sys_user} ${postgresql_home}
     
     echo_info 设置环境变量
     cat > /etc/profile.d/postgresql.sh << EOF
-export PGHOME=${postgre_home}
-export PGDATA=${postgre_home}/data
+export PGHOME=${postgresql_home}
+export PGDATA=${postgresql_home}/data
 export PATH=\$PGHOME/bin:\$PATH
 export MANPATH=\$PGHOME/share/man:\$MANPATH
 export LANG=en_US.utf8
@@ -283,9 +266,42 @@ EOF
 
     su - ${sys_user} << EOF
 echo_info 初始化数据库
-initdb -D ${postgre_home}/data
-pg_ctl -D ${postgre_home}/data -l ${postgre_home}/logs/logfile start
+initdb -D ${postgresql_home}/data
+echo_info 启动postgresql
+pg_ctl -D ${postgresql_home}/data -l ${postgresql_home}/logs/logfile start
 EOF
+
+    PG_CONFIG_FILE_PARAM=${postgresql_home}/data/postgresql.conf
+    PG_CONFIG_FILE_CONN=${postgresql_home}/data/pg_hba.conf
+    config_tune
+
+    generate_unit_file
+    systemctl daemon-reload
+
+    echo_info 设置开机启动
+    systemctl enable ${unit_file_name}
+
+    echo_info 重启postgresql
+    # 非systemd启动，所以使用命令关闭
+    su - ${sys_user} << EOF
+pg_ctl stop -D ${postgresql_home}/data -s
+EOF
+
+    systemctl start ${unit_file_name}
+    if [ $? -eq 0 ];then
+        echo_info postgresql已部署完毕并成功启动，以下是相关信息：
+        echo -e "\033[37m                  端口：${postgresql_port}\033[0m"
+        echo -e "\033[37m                  启动命令：systemctl start ${unit_file_name}\033[0m"
+        if [ ${postgresql_port} -ne 5432 ];then
+            echo -e "\033[37m                  登录命令：psql -U postgres -p ${postgresql_port} [-d postgres]\033[0m"
+        else
+            echo -e "\033[37m                  登录命令：psql -U postgres [-d postgres]\033[0m"
+        fi
+    else
+        echo_error postgresql启动失败
+        exit 10
+    fi
+    echo_warning 由于bash特性限制，在本终端使用psql等命令，需先执行 source /etc/profile 加载环境变量，或者新开一个终端自动加载环境变量
 }
 
 function is_run_postgresql() {
@@ -294,8 +310,8 @@ function is_run_postgresql() {
         echo_error 检测到postgresql正在运行中，退出
         exit 1
     fi
-    if [ -d ${postgre_home} ];then
-        echo_error 检测到postgresql部署目录${postgre_home}，请确认是否重复安装
+    if [ -d ${postgresql_home} ];then
+        echo_error 检测到postgresql部署目录${postgresql_home}，请确认是否重复安装
         exit 2
     fi
     if [ -d /var/lib/pgsql ];then
