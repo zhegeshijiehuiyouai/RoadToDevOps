@@ -115,10 +115,10 @@ function download_tar_gz(){
 
 function config_tune() {
     echo_info 配置postgresql命令提示符
-    echo "\set PROMPT1 '%n@%/=> '" > ~/.psqlrc
-    echo "\set PROMPT2 '> '" >> ~/.psqlrc
-    echo "\set PROMPT1 '%n@%/=> '" > /home/${sys_user}/.psqlrc
-    echo "\set PROMPT2 '> '" >> /home/${sys_user}/.psqlrc
+    echo "\set PROMPT1 '%[%033[1;33;40m%]%n@%/%[%033[0m%#%] '" > ~/.psqlrc
+    echo "\set PROMPT2 '%[%033[1;33;40m%]>%[%033[0m%] '" >> ~/.psqlrc
+    echo "\set PROMPT1 '%[%033[1;33;40m%]%n@%/%[%033[0m%#%] '" > /home/${sys_user}/.psqlrc
+    echo "\set PROMPT2 '%[%033[1;33;40m%]>%[%033[0m%] '" >> /home/${sys_user}/.psqlrc
     chown -R ${sys_user}:${sys_user} /home/${sys_user}/.psqlrc
 
     echo_info 设置非postgres用户也可以登录数据库
