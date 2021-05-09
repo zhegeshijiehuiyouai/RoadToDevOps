@@ -116,11 +116,10 @@ function download_tar_gz(){
 function config_tune() {
     echo_info 配置postgresql命令提示符
     echo "\set PROMPT1 '%n@%/=> '" > ~/.psqlrc
-    if [ ! ${sys_user} == "postgres" ];then
-        echo "\set PROMPT1 '%n@%/=> '" > /home/${sys_user}/.psqlrc
-    else
-        echo "\set PROMPT1 '%n@%/=> '" > /home/postgres/.psqlrc # yum安装用户默认为postgres，这里不使用变量
-    fi
+    echo "\set PROMPT2 '> '" >> ~/.psqlrc
+    echo "\set PROMPT1 '%n@%/=> '" > /home/${sys_user}/.psqlrc
+    echo "\set PROMPT2 '> '" >> /home/${sys_user}/.psqlrc
+    chown -R ${sys_user}:${sys_user} /home/${sys_user}/.psqlrc
 
     echo_info 设置非postgres用户也可以登录数据库
     grep -E "^# peer改为trust，不用切换用户postgres就可以登录" ${PG_CONFIG_FILE_CONN} &> /dev/null
