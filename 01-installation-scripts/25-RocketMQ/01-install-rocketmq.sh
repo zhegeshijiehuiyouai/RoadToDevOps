@@ -120,7 +120,7 @@ function add_user_and_group(){
 }
 
 function is_run_rocketmq() {
-    ps -ef | grep ${rocketmq_home} | grep -v grep &> /dev/null
+    ps -ef | grep ${rocketmq_home}/ | grep -v grep &> /dev/null
     if [ $? -eq 0 ];then
         echo_error 检测到rocketmq正在运行中，退出
         exit 3
