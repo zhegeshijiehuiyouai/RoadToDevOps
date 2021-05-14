@@ -1,4 +1,5 @@
-***本项目在 CentOS 7.6 环境下开发***
+***本项目在 CentOS 7.6 环境下开发***  
+***2021年5月14日，新增[https://github.com/oldratlee/useful-scripts](https://github.com/oldratlee/useful-scripts)项目中的部分脚本***
 </br>
 
 ## 🔧 脚本用法
@@ -60,9 +61,15 @@ rpm -Uvh ./*rpm
 ├── 05-system-tools
 │   ├── 01-check-package-manager.sh
 │   ├── 02-update-openssh.sh
-│   └── 03-init-system.sh
-├── 06-Antivirus-tool
+│   ├── 03-init-system.sh
+│   ├── 04-tcp-connection-state-counter.sh
+│   └── 05-uq.sh
+├── 06-Antivirus-tools
 │   └── 01-kill_miner_proc.sh
+├── 07-java-tools
+│   ├── 01-show-busy-java-threads.sh
+│   ├── 02-show-duplicate-java-classes.py
+│   └── 03-find-in-jars.sh
 └── README.md
 
 ```
