@@ -65,7 +65,7 @@ rpm -Uvh ./*rpm
 │   ├── 04-tcp-connection-state-counter.sh
 │   └── 05-uq.sh
 ├── 06-Antivirus-tools
-│   └── 01-kill_miner_proc.sh
+│   └── 01-kill-miner-proc.sh
 ├── 07-java-tools
 │   ├── 01-show-busy-java-threads.sh
 │   ├── 02-show-duplicate-java-classes.py
