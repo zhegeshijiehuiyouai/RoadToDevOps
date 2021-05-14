@@ -248,6 +248,8 @@ deleteWhen=04
 fileReservedTime=72
 # Broker Role
 brokerRole=ASYNC_MASTER
+# 开启从Slave读数据功能
+# slaveReadEnable=true
 # 刷盘方式，ASYNC_FLUSH：异步刷盘
 flushDiskType=ASYNC_FLUSH
 # 存储路径
