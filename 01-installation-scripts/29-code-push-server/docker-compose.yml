@@ -1,3 +1,4 @@
+# code-push-server默认账号密码admin/123456
 version: "3.7"
 services:
   server:
