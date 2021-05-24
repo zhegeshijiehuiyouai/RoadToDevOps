@@ -234,7 +234,7 @@ EOF
 # 所属集群的名字
 brokerClusterName=my-rocketmq-cluster
 # Broker的名称
-brokerName=broker-a-master
+brokerName=broker-a
 # brokerId为0表示Master，>0表示Slave。配置slave的话记得下面的brokerRole参数修改为brokerRole=SLAVE
 brokerId=0
 # Broker对外服务的监听端口
