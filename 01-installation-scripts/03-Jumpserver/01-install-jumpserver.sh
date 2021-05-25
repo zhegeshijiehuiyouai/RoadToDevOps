@@ -144,6 +144,8 @@ function download_and_startup_jumpserver() {
 
     echo_info 如有更多修改，请编辑 ${JUMP_HOME}/.env 文件
 
+    [ -d data/guacamole-data/log ] || mkdir -p data/guacamole-data/log
+
     echo_info 启动jumpserver
     docker-compose up -d
     if [ $? -ne 0 ];then
