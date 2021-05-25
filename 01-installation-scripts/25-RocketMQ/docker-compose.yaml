@@ -1,0 +1,61 @@
+# 目录结构
+#
+# ├── conf
+# │ └── broker.conf
+# ├── docker-compose.yaml
+# ├── logs
+# └── store
+#
+# --conf文件：
+# --conf/broker.conf内容如下
+#
+# brokerName = broker-a  
+# brokerId = 0  
+# deleteWhen = 04  
+# fileReservedTime = 48  
+# brokerRole = ASYNC_MASTER  
+# flushDiskType = ASYNC_FLUSH  
+# # 如果是本地程序调用云主机 mq，这个需要设置成 云主机 IP
+# brokerIP1=192.168.2.234
+
+version: '2'
+services:
+  namesrv:
+    image: rocketmqinc/rocketmq
+    container_name: rmqnamesrv
+    restart: always    
+    ports:
+      - 9876:9876
+    volumes:
+      - ./logs:/home/rocketmq/logs
+      - ./store:/home/rocketmq/store
+    command: sh mqnamesrv
+  broker:
+    image: rocketmqinc/rocketmq
+    container_name: rmqbroker
+    restart: always    
+    ports:
+      - 10909:10909
+      - 10911:10911
+      - 10912:10912
+    volumes:
+      - ./logs:/home/rocketmq/logs
+      - ./store:/home/rocketmq/store
+      - ./conf/broker.conf:/opt/rocketmq-4.4.0/conf/broker.conf
+    #command: sh mqbroker -n namesrv:9876
+    command: sh mqbroker -n namesrv:9876 -c ../conf/broker.conf
+    depends_on:
+      - namesrv
+    environment:
+      - JAVA_HOME=/usr/lib/jvm/jre
+  console:
+    image: styletang/rocketmq-console-ng
+    container_name: rocketmq-console-ng
+    restart: always    
+    ports:
+      - 8076:8080
+    depends_on:
+      - namesrv
+    environment:
+      - JAVA_OPTS= -Dlogging.level.root=info   -Drocketmq.namesrv.addr=rmqnamesrv:9876 
+      - Dcom.rocketmq.sendMessageWithVIPChannel=false
