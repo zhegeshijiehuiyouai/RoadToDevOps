@@ -129,6 +129,18 @@ function download_and_startup_jumpserver() {
 
     echo_info 调整jumpserver配置
     sed -i "s#80:80#${JUMP_PORT}:80#g" docker-compose.yml
+    sed -i "s#- mysql-data:/var/lib/mysql#- ./data/mysql-data:/var/lib/mysql#g" docker-compose.yml
+    sed -i "s#- redis-data:/var/lib/redis/#- ./data/redis-data:/var/lib/redis/#g" docker-compose.yml
+    sed -i "s#- core-data:/opt/jumpserver/data#- ./data/core-data:/opt/jumpserver/data#g" docker-compose.yml
+    sed -i "s#- koko-data:/opt/koko/data#- ./data/koko-data:/opt/koko/data#g" docker-compose.yml
+    sed -i "s#- guacamole-data:/config/guacamole/data#- ./data/guacamole-data:/config/guacamole/data#g" docker-compose.yml
+
+    sed -i "/^volumes:$/d" docker-compose.yml
+    sed -i "/^  mysql-data:$/d" docker-compose.yml
+    sed -i "/^  redis-data:$/d" docker-compose.yml
+    sed -i "/^  core-data:$/d" docker-compose.yml
+    sed -i "/^  koko-data:$/d" docker-compose.yml
+    sed -i "/^  guacamole-data:$/d" docker-compose.yml
 
     echo_info 如有更多修改，请编辑 ${JUMP_HOME}/.env 文件
 
