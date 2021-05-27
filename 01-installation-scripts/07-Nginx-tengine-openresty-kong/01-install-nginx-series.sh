@@ -758,7 +758,7 @@ function install_kong(){
 }
 
 function install_main_func(){
-    read -p "请输入数字选择要安装的组件（如需退出请输入q）：" software
+    read -p "请输入数字选择要安装的服务（如需退出请输入q）：" software
     case $software in
         1)
             echo_info 即将安装 nginx
