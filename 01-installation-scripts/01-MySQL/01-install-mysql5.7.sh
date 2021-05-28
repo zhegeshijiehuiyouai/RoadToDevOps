@@ -296,6 +296,21 @@ default-storage-engine=INNODB
 max_allowed_packet=16M
 # 不区分大小写
 lower_case_table_names = 1
+
+### binlog日志设置
+binlog_format = ROW
+#设置日志路径，注意路经需要mysql用户有权限写,这里可以写绝对路径,也可以直接写mysql-bin(后者默认就是在/var/lib/mysql目录下)
+log-bin = ${DIR}/${mysql_dir_name}/data/mysql-bin.log
+#设置binlog清理时间
+expire_logs_days = 7
+#binlog每个日志文件大小
+max_binlog_size = 100m
+#binlog缓存大小
+binlog_cache_size = 4m
+#最大binlog缓存大小
+max_binlog_cache_size = 512m
+#配置serverid
+server-id=1
 EOF
 
     # 设置systemctl控制
