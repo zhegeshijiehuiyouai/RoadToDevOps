@@ -5,7 +5,7 @@ src_dir=$(pwd)/00src00
 postgresql_port=5432
 # 请保持下面两个大版本号一致，这里大版本都是11
 postgresql_version_yum=11
-postgresql_version_src=11.11
+postgresql_version_src=11.12
 mydir=$(pwd)
 # 部署postgre的目录
 postgresql_home=$(pwd)/postgresql-${postgresql_version_yum}
