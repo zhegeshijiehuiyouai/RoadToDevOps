@@ -9,14 +9,14 @@ bind_ip=0.0.0.0
 sys_user=mongod
 #*******************yum部署配置，它与二进制配置之中，只有一个会生效
 # 指定repo版本，生成配置需要，不能省略
-repo_version=4.2
+repo_version=4.4
 # yum安装，且需要指定特定小版本时填写，不需要指定时不用管
 repo_version_mini=
 # 数据存储目录，默认/var/lib/mongo，不需要改可以注释下面这行
 dbpath=/data/mongodb
 #*******************二进制部署配置
 # 二进制部署包的版本
-tgz_version=4.2.6
+tgz_version=4.4.6
 base_dir=/data/mongodb
 ######################################
 
