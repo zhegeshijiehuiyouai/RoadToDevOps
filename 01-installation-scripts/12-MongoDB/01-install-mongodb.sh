@@ -203,7 +203,7 @@ function install_by_tgz(){
         echo_error ${base_dir} 目录已存在，退出
         exit 10
     fi
-    mv mongodb-linux-x86_64-rhel70-4.2.6 ${base_dir}
+    mv mongodb-linux-x86_64-rhel70-${tgz_version} ${base_dir}
     cd ${base_dir}
     mkdir conf data logs
     chown -R ${sys_user}:${sys_user} ${base_dir}
