@@ -3,7 +3,7 @@
 # 包下载目录
 src_dir=$(pwd)/00src00
 mysqld_exporter_port=9104
-mysqld_exporter_version=0.12.1
+mysqld_exporter_version=0.13.0
 # 部署prometheus的目录
 mysqld_exporter_home=$(pwd)/mysqld_exporter-${mysqld_exporter_version}
 sys_user=prometheus

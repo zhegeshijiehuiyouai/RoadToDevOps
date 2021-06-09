@@ -3,7 +3,7 @@
 # 包下载目录
 src_dir=$(pwd)/00src00
 node_exporter_port=9100
-node_exporter_version=1.1.1
+node_exporter_version=1.1.2
 # 部署prometheus的目录
 node_exporter_home=$(pwd)/node_exporter-${node_exporter_version}
 sys_user=prometheus

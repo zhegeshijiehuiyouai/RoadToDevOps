@@ -3,7 +3,7 @@
 # 包下载目录
 src_dir=$(pwd)/00src00
 prometheus_port=9090
-prometheus_version=2.25.0
+prometheus_version=2.27.1
 # 部署prometheus的目录
 prometheus_home=$(pwd)/prometheus-${prometheus_version}
 sys_user=prometheus
