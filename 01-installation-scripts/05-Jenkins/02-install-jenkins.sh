@@ -3,7 +3,7 @@
 # 包下载目录
 src_dir=$(pwd)/00src00
 tomcat_version=8.5.66
-jenkins_stable_version=2.277.4
+jenkins_stable_version=2.289.1
 jenkins_root=$(pwd)/jenkins
 jenkins_home=${jenkins_root}/tomcat
 jenkins_data_home=${jenkins_root}/data
