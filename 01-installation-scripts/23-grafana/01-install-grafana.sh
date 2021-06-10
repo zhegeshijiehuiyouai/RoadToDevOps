@@ -195,8 +195,8 @@ EOF
     echo -e "\033[37m                  grafana访问地址：http://${machine_ip}:${grafana_port}/\033[0m"
     echo -e "\033[37m                  默认账号密码：admin / admin\033[0m"
     echo -e "\033[37m                  模板获取网址：https://grafana.com/grafana/dashboards\033[0m"
-    echo -e "\033[37m                  推荐模板id - 主机基础监控：9276/\033[0m"11323
-    echo -e "\033[37m                               mysql监控：11323/\033[0m"
+    echo -e "\033[37m                  推荐模板id - 主机基础监控：9276\033[0m"
+    echo -e "\033[37m                               mysql监控：11323\033[0m"
 }
 
 function config_grafana() {
