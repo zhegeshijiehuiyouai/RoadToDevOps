@@ -144,7 +144,7 @@ function generate_config_sample() {
 
 rule_files:
   # 该rules目录为示例目录，需自己调整为实际rules目录
-  - "/data/prometheus-2.25.0/rules/node_exporter_rule.yml"
+  - "/data/prometheus-2.27.1/rules/node_exporter_rule.yml"
 
 scrape_configs:
 
