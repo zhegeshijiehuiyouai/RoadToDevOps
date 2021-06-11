@@ -173,40 +173,40 @@ groups:
       labels:
         region: 成都
       annotations:
-        summary: "{{$labels.instance}}宕机！"
-        description: "服务器{{$labels.instance}}已宕机！"
+        summary: "{{\$labels.instance}}宕机！"
+        description: "服务器{{\$labels.instance}}已宕机！"
     - alert: cpu使用率过高告警
       expr: (100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[5m])) by(instance)* 100))* on(instance) group_left(nodename) (node_uname_info) > 85
       for: 5m
       labels:
         region: 成都
       annotations:
-        summary: "{{$labels.instance}}（{{$labels.nodename}}）CPU使用率过高！"
-        description: '服务器{{$labels.instance}}（{{$labels.nodename}}）CPU使用率超过85%(目前使用:{{printf "%.2f" $value}}%)'
+        summary: "{{\$labels.instance}}（{{\$labels.nodename}}）CPU使用率过高！"
+        description: '服务器{{\$labels.instance}}（{{\$labels.nodename}}）CPU使用率超过85%(目前使用:{{printf "%.2f" \$value}}%)'
     - alert: 系统负载过高
       expr: (node_load1/count without (cpu, mode) (node_cpu_seconds_total{mode="system"}))* on(instance) group_left(nodename) (node_uname_info)>1.1
       for: 3m
       labels:
         region: 成都
       annotations:
-        summary: "{{$labels.instance}}（{{$labels.nodename}}）系统负载过高！"
-        description: '{{$labels.instance}}（{{$labels.nodename}}）当前负载超标率 {{printf "%.2f" $value}}'
+        summary: "{{\$labels.instance}}（{{\$labels.nodename}}）系统负载过高！"
+        description: '{{\$labels.instance}}（{{\$labels.nodename}}）当前负载超标率 {{printf "%.2f" \$value}}'
     - alert: 内存不足告警
       expr: (100 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100)* on(instance) group_left(nodename) (node_uname_info) > 80
       for: 3m
       labels:
         region: 成都
       annotations:
-        summary: "{{$labels.instance}}（{{$labels.nodename}}）内存使用率过高！"
-        description: '服务器{{$labels.instance}}（{{$labels.nodename}}）内存使用率超过80%(目前使用:{{printf "%.2f" $value}}%)'
+        summary: "{{\$labels.instance}}（{{\$labels.nodename}}）内存使用率过高！"
+        description: '服务器{{\$labels.instance}}（{{\$labels.nodename}}）内存使用率超过80%(目前使用:{{printf "%.2f" \$value}}%)'
     - alert: 硬盘空间不足告警
       expr: (100-(node_filesystem_free_bytes{fstype=~"ext4|xfs"}/node_filesystem_size_bytes {fstype=~"ext4|xfs"}*100) )* on(instance) group_left(nodename) (node_uname_info)> 80
       for: 3m
       labels:
         region: 成都
       annotations:
-        summary: "{{$labels.instance}}（{{$labels.nodename}}）硬盘使用率过高！"
-        description: '服务器{{$labels.instance}}（{{$labels.nodename}}）硬盘使用率超过80%(目前使用:{{printf "%.2f" $value}}%)'
+        summary: "{{\$labels.instance}}（{{\$labels.nodename}}）硬盘使用率过高！"
+        description: '服务器{{\$labels.instance}}（{{\$labels.nodename}}）硬盘使用率超过80%(目前使用:{{printf "%.2f" \$value}}%)'
 EOF
     echo_info Prometheus针对nodes的告警规则配置模板已生成到 ${node_exporter_home}/node_exporter_rule.yml
 }

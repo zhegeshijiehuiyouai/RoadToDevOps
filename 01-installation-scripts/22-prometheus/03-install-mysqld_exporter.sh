@@ -185,7 +185,7 @@ groups:
     labels:
       severity: critical
     annotations:
-      summary: "MySQL数据库 {{ $labels.instance }} 已关闭！"
+      summary: "MySQL数据库 {{ \$labels.instance }} 已关闭！"
       description: "MySQL数据库已关闭，请立刻检查！"
   - alert: 文件描述符打开过大
     expr: mysql_global_status_innodb_num_open_files > (mysql_global_variables_open_files_limit) * 0.75
@@ -193,7 +193,7 @@ groups:
     labels:
       severity: warning
     annotations:
-      summary: "MySQL数据库 {{ $labels.instance }} 的文件描述符打开过大"
+      summary: "MySQL数据库 {{ \$labels.instance }} 的文件描述符打开过大"
       description: "文件描述符打开过大，请考虑是否增大open_files_limit。"
   - alert: 读取缓冲区大小大于允许的最大值
     expr: mysql_global_variables_read_buffer_size > mysql_global_variables_slave_max_allowed_packet 
@@ -201,7 +201,7 @@ groups:
     labels:
       severity: warning
     annotations:
-      summary: "MySQL数据库 {{ $labels.instance }} 的读取缓冲区大小大于允许的最大值"
+      summary: "MySQL数据库 {{ \$labels.instance }} 的读取缓冲区大小大于允许的最大值"
       description: "读取缓冲区大小（read_buffer_size）大于最大允许数据包大小（max_allowed_packet）。这可能会中断您的复制。"
   - alert: 排序缓冲区可能配置错误
     expr: mysql_global_variables_innodb_sort_buffer_size <256*1024 or mysql_global_variables_read_buffer_size > 4*1024*1024 
@@ -209,7 +209,7 @@ groups:
     labels:
       severity: warning
     annotations:
-      summary: "MySQL数据库 {{ $labels.instance }} 的排序缓冲区可能配置错误"
+      summary: "MySQL数据库 {{ \$labels.instance }} 的排序缓冲区可能配置错误"
       description: "排序缓冲区过大或过小。sort_buffer_size的合适值在256k和4M之间。"
   - alert: 线程堆栈大小过小
     expr: mysql_global_variables_thread_stack <196608
@@ -217,7 +217,7 @@ groups:
     labels:
       severity: warning
     annotations:
-      summary: "MySQL数据库 {{ $labels.instance }} 的线程堆栈大小过小"
+      summary: "MySQL数据库 {{ \$labels.instance }} 的线程堆栈大小过小"
       description: "线程堆栈大小过小，这可能会导致问题。thread_stack_size一般为256k。"
   - alert: 连接数已超过80% 
     expr: mysql_global_status_max_used_connections > mysql_global_variables_max_connections * 0.8
@@ -225,7 +225,7 @@ groups:
     labels:
       severity: warning
     annotations:
-      summary: "MySQL数据库 {{ $labels.instance }} 的连接数已超过80%"
+      summary: "MySQL数据库 {{ \$labels.instance }} 的连接数已超过80%"
       description: "已使用超过最大连接限制的80％"
   - alert: InnoDB Force Recovery已启用
     expr: mysql_global_variables_innodb_force_recovery != 0 
@@ -241,7 +241,7 @@ groups:
     labels:
       severity: warning
     annotations:
-      summary: "MySQL数据库 {{ $labels.instance }} 的InnoDB日志文件大小过小"
+      summary: "MySQL数据库 {{ \$labels.instance }} 的InnoDB日志文件大小过小"
       description: "InnoDB日志文件的大小可能过小，较小的InnoDB日志文件大小可能会对性能产生影响。"
   - alert: InnoDB未在提交事务时刷新日志
     expr: mysql_global_variables_innodb_flush_log_at_trx_commit != 1
@@ -249,7 +249,7 @@ groups:
     labels:
       severity: warning
     annotations:
-      summary: "MySQL数据库 {{ $labels.instance }} 的InnoDB未在提交事务时刷新日志"
+      summary: "MySQL数据库 {{ \$labels.instance }} 的InnoDB未在提交事务时刷新日志"
       description: "提交事务时刷新日志事务日志的参数innodb_flush_log_at_trx_commit不为1，这可能导致断电时丢失已提交的事务。"
   - alert: 表定义缓存过小
     expr: mysql_global_status_open_table_definitions > mysql_global_variables_table_definition_cache
@@ -257,7 +257,7 @@ groups:
     labels:
       severity: page
     annotations:
-      summary: "MySQL数据库 {{ $labels.instance }} 的表定义缓存过小"
+      summary: "MySQL数据库 {{ \$labels.instance }} 的表定义缓存过小"
       description: "您的表定义缓存可能太小，这可能会对性能产生影响"
   - alert: 表打开缓存过小
     expr: mysql_global_status_open_tables >mysql_global_variables_table_open_cache * 99/100
@@ -265,7 +265,7 @@ groups:
     labels:
       severity: page
     annotations:
-      summary: "MySQL数据库 {{ $labels.instance }} 的表打开缓存过小"
+      summary: "MySQL数据库 {{ \$labels.instance }} 的表打开缓存过小"
       description: "您的表打开缓存可能太小（旧名称表缓存），这可能会对性能产生影响"
   - alert: 线程堆栈大小可能过小
     expr: mysql_global_variables_thread_stack < 262144
@@ -273,7 +273,7 @@ groups:
     labels:
       severity: page
     annotations:
-      summary: "MySQL数据库 {{ $labels.instance }} 的线程堆栈大小可能过小"
+      summary: "MySQL数据库 {{ \$labels.instance }} 的线程堆栈大小可能过小"
       description: "线程堆栈大小可能过小，这可能会导致问题。thread_stack_size一般设为256k。"
   - alert: InnoDB缓冲池实例过小
     expr: mysql_global_variables_innodb_buffer_pool_instances == 1
@@ -281,7 +281,7 @@ groups:
     labels:
       severity: page
     annotations:
-      summary: "MySQL数据库 {{ $labels.instance }} 的InnoDB缓冲池实例过小"
+      summary: "MySQL数据库 {{ \$labels.instance }} 的InnoDB缓冲池实例过小"
       description: "如果您使用的是MySQL 5.5及更高版本，那么出于性能原因，应使用多个InnoDB缓冲池实例。一些规则是：InnoDB缓冲池实例的大小至少应为1 GB。您可以将InnoDB缓冲池实例设置为等于计算机的内核数。"
   - alert: InnoDB插件已启用
     expr: mysql_global_variables_ignore_builtin_innodb == 1
@@ -289,7 +289,7 @@ groups:
     labels:
       severity: page
     annotations:
-      summary: "MySQL数据库 {{ $labels.instance }} 的InnoDB插件已启用"
+      summary: "MySQL数据库 {{ \$labels.instance }} 的InnoDB插件已启用"
       description: "InnoDB插件已启用"
   - alert: binlog日志已禁用
     expr: mysql_global_variables_log_bin != 1
@@ -297,7 +297,7 @@ groups:
     labels:
       severity: warning
     annotations:
-      summary: "MySQL数据库 {{ $labels.instance }} 的binlog日志已禁用"
+      summary: "MySQL数据库 {{ \$labels.instance }} 的binlog日志已禁用"
       description: "binlog日志已禁用。这将禁止您执行时间点恢复（PiTR）。"
   - alert: binlog缓存太小
     expr: mysql_global_variables_binlog_cache_size < 1048576
@@ -305,7 +305,7 @@ groups:
     labels:
       severity: page
     annotations:
-      summary: "MySQL数据库 {{ $labels.instance }} 的binlog缓存过小"
+      summary: "MySQL数据库 {{ \$labels.instance }} 的binlog缓存过小"
       description: "binlog缓存大小可能过小。建议设置为1MB或更高的值。"
   - alert: binlog statement缓存大小过小
     expr: mysql_global_variables_binlog_stmt_cache_size <1048576 and mysql_global_variables_binlog_stmt_cache_size > 0
@@ -313,7 +313,7 @@ groups:
     labels:
       severity: page
     annotations:
-      summary: "MySQL数据库 {{ $labels.instance }} 的binlog statement缓存大小过小"
+      summary: "MySQL数据库 {{ \$labels.instance }} 的binlog statement缓存大小过小"
       description: "binlog statement缓存大小可能过小。建议设置为1MB或更高的值。"
   - alert: binlog事务缓存大小过小
     expr: mysql_global_variables_binlog_cache_size  <1048576
@@ -321,7 +321,7 @@ groups:
     labels:
       severity: page
     annotations:
-      summary: "MySQL数据库 {{ $labels.instance }} 的binlog事务缓存大小过小"
+      summary: "MySQL数据库 {{ \$labels.instance }} 的binlog事务缓存大小过小"
       description: "binlog事务缓存大小可能过小。建议设置为1MB或更高的值。"
   - alert: 同步binlog已启用
     expr: mysql_global_variables_sync_binlog == 1
@@ -329,7 +329,7 @@ groups:
     labels:
       severity: page
     annotations:
-      summary: "MySQL数据库 {{ $labels.instance }} 的同步binlog已启用"
+      summary: "MySQL数据库 {{ \$labels.instance }} 的同步binlog已启用"
       description: "同步Binlog已启用。这样可以提高数据安全性，但会降低写入性能的成本。"
   - alert: IO线程已停止
     expr: mysql_slave_status_slave_io_running != 1
@@ -337,7 +337,7 @@ groups:
     labels:
       severity: critical
     annotations:
-      summary: "MySQL数据库 {{ $labels.instance }} 的IO线程已停止"
+      summary: "MySQL数据库 {{ \$labels.instance }} 的IO线程已停止"
       description: "IO线程已停止。这通常是因为它无法连接到主服务器。"
   - alert: SQL线程已停止
     expr: mysql_slave_status_slave_sql_running == 0
@@ -345,7 +345,7 @@ groups:
     labels:
       severity: critical
     annotations:
-      summary: "MySQL数据库 {{ $labels.instance }} 的SQL线程已停止"
+      summary: "MySQL数据库 {{ \$labels.instance }} 的SQL线程已停止"
       description: "SQL线程已停止。这通常是因为它无法连接到主服务器。"
   - alert: Slave落后于Master
     expr: rate(mysql_slave_status_seconds_behind_master[1m]) >30 
@@ -353,7 +353,7 @@ groups:
     labels:
       severity: warning 
     annotations:
-      summary: "MySQL数据库 {{ $labels.instance }} 落后于Master"
+      summary: "MySQL数据库 {{ \$labels.instance }} 落后于Master"
       description: "Slave落后于Master，请检查slave线程是否在运行，或者是否存在性能问题"
   - alert: 从库未设置为只读
     expr: mysql_global_variables_read_only != 0
@@ -361,7 +361,7 @@ groups:
     labels:
       severity: page
     annotations:
-      summary: "MySQL {{ $labels.instance }} 作为从库，未设置为只读"
+      summary: "MySQL {{ \$labels.instance }} 作为从库，未设置为只读"
       description: "从库未设置为只读，这可能会导致在操作从库时，出现数据不一致的情况。"
 EOF
     echo_info Prometheus针对nodes的告警规则配置模板已生成到 ${mysqld_exporter_home}/mysqld_exporter_rule.yml
