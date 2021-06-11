@@ -2,12 +2,12 @@
 
 # 包下载目录
 src_dir=$(pwd)/00src00
-node_exporter_port=9100
-node_exporter_version=1.1.2
-# 部署node_exporter的目录
-node_exporter_home=$(pwd)/node_exporter-${node_exporter_version}
+alertmanager_port=9093
+alertmanager_version=0.22.2
+# 部署alertmanager的目录
+alertmanager_home=$(pwd)/alertmanager-${alertmanager_version}
 sys_user=prometheus
-unit_file_name=node_exporter.service
+unit_file_name=alertmanager.service
 
 
 
@@ -110,15 +110,15 @@ function add_user_and_group(){
     fi
 }
 
-function is_run_node_exporter() {
-    ps -ef | grep ${node_exporter_home} | grep -v grep &> /dev/null
+function is_run_alertmanager() {
+    ps -ef | grep ${alertmanager_home} | grep -v grep &> /dev/null
     if [ $? -eq 0 ];then
-        echo_error 检测到node_exporter正在运行中，退出
+        echo_error 检测到alertmanager正在运行中，退出
         exit 3
     fi
 
-    if [ -d ${node_exporter_home} ];then
-        echo_error 检测到目录${node_exporter_home}，请检查是否重复安装，退出
+    if [ -d ${alertmanager_home} ];then
+        echo_error 检测到目录${alertmanager_home}，请检查是否重复安装，退出
         exit 4
     fi
 }
@@ -139,83 +139,24 @@ function get_machine_ip() {
 function generate_config_sample() {
     get_machine_ip
 
-    cat > ${node_exporter_home}/node_exporter_prometheus.yml << EOF
-# node_exporter配置模板，在prometheus.yml中配置
+    cat > ${alertmanager_home}/alertmanager_prometheus.yml << EOF
+# alertmanager配置模板，在prometheus.yml中配置
 
-rule_files:
-  # 该rules目录为示例目录，需自己调整为实际rules目录
-  - "/data/prometheus-2.27.1/rules/node_exporter_rule.yml"
-
-scrape_configs:
-
-  - job_name: 'prometheus'
-    static_configs:
-      - targets: ['localhost:9090']
-
-  - job_name: 'linux'
-    static_configs:
-      - targets: ['${machine_ip}:${node_exporter_port}']
-        labels:
-          instance: $(hostname)
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - ${machine_ip}:${alertmanager_port}
 EOF
-    echo_info node_exporter集成到prometheus的配置模板已生成到 ${node_exporter_home}/node_exporter_prometheus.yml
-    
-    cat > ${node_exporter_home}/node_exporter_rule.yml << EOF
-# 在prometheus的rules目录下创建node_exporter_rule.yml，并写入以下内容
-# 创建的文件名，要与rule_files中的一致
-
-groups:
-  - name: 成都服务器告警
-    rules:
-    - alert: 服务器宕机告警
-      expr: up == 0  # up==0的值是0，做乘法是不会得到结果的
-      for: 3m
-      labels:
-        region: 成都
-      annotations:
-        summary: "{{$labels.instance}}宕机！"
-        description: "服务器{{$labels.instance}}已宕机！"
-    - alert: cpu使用率过高告警
-      expr: (100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[5m])) by(instance)* 100))* on(instance) group_left(nodename) (node_uname_info) > 85
-      for: 5m
-      labels:
-        region: 成都
-      annotations:
-        summary: "{{$labels.instance}}（{{$labels.nodename}}）CPU使用率过高！"
-        description: '服务器{{$labels.instance}}（{{$labels.nodename}}）CPU使用率超过85%(目前使用:{{printf "%.2f" $value}}%)'
-    - alert: 系统负载过高
-      expr: (node_load1/count without (cpu, mode) (node_cpu_seconds_total{mode="system"}))* on(instance) group_left(nodename) (node_uname_info)>1.1
-      for: 3m
-      labels:
-        region: 成都
-      annotations:
-        summary: "{{$labels.instance}}（{{$labels.nodename}}）系统负载过高！"
-        description: '{{$labels.instance}}（{{$labels.nodename}}）当前负载超标率 {{printf "%.2f" $value}}'
-    - alert: 内存不足告警
-      expr: (100 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100)* on(instance) group_left(nodename) (node_uname_info) > 80
-      for: 3m
-      labels:
-        region: 成都
-      annotations:
-        summary: "{{$labels.instance}}（{{$labels.nodename}}）内存使用率过高！"
-        description: '服务器{{$labels.instance}}（{{$labels.nodename}}）内存使用率超过80%(目前使用:{{printf "%.2f" $value}}%)'
-    - alert: 硬盘空间不足告警
-      expr: (100-(node_filesystem_free_bytes{fstype=~"ext4|xfs"}/node_filesystem_size_bytes {fstype=~"ext4|xfs"}*100) )* on(instance) group_left(nodename) (node_uname_info)> 80
-      for: 3m
-      labels:
-        region: 成都
-      annotations:
-        summary: "{{$labels.instance}}（{{$labels.nodename}}）硬盘使用率过高！"
-        description: '服务器{{$labels.instance}}（{{$labels.nodename}}）硬盘使用率超过80%(目前使用:{{printf "%.2f" $value}}%)'
-EOF
-    echo_info Prometheus针对nodes的告警规则配置模板已生成到 ${node_exporter_home}/node_exporter_rule.yml
+    echo_info alertmanager集成到prometheus的配置模板已生成到 ${alertmanager_home}/alertmanager_prometheus.yml
+    echo_info alertmanager配置文件在${alertmanager_home}/alertmanager.yml
 }
 
 function generate_unit_file_and_start() {
     echo_info 生成${unit_file_name}文件用于systemd控制
     cat >/usr/lib/systemd/system/${unit_file_name} <<EOF
 [Unit]
-Description=node_exporter -- script from https://github.com/zhegeshijiehuiyouai/RoadToDevOps
+Description=alertmanager -- script from https://github.com/zhegeshijiehuiyouai/RoadToDevOps
 Documentation=https://prometheus.io/
 After=network.target
 
@@ -223,46 +164,46 @@ After=network.target
 Type=simple
 User=${sys_user}
 Group=${sys_user}
-ExecStart=${node_exporter_home}/node_exporter --web.listen-address=:${node_exporter_port}
+ExecStart=${alertmanager_home}/alertmanager --config.file=${alertmanager_home}/alertmanager.yml --storage.path=${alertmanager_home}/data --web.listen-address=:${alertmanager_port}
 Restart=always
 
 [Install]
 WantedBy=multi-user.target
 EOF
-    echo_info ${node_exporter_home} 目录授权
-    chown -R ${sys_user}:${sys_user} ${node_exporter_home}
+    echo_info ${alertmanager_home} 目录授权
+    chown -R ${sys_user}:${sys_user} ${alertmanager_home}
     systemctl daemon-reload
-    echo_info 启动node_exporter
+    echo_info 启动alertmanager
     systemctl start ${unit_file_name}
     if [ $? -ne 0 ];then
-        echo_error node_exporter启动失败，请检查
+        echo_error alertmanager启动失败，请检查
         exit 1
     fi
     systemctl enable ${unit_file_name} &> /dev/null
 
     generate_config_sample
-    chown -R ${sys_user}:${sys_user} ${node_exporter_home}
+    chown -R ${sys_user}:${sys_user} ${alertmanager_home}
 
-    echo_info node_exporter已成功部署并启动，相关信息如下：
+    echo_info alertmanager已成功部署并启动，相关信息如下：
     echo -e "\033[37m                  启动命令：systemctl start ${unit_file_name}\033[0m"
-    echo -e "\033[37m                  端口：${node_exporter_port}\033[0m"
-    echo -e "\033[37m                  部署目录：${node_exporter_home}\033[0m"
+    echo -e "\033[37m                  端口：${alertmanager_port}\033[0m"
+    echo -e "\033[37m                  部署目录：${alertmanager_home}\033[0m"
 }
 
 function download_and_config() {
-    download_tar_gz ${src_dir} https://github.com/prometheus/node_exporter/releases/download/v${node_exporter_version}/node_exporter-${node_exporter_version}.linux-amd64.tar.gz
+    download_tar_gz ${src_dir} https://github.com/prometheus/alertmanager/releases/download/v${alertmanager_version}/alertmanager-${alertmanager_version}.linux-amd64.tar.gz
     cd ${file_in_the_dir}
-    untar_tgz node_exporter-${node_exporter_version}.linux-amd64.tar.gz
-    mv node_exporter-${node_exporter_version}.linux-amd64 ${node_exporter_home}
+    untar_tgz alertmanager-${alertmanager_version}.linux-amd64.tar.gz
+    mv alertmanager-${alertmanager_version}.linux-amd64 ${alertmanager_home}
 
     add_user_and_group ${sys_user}
 
     generate_unit_file_and_start
 }
 
-function install_node_exporter() {
-    is_run_node_exporter
+function install_alertmanager() {
+    is_run_alertmanager
     download_and_config
 }
 
-install_node_exporter
+install_alertmanager
