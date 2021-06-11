@@ -173,8 +173,8 @@ groups:
       labels:
         region: 成都
       annotations:
-        summary: "{{\$labels.instance}}宕机！"
-        description: "服务器{{\$labels.instance}}已宕机！"
+        summary: "{{\$labels.instance}}（{{\$labels.nodename}}）宕机！"
+        description: "服务器{{\$labels.instance}}（{{\$labels.nodename}}）已宕机！"
     - alert: cpu使用率过高告警
       expr: (100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[5m])) by(instance)* 100))* on(instance) group_left(nodename) (node_uname_info) > 85
       for: 5m
