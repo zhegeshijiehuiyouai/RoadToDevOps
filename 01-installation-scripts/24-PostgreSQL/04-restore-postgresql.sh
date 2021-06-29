@@ -43,7 +43,7 @@ function decompression_pg_backup() {
     echo_info 解压增量备份包
     tar xf ${INCRE_BACK_FILE}
     echo_info 移动增量备份文件至pg_wal目录
-    mv 0000* data/pg_wal/
+    \cp -rf 0000* data/pg_wal/
 }
 
 function check_time_format() {
