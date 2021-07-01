@@ -49,7 +49,8 @@ rpm -Uvh ./*rpm
 │   ├── 28-Node.js
 │   ├── 29-code-push-server
 │   ├── 30-openvpn
-│   └── 31-clickhouse
+│   ├── 31-clickhouse
+│   └── 32-nacos
 ├── 02-elasticsearch-tools
 │   ├── 01-clean-single-es-index-by-date.sh
 │   └── 02-clean-date-format-es-index-by-date.sh
