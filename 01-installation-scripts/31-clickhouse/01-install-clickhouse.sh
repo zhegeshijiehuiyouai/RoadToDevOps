@@ -3,7 +3,7 @@
 CLICKHOUSE_HOME=/data/clickhouse
 CLICKHOUSE_TCP_PORT=9000
 CLICKHOUSE_HTTP_PORT=8123
-CLICKHOUSE_USER=z
+CLICKHOUSE_USER=fuza
 CLICKHOUSE_PASSWORD=fuzaDeMima
 
 # 带格式的echo函数
@@ -60,6 +60,16 @@ function config_clickhouse() {
     sed -i "s@<readonly>1</readonly>@<readonly>0</readonly>@g" ${USER_FILE_PATH}
 }
 
+function echo_summary() {
+    echo_info 启动clickhouse
+    systemctl start clickhouse-server.service
+    echo_info clickhouse已经部署完毕，相关信息如下：
+    echo -e "\033[37m                  账号：${CLICKHOUSE_USER}\033[0m"
+    echo -e "\033[37m                  密码：${CLICKHOUSE_PASSWORD}\033[0m"
+    echo -e "\033[37m                  TCP端口：${CLICKHOUSE_TCP_PORT}\033[0m"
+    echo -e "\033[37m                  HTTP端口：${CLICKHOUSE_HTTP_PORT}\033[0m"
+}
+
 function create_dirs() {
     mkdir -p ${CLICKHOUSE_HOME}/{data,logs}
     chown -R clickhouse:clickhouse ${CLICKHOUSE_HOME}
@@ -73,7 +83,7 @@ function install_by_yum() {
         exit 1
     fi
     CONFIG_FILE_PATH=/etc/clickhouse-server/config.xml
-    USER_FILE_PATH=/etc/clickhouse-server/user.xml
+    USER_FILE_PATH=/etc/clickhouse-server/users.xml
 }
 
 function main() {
@@ -81,6 +91,7 @@ function main() {
     install_by_yum
     create_dirs
     config_clickhouse
+    echo_summary
 }
 
 main
