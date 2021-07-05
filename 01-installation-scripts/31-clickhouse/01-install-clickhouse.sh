@@ -68,6 +68,7 @@ function echo_summary() {
     echo -e "\033[37m                  密码：${CLICKHOUSE_PASSWORD}\033[0m"
     echo -e "\033[37m                  TCP端口：${CLICKHOUSE_TCP_PORT}\033[0m"
     echo -e "\033[37m                  HTTP端口：${CLICKHOUSE_HTTP_PORT}\033[0m"
+    echo -e "\033[37m                  命令行连接：clickhouse-client -h 127.0.0.1 -u ${CLICKHOUSE_USER} --password ${CLICKHOUSE_PASSWORD} --port ${CLICKHOUSE_HTTP_PORT}\033[0m"
 }
 
 function create_dirs() {
