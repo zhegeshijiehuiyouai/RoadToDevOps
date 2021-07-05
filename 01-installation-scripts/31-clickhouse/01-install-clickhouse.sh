@@ -51,7 +51,7 @@ function config_clickhouse() {
         <${CLICKHOUSE_USER}>\\
             <password>${CLICKHOUSE_PASSWORD}</password>\\
             <access_management>1</access_management>\\
-            <networks incl="networks" replace="replace">\\
+            <networks incl=\"networks\" replace=\"replace\">\\
                 <ip>0.0.0.0/0</ip>\\
             </networks>\\
             <profile>default</profile>\\
