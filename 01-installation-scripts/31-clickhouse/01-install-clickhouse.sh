@@ -31,7 +31,7 @@ EOF
 
 function config_clickhouse() {
     echo_info 调整clickhouse配置
-    grep "[[:space:]]+<listen_host>0.0.0.0</listen_host>" config.xml
+    grep "[[:space:]]+<listen_host>0.0.0.0</listen_host>" ${CONFIG_FILE_PATH}
     if [ $? -ne 0 ];then
         sed -i "/    <\!-- <listen_host>0.0.0.0<\/listen_host> -->/a \    <listen_host>0.0.0.0</listen_host>" ${CONFIG_FILE_PATH}
     fi
