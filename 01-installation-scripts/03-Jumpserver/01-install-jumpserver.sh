@@ -134,6 +134,7 @@ function download_and_startup_jumpserver() {
     sed -i "s#- core-data:/opt/jumpserver/data#- ./data/core-data:/opt/jumpserver/data#g" docker-compose.yml
     sed -i "s#- koko-data:/opt/koko/data#- ./data/koko-data:/opt/koko/data#g" docker-compose.yml
     sed -i "s#- guacamole-data:/config/guacamole/data#- ./data/guacamole-data:/config/guacamole/data#g" docker-compose.yml
+    sed -i "s#- lion-data:/opt/lion/data#- ./data/lion-data:/opt/lion/data#g" docker-compose.yml
 
     sed -i "/^volumes:$/d" docker-compose.yml
     sed -i "/^  mysql-data:$/d" docker-compose.yml
@@ -141,6 +142,7 @@ function download_and_startup_jumpserver() {
     sed -i "/^  core-data:$/d" docker-compose.yml
     sed -i "/^  koko-data:$/d" docker-compose.yml
     sed -i "/^  guacamole-data:$/d" docker-compose.yml
+    sed -i "/^  lion-data:$/d" docker-compose.yml
 
     echo_info 如有更多修改，请编辑 ${JUMP_HOME}/.env 文件
 
