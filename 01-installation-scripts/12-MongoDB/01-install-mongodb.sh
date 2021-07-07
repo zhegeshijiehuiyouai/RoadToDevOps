@@ -46,6 +46,7 @@ function init_mongodb(){
     systemctl enable mongod &> /dev/null
 
     echo_info 设置mongodb用户
+    source /etc/profile
     mongo admin --eval "db.createUser({user:\"${user}\", pwd:\"${passwd}\", roles:[{role:\"root\", db:\"admin\"}]})" &> /dev/null
 
     echo_info 开启安全认证
