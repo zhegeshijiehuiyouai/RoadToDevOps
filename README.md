@@ -66,7 +66,8 @@ rpm -Uvh ./*rpm
 │   ├── 02-update-openssh.sh
 │   ├── 03-init-system.sh
 │   ├── 04-tcp-connection-state-counter.sh
-│   └── 05-uq.sh
+│   ├── 05-uq.sh
+│   └── 06-update-kernel.sh
 ├── 06-Antivirus-tools
 │   └── 01-kill-miner-proc.sh
 ├── 07-java-tools
