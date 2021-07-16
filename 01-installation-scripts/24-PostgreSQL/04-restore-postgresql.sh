@@ -78,7 +78,7 @@ function restore_pg() {
     chmod 700 ${PG_HOME}/data
     get_restore_time_range
     # 如果有从库配置，注释掉从库，否则主库不能写
-    sed -i "s/^synchronous_standby_names/# &/g"
+    sed -i "s/^synchronous_standby_names/# &/g" ${PG_HOME}/data/postgresql.conf
     
     echo_info 启动postgresql
     systemctl start ${SYSTEM_UNIT_FILE}
