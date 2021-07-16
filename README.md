@@ -50,7 +50,8 @@ rpm -Uvh ./*rpm
 │   ├── 29-code-push-server
 │   ├── 30-openvpn
 │   ├── 31-clickhouse
-│   └── 32-nacos
+│   ├── 32-nacos
+│   └── 33-flink
 ├── 02-elasticsearch-tools
 │   ├── 01-clean-single-es-index-by-date.sh
 │   └── 02-clean-date-format-es-index-by-date.sh
