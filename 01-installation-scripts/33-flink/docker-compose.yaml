@@ -2,6 +2,7 @@ version: "3"
 services:
   jobmanager:
     image: flink:1.12.4-scala_2.12-java8
+    container_name: flink-jobmanager
     ports:
       - "8081:8081"
     command: jobmanager
@@ -9,6 +10,7 @@ services:
       - JOB_MANAGER_RPC_ADDRESS=jobmanager
   taskmanager:
     image: flink:1.12.4-scala_2.12-java8
+    container_name: flink-taskmanager
     depends_on:
       - jobmanager
     command: taskmanager
