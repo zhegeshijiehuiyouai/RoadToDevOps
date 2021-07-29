@@ -1,3 +1,6 @@
+[![GitHub Stars](https://img.shields.io/github/stars/zhegeshijiehuiyouai/RoadToDevOps)](https://github.com/zhegeshijiehuiyouai/RoadToDevOps/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/zhegeshijiehuiyouai/RoadToDevOps)](https://github.com/zhegeshijiehuiyouai/RoadToDevOps/fork)
+
 ***本项目在 CentOS 7.6 环境下开发***  
 ***2021年5月14日，新增[https://github.com/oldratlee/useful-scripts](https://github.com/oldratlee/useful-scripts)项目中的部分脚本***
 </br>
