@@ -2,8 +2,6 @@
 [![GitHub Forks](https://img.shields.io/github/forks/zhegeshijiehuiyouai/RoadToDevOps)](https://github.com/zhegeshijiehuiyouai/RoadToDevOps/fork)
 
 ***本项目在 CentOS 7.6 环境下开发***  
-***2021年5月14日，新增[https://github.com/oldratlee/useful-scripts](https://github.com/oldratlee/useful-scripts)项目中的部分脚本***
-</br>
 
 ## 🔧 脚本用法
 - 本项目中的各脚本，请在 `/root/` 目录以外的任意普通目录执行，否则部分脚本无法执行成功，建议 `/data/` 目录（虽然大部分脚本在 `/root/` 目录也能执行成功）。  
@@ -78,6 +76,7 @@ rpm -Uvh ./*rpm
 │   ├── 01-show-busy-java-threads.sh
 │   ├── 02-show-duplicate-java-classes.py
 │   └── 03-find-in-jars.sh
+├── 08-ssl-gen
 └── README.md
 
 ```
