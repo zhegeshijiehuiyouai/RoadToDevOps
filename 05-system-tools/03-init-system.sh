@@ -60,7 +60,8 @@ echo_info 配置hosts文件，解封github
 cat >> /etc/hosts <<EOF
 
 # generate by https://github.com/zhegeshijiehuiyouai/RoadToDevOps
-140.82.113.3    github.com 
+13.229.188.59   github.com
+52.74.223.119   www.github.com
 199.232.69.194  github.global.ssl.fastly.net
 185.199.108.153 assets-cdn.github.com
 185.199.108.133 user-images.githubusercontent.com
