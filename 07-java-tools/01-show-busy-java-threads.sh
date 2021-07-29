@@ -1,6 +1,4 @@
 #!/bin/bash
-# 用于快速排查Java的CPU性能问题(top us值过高)，自动查出运行的Java进程中消耗CPU多的线程，并打印出其线程栈，从而确定导致性能问题的方法调用。
-
 # @Function
 # Find out the highest cpu consumed threads of java processes, and print the stack of these threads.
 #
@@ -23,7 +21,7 @@
 
 # NOTE: DO NOT declare var PROG as readonly, because its value is supplied by subshell.
 PROG="$(basename "$0")"
-readonly PROG_VERSION='2.4.0-dev'
+readonly PROG_VERSION='2.5.0-dev'
 # choosing between $0 and BASH_SOURCE
 # https://stackoverflow.com/a/35006505/922688
 # How can I get the source directory of a Bash script from within the script itself?
@@ -104,6 +102,20 @@ logAndCat() {
     cat
 }
 
+# Bash RegEx to check floating point numbers from user input
+# https://stackoverflow.com/questions/13790763
+isNonNegativeFloatNumber() {
+    [[ "$1" =~ ^[+]?[0-9]+\.?[0-9]*$ ]]
+}
+
+isNaturalNumber() {
+    [[ "$1" =~ ^[+]?[0-9]+$ ]]
+}
+
+isNaturalNumberList() {
+    [[ "$1" =~ ^([0-9]+)(,[0-9]+)*$ ]]
+}
+
 # print calling(quoted) command line which is able to copy and paste to rerun safely
 #
 # How to get the complete calling command of a BASH script from inside the script (not just the arguments)
@@ -141,7 +153,8 @@ Example:
 
 Output control:
   -p, --pid <java pid(s)>   find out the highest cpu consumed threads from
-                            the specified java process. support pid list(eg: 42,99).
+                            the specified java process.
+                            support pid list(eg: 42,47).
                             default from all java process.
   -c, --count <num>         set the thread count to show, default is 5.
                             set count 0 to show all threads.
@@ -158,24 +171,19 @@ Output control:
 
 jstack control:
   -s, --jstack-path <path>  specifies the path of jstack command.
-  -F, --force               set jstack to force a thread dump. use when jstack
-                            does not respond (process is hung).
-  -m, --mix-native-frames   set jstack to print both java and native frames
-                            (mixed mode).
+  -F, --force               set jstack to force a thread dump.
+                            use when jstack does not respond (process is hung).
+  -m, --mix-native-frames   set jstack to print both java and
+                            native frames (mixed mode).
   -l, --lock-info           set jstack with long listing.
                             prints additional information about locks.
 
 CPU usage calculation control:
-  -d, --top-delay           specifies the delay between top samples.
-                            default is 0.5 (second). get thread cpu percentage
-                            during this delay interval.
-                            more info see top -d option. eg: -d 1 (1 second).
-  -P, --use-ps              use ps command to find busy thread(cpu usage)
-                            instead of top command.
-                            default use top command, because cpu usage of
-                            ps command is expressed as the percentage of
-                            time spent running during the *entire lifetime*
-                            of a process, this is not ideal in general.
+  -i, --cpu-sample-interval specifies the delay between cpu samples to get
+                            thread cpu usage percentage during this interval.
+                            default is 0.5 (second).
+                            set interval 0 to get the percentage of time spent
+                            running during the *entire lifetime* of a process.
 
 Miscellaneous:
   -h, --help                display this help and exit.
@@ -204,8 +212,8 @@ uname | grep '^Linux' -q || die "$PROG only support Linux, not support $(uname) 
 # readonly declaration make exit code of assignment to be always 0, aka. the exit code of `getopt` in subshell is discarded.
 #   tested on bash 4.2.46
 ARGS=$(
-    getopt -n "$PROG" -a -o c:p:a:s:S:Pd:FmlhV \
-        -l count:,pid:,append-file:,jstack-path:,store-dir:,use-ps,top-delay:,force,mix-native-frames,lock-info,help,version \
+    getopt -n "$PROG" -a -o c:p:a:s:S:i:Pd:FmlhV \
+        -l count:,pid:,append-file:,jstack-path:,store-dir:,cpu-sample-interval:,use-ps,top-delay:,force,mix-native-frames,lock-info,help,version \
         -- "$@"
 ) || {
     echo
@@ -214,8 +222,7 @@ ARGS=$(
 eval set -- "${ARGS}"
 
 count=5
-use_ps=false
-top_delay=0.5
+cpu_sample_interval=0.5
 
 while true; do
     case "$1" in
@@ -239,12 +246,14 @@ while true; do
         store_dir="$2"
         shift 2
         ;;
+    # support the option name -P,--use-ps for compatibility
     -P | --use-ps)
-        use_ps=true
+        cpu_sample_interval=0
         shift
         ;;
-    -d | --top-delay)
-        top_delay="$2"
+    # support the option name -d,--top-delay for compatibility
+    -i | --cpu-sample-interval | -d | --top-delay)
+        cpu_sample_interval="$2"
         shift 2
         ;;
     -F | --force)
@@ -273,16 +282,14 @@ while true; do
 done
 
 update_delay=${1:-0}
-# Bash RegEx to check floating point numbers from user input
-# https://stackoverflow.com/questions/13790763
-[[ "$update_delay" =~ ^[+]?[0-9]+\.?[0-9]*$ ]] || die "update delay($update_delay) is not a positive float number!"
+isNonNegativeFloatNumber "$update_delay" || die "update delay($update_delay) is not a non-negative float number!"
 
 [ -z "$1" ] && update_count=1 || update_count=${2:-0}
-[[ "$update_count" =~ ^[+]?[0-9]+$ ]] || die "update count($update_count) is not a natural number!"
+isNaturalNumber "$update_count" || die "update count($update_count) is not a natural number!"
 
 if [ -n "$pid_list" ]; then
     pid_list="${pid_list//[[:space:]]/}" # delete white space
-    [[ "$pid_list" =~ ^([0-9]+)(,[0-9]+)*$ ]] || die "pid(s)($pid_list) is illegal! example: 42 or 42,99,67"
+    isNaturalNumberList "$pid_list" || die "pid(s)($pid_list) is illegal! example: 42 or 42,99,67"
 fi
 
 # check the directory of append-file(-a) mode, create if not exist.
@@ -311,20 +318,36 @@ if [ -n "$store_dir" ]; then
     fi
 fi
 
+isNonNegativeFloatNumber "$cpu_sample_interval" || die "cpu sample interval($cpu_sample_interval) is not a non-negative float number!"
+
 ################################################################################
-# check the existence of jstack command
+# search/check the existence of jstack command
+#
+# search order/priority:
+#    1. from -s option
+#    2. from under env var JAVA_HOME
+#    3. from under env var PATH
 ################################################################################
 
 if [ -n "$jstack_path" ]; then
-    [ -f "$jstack_path" ] || die "$jstack_path is NOT found!"
-    [ -x "$jstack_path" ] || die "$jstack_path is NOT executable!"
+    # 1. check jstack_path set by -s option
+    [ -f "$jstack_path" ] || die "$jstack_path (set by -s option) is NOT found!"
+    [ -x "$jstack_path" ] || die "$jstack_path (set by -s option) is NOT executable!"
+elif [ -n "$JAVA_HOME" ]; then
+    # 2. search jstack under JAVA_HOME
+    if [ -f "$JAVA_HOME/bin/jstack" ]; then
+        [ -x "$JAVA_HOME/bin/jstack" ] || die "found \$JAVA_HOME/bin/jstack($JAVA_HOME/bin/jstack) is NOT executable!${nl}Use -s option set jstack path manually."
+        jstack_path="$JAVA_HOME/bin/jstack"
+    elif [ -f "$JAVA_HOME/../bin/jstack" ]; then
+        [ -x "$JAVA_HOME/../bin/jstack" ] || die "found \$JAVA_HOME/../bin/jstack($JAVA_HOME/../bin/jstack) is NOT executable!${nl}Use -s option set jstack path manually."
+        jstack_path="$JAVA_HOME/../bin/jstack"
+    fi
 elif command -v jstack &>/dev/null; then
+    # 3. search jstack under PATH
     jstack_path="$(command -v jstack)"
+    [ -x "$jstack_path" ] || die "found $jstack_path from PATH is NOT executable!${nl}Use -s option set jstack path manually."
 else
-    [ -n "$JAVA_HOME" ] || die "jstack not found on PATH and No JAVA_HOME setting! Use -s option set jstack path manually."
-    [ -f "$JAVA_HOME/bin/jstack" ] || die "jstack not found on PATH and \$JAVA_HOME/bin/jstack($JAVA_HOME/bin/jstack) file does NOT exists! Use -s option set jstack path manually."
-    [ -x "$JAVA_HOME/bin/jstack" ] || die "jstack not found on PATH and \$JAVA_HOME/bin/jstack($JAVA_HOME/bin/jstack) is NOT executable! Use -s option set jstack path manually."
-    jstack_path="$JAVA_HOME/bin/jstack"
+    die "jstack NOT found by JAVA_HOME(${JAVA_HOME:-not set}) setting and PATH!${nl}Use -s option set jstack path manually."
 fi
 
 ################################################################################
@@ -346,7 +369,7 @@ mkdir -p "$tmp_store_dir"
 cleanupWhenExit() {
     rm -rf "$tmp_store_dir" &>/dev/null
 }
-trap "cleanupWhenExit" EXIT
+trap cleanupWhenExit EXIT
 
 headInfo() {
     colorEcho "0;34;42" ================================================================================
@@ -371,20 +394,33 @@ __die_when_no_java_process_found() {
 
 # output field: pid, thread id(lwp), pcpu, user
 #   order by pcpu(percentage of cpu usage)
+#
+# NOTE:
+# use ps command to find busy thread(cpu usage)
+# cpu usage of ps command is expressed as
+# the percentage of time spent running during the *entire lifetime* of a process,
+# this is not ideal in general.
 findBusyJavaThreadsByPs() {
     # 1. sort by %cpu by ps option `--sort -pcpu`
+    #    unfortunately, ps from `procps-ng 3.3.12`, `--sort` does not work properly with other options,
+    #    use
+    #       ps <other options>
+    #    combined
+    #       sort -k3,3nr
+    #    instead of
+    #       ps <other options> --sort -pcpu
     # 2. use wide output(unlimited width) by ps option `-ww`
     #    avoid trunk user column to username_fo+ or $uid alike
 
     # shellcheck disable=SC2206
-    local -a ps_cmd_line=(ps $ps_process_select_options -wwLo 'pid,lwp,pcpu,user' --sort -pcpu --no-headers)
+    local -a ps_cmd_line=(ps $ps_process_select_options -wwLo 'pid,lwp,pcpu,user' --no-headers)
     # DO NOT combine var ps_out declaration and assignment, because its value is supplied by subshell.
     local ps_out
-    ps_out="$("${ps_cmd_line[@]}")"
+    ps_out="$("${ps_cmd_line[@]}" | sort -k3,3nr)"
     [ -n "$ps_out" ] || __die_when_no_java_process_found
 
     if [ -n "$store_dir" ]; then
-        echo "$ps_out" | logAndCat "${ps_cmd_line[@]}" >"${store_file_prefix}$((update_round_num + 1))_ps"
+        echo "$ps_out" | logAndCat "${ps_cmd_line[@]} | sort -k3,3nr" >"${store_file_prefix}$((update_round_num + 1))_ps"
     fi
 
     if ((count > 0)); then
@@ -418,7 +454,7 @@ __top_threadId_cpu() {
     #    and use second time update data to get cpu percentage of thread in 0.5 second interval
     # 4. top v3.3, there is 1 black line between 2 update;
     #    but top v3.2, there is 2 blank lines between 2 update!
-    local -a top_cmd_line=(top -H -b -d "$top_delay" -n 2 -p "$java_pid_list")
+    local -a top_cmd_line=(top -H -b -d "$cpu_sample_interval" -n 2 -p "$java_pid_list")
     # DO NOT combine var ps_out declaration and assignment, because its value is supplied by subshell.
     local top_out
     top_out=$(HOME="$tmp_store_dir" "${top_cmd_line[@]}")
@@ -544,7 +580,7 @@ main() {
             tee ${append_file:+-a "$append_file"} ${store_dir:+-a "${store_file_prefix}$PROG"} >/dev/null
         ((update_count != 1)) && headInfo
 
-        if $use_ps; then
+        if [ "$cpu_sample_interval" == 0 ]; then
             findBusyJavaThreadsByPs
         else
             findBusyJavaThreadsByTop
