@@ -45,7 +45,7 @@ out/<domain>/<domain>.crt
 out/<domain>/<domain>.bundle.crt
 ```
 
-证书有效期是 2 年，你可以修改 `ca.cnf` 来修改这个年限。
+证书有效期是 20 年，你可以修改 `ca.cnf` 来修改这个年限。
 
 根证书位于：  
 `out/root.crt`  
