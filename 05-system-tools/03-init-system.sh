@@ -29,6 +29,7 @@ if [ $? -eq 0 ];then
     grep -E "^nameserver" /etc/resolv.conf &> /dev/null
     if [ $? -ne 0 ];then
         echo_info 添加DNS服务器配置
+        echo "nameserver 61.139.2.69" >> /etc/resolv.conf
         echo "nameserver 114.114.114.114" >> /etc/resolv.conf
     else
         echo_info 系统已配置DNS服务器
