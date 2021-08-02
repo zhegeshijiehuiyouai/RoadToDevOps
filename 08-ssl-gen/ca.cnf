@@ -28,7 +28,7 @@ basicConstraints = CA:false
 nsComment = "OpenSSL Generated Server Certificate"
 subjectKeyIdentifier = hash
 authorityKeyIdentifier = keyid:always
-# subjectAltName = IP:127.0.0.1
+subjectAltName = IP:127.0.0.1
 keyUsage = digitalSignature,keyEncipherment
 extendedKeyUsage = serverAuth
 
