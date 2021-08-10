@@ -167,6 +167,8 @@ function install_by_docker() {
 
     echo_info 提取docker-compose启动文件
     mv apollo-master/scripts/docker-quick-start ${my_dir}/apollo
+    echo_info 配置持久化
+    sed -i 's#/var/lib/mysql#./mysql-data:/var/lib/mysql#g' ${my_dir}/apollo/docker-compose.yml
     echo_info 清理临时文件
     rm -rf apollo-master
 
