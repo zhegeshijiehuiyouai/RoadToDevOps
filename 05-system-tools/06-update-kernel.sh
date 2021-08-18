@@ -1,6 +1,6 @@
 #!/bin/bash
 
-KERNEL_VERSION="5.4.130-1"
+KERNEL_VERSION="5.4.141-1"
 
 wget https://elrepo.org/linux/kernel/el7/x86_64/RPMS/kernel-lt-${KERNEL_VERSION}.el7.elrepo.x86_64.rpm
 rpm -ivh kernel-lt-${KERNEL_VERSION}.el7.elrepo.x86_64.rpm
