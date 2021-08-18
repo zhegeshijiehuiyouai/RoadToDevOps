@@ -61,7 +61,8 @@ rpm -Uvh ./*rpm
 ├── 03-Dockerfile
 │   ├── 01-nacos
 │   ├── 02-feely-sys
-│   └── 03-centos
+│   ├── 03-centos
+│   └── 04-rocksdb
 ├── 04-disk-tools
 │   ├── 01-Create-Swap
 │   └── 02-Create-LVM
