@@ -62,7 +62,8 @@ rpm -Uvh ./*rpm
 │   ├── 01-nacos
 │   ├── 02-feely-sys
 │   ├── 03-centos
-│   └── 04-rocksdb
+│   ├── 04-rocksdb
+│   └── 05-java
 ├── 04-disk-tools
 │   ├── 01-Create-Swap
 │   └── 02-Create-LVM
