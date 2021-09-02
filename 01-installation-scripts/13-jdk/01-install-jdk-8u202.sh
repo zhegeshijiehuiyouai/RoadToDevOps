@@ -85,6 +85,10 @@ download_tar_gz $src_dir https://github.com/frekele/oracle-java/releases/downloa
 
 cd ${file_in_the_dir}
 rpm -Uvh jdk-8u202-linux-x64.rpm
+if [ $? -ne 0 ];then
+    echo_error jdk安装失败，请检查rpm包是否下载完全。建议手动下载后，覆盖服务器上的rpm包
+    exit 1
+fi
 
 echo_info 配置环境变量
 cat > /etc/profile.d/java.sh << EOF
