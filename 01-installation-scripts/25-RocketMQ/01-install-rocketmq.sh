@@ -4,7 +4,7 @@
 src_dir=$(pwd)/00src00
 rocketmq_home=$(pwd)/rocketmq
 # rockermq版本
-rocketmq_version=4.8.0
+rocketmq_version=4.9.1
 # 以什么用户启动rockermq
 sys_user=rocketmq
 # 端口配置
@@ -202,7 +202,12 @@ function binary_install() {
     echo_info 检测解压工具
     unar -v &> /dev/null
     if [ $? -ne 0 ];then
+        yum install -y epel-release
         yum install -y unar
+        if [ $? -ne 0 ];then
+            echo_error unar安装失败，请检查网络
+            exit 1
+        fi
     fi
     cd ${file_in_the_dir}
     unar rocketmq-all-${rocketmq_version}-bin-release.zip
