@@ -1,10 +1,9 @@
-```shell
-mkdir -p /data/disk2/blockchain/rocksdbTemp
+#!/bin/bash
+rocksdb_datadir=/data/rocksdbTemp
+
+mkdir -p ${rocksdb_datadir}
 cd /data
-vim rocksdbtest.cpp
-# 输入下面的内容
-```
-```c
+cat > rocksdbtest.cpp << EOF
 #include <cstdio>
 #include <string>
 
@@ -15,7 +14,7 @@ vim rocksdbtest.cpp
 using namespace std;
 using namespace rocksdb;
 
-const std::string PATH = "/data/disk2/blockchain/rocksdbTemp"; //rocksDB的数据存储目录绝对路径
+const std::string PATH = "${rocksdb_datadir}"; //rocksDB的数据存储目录绝对路径
 
 int main(){
     DB* db;
@@ -41,11 +40,6 @@ int main(){
 
     delete db;
 }
-```
-```shell
-# /data/rocksdb-6.4.6/是rocksdb的解压目录
+EOF
 g++ -std=c++11 -o rocksdbtest2 rocksdbtest.cpp -I /data/rocksdb-6.4.6/include -L/data/rocksdb-6.4.6 -lrocksdb -ldl
-# 编译好测试用例cpp文件后，执行：
-./rocksdbtest
-# 打印：value is success 说明rocksDB安装成功。
-```
+./rocksdbtest2
