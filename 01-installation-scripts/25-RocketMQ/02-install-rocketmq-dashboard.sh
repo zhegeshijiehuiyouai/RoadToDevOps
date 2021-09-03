@@ -2,14 +2,14 @@
 
 # 目录配置
 src_dir=$(pwd)/00src00
-rocketmq_console_home=$(pwd)/rocketmq_console
-rocketmq_console_data_path=${rocketmq_console_home}/data
-rocketmq_console_port=8228
+rocketmq_dashboard_home=$(pwd)/rocketmq_dashboard
+rocketmq_dashboard_data_path=${rocketmq_dashboard_home}/data
+rocketmq_dashboard_port=8228
 rocketmq_web_user=nohack
-rocketmq_web_pass=Console_2021
-# 以什么用户启动rockermq-console
+rocketmq_web_pass=dashboard_2021
+# 以什么用户启动rockermq-dashboard
 sys_user=rocketmq
-unit_file_name=rmq_console.service
+unit_file_name=rmq_dashboard.service
 xms=512m
 xmx=512m
 
@@ -107,42 +107,42 @@ function add_user_and_group(){
     fi
 }
 
-function is_run_rocketmq_console() {
-    ps -ef | grep ${rocketmq_console_home}/ | grep -v grep &> /dev/null
+function is_run_rocketmq_dashboard() {
+    ps -ef | grep ${rocketmq_dashboard_home}/ | grep -v grep &> /dev/null
     if [ $? -eq 0 ];then
-        echo_error 检测到rocketmq_console正在运行中，退出
+        echo_error 检测到rocketmq_dashboard正在运行中，退出
         exit 3
     fi
 
-    if [ -d ${rocketmq_console_home} ];then
-        echo_error 检测到目录${rocketmq_console_home}，请检查是否重复安装，退出
+    if [ -d ${rocketmq_dashboard_home} ];then
+        echo_error 检测到目录${rocketmq_dashboard_home}，请检查是否重复安装，退出
         exit 4
     fi
 
-    netstat -tnlp | grep -E ":${rocketmq_console_port}[[:space:]]" &> /dev/null
+    netstat -tnlp | grep -E ":${rocketmq_dashboard_port}[[:space:]]" &> /dev/null
     if [ $? -eq 0 ];then
-        echo_error 检测到${rocketmq_console_port}端口被占用，退出
+        echo_error 检测到${rocketmq_dashboard_port}端口被占用，退出
         exit 5
     fi
 }
 
-function check_unar() {
-    unar -v &> /dev/null
+function check_unzip() {
+    unzip -h &> /dev/null
     if [ $? -ne 0 ];then
-        echo_info 安装解压工具unar
-        yum install -y unar
+        echo_info 安装解压工具unzip
+        yum install -y unzip
     fi
 }
 
-function config_rocketmq_console() {
-    # 默认已经再rocketmq-console目录下了
-    sed -i 's#^server\.port=.*#server.port='${rocketmq_console_port}'#' src/main/resources/application.properties
+function config_rocketmq_dashboard() {
+    # 默认已经在rocketmq-dashboard目录下了
+    sed -i 's#^server\.port=.*#server.port='${rocketmq_dashboard_port}'#' src/main/resources/application.properties
     sed -i 's#^rocketmq\.config\.namesrvAddr=.*#rocketmq.config.namesrvAddr='${rocketmq_namesrv_ip}'#' src/main/resources/application.properties
-    sed -i 's#^rocketmq\.config\.dataPath=.*#rocketmq.config.dataPath='${rocketmq_console_data_path}'#' src/main/resources/application.properties
+    sed -i 's#^rocketmq\.config\.dataPath=.*#rocketmq.config.dataPath='${rocketmq_dashboard_data_path}'#' src/main/resources/application.properties
     sed -i 's#^rocketmq\.config\.loginRequired=.*#rocketmq.config.loginRequired=true#' src/main/resources/application.properties
-    sed -i 's#\${user.home}#'${rocketmq_console_home}'/logs#g' src/main/resources/logback.xml
-    cat > ${rocketmq_console_data_path}/users.properties << EOF
-# 该文件支持热修改，即添加和修改用户时，不需要重新启动console
+    sed -i 's#\${user.home}#'${rocketmq_dashboard_home}'/logs#g' src/main/resources/logback.xml
+    cat > ${rocketmq_dashboard_data_path}/users.properties << EOF
+# 该文件支持热修改，即添加和修改用户时，不需要重新启动dashboard
 # 格式， 每行定义一个用户， username=password[,N]  #N是可选项，可以为0 (普通用户)； 1 （管理员）
 ${rocketmq_web_user}=${rocketmq_web_pass},1
 EOF
@@ -176,12 +176,12 @@ function generate_unit_file() {
     echo_info 生成${unit_file_name}文件用于systemd控制
     cat >/usr/lib/systemd/system/${unit_file_name} <<EOF
 [Unit]
-Description=rocketmq-console
+Description=rocketmq-dashboard
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=$JAVA_HOME/bin/java -Xms${xms} -Xmx${xmx} -jar ${rocketmq_console_home}/rocketmq-console.jar
+ExecStart=$JAVA_HOME/bin/java -Xms${xms} -Xmx${xmx} -jar ${rocketmq_dashboard_home}/rocketmq-dashboard.jar
 Restart=always
 
 [Install]
@@ -190,41 +190,41 @@ EOF
 
     systemctl daemon-reload
     get_machine_ip
-    echo_info rockermq-console已部署完毕，相关信息如下：
+    echo_info rockermq-dashboard已部署完毕，相关信息如下：
     echo -e "\033[37m                  启动命令：systemctl start ${unit_file_name}\033[0m"
-    echo -e "\033[37m                  访问地址：http://${machine_ip}:${rocketmq_console_port}\033[0m"
+    echo -e "\033[37m                  访问地址：http://${machine_ip}:${rocketmq_dashboard_port}\033[0m"
     echo -e "\033[37m                  登录账号：${rocketmq_web_user}"
     echo -e "\033[37m                  登录密码：${rocketmq_web_pass}"
 }
 
 function download_and_compile() {
-    [ -d ${rocketmq_console_data_path} ] || mkdir -p ${rocketmq_console_data_path}
+    [ -d ${rocketmq_dashboard_data_path} ] || mkdir -p ${rocketmq_dashboard_data_path}
 
     echo_info "如果下载不成功，可通过其他方式下载后，放在$(pwd)/目录，或${src_dir}/目录下，再执行本脚本"
-    download_tar_gz ${src_dir} https://codeload.github.com/apache/rocketmq-externals/zip/refs/heads/master
+    download_tar_gz ${src_dir} https://codeload.github.com/apache/rocketmq-dashboard/zip/refs/heads/master
     cd ${file_in_the_dir}
 
-    check_unar
-    echo_info 解压rocketmq-console
-    unar rocketmq-externals-master.zip
-    cd rocketmq-externals-master/rocketmq-console
+    check_unzip
+    echo_info 解压rocketmq-dashboard
+    unzip rocketmq-externals-master.zip
+    cd rocketmq-dashboard-master
 
     echo_info 请输入rocketmq nameserver的IP:port地址：
     read rocketmq_namesrv_ip
     check_ip_legeal ${rocketmq_namesrv_ip}
 
-    echo_info 调整rockermq-console配置
-    config_rocketmq_console
+    echo_info 调整rockermq-dashboard配置
+    config_rocketmq_dashboard
 
-    echo_info 编译rocketmq-console
+    echo_info 编译rocketmq-dashboard
     mvn clean package -Dmaven.test.skip=true
 
     echo_info 拷贝jar包
-    cp -a target/rocketmq-console-ng-2.0.0.jar ${rocketmq_console_home}/rocketmq-console.jar
+    cp -a target/rocketmq-dashboard-2.0.0.jar ${rocketmq_dashboard_home}/rocketmq-dashboard.jar
 
     add_user_and_group ${sys_user}
     echo_info 部署目录授权
-    chown -R ${sys_user}:${sys_user} ${rocketmq_console_home}
+    chown -R ${sys_user}:${sys_user} ${rocketmq_dashboard_home}
 
     echo_info 清理解压文件
     cd
@@ -232,7 +232,7 @@ function download_and_compile() {
 }
 
 function main() {
-    is_run_rocketmq_console
+    is_run_rocketmq_dashboard
     check_java_and_maven
     download_and_compile
     generate_unit_file
