@@ -113,6 +113,11 @@ echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.d/flexgw.conf
 sysctl -p
 
 echo_info 安装依赖的软件包
+# 检查epel包
+yum repolist | grep "epel/x86_64" &> /dev/null
+if [ $? -ne 0 ];then
+    yum install -y epel-release
+fi
 yum install -y strongswan openvpn zip curl wget
 
 echo_info 安装flexgw rpm包
