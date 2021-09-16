@@ -59,7 +59,7 @@ docker -v
 ######## 部署docker-compose
 echo_info 部署docker-compose中，请耐心等候
 
-curl_timeout=2
+curl_timeout=5
 # 设置dns超时时间，避免没网情况下等很久
 echo "options timeout:${curl_timeout} attempts:1 rotate" >> /etc/resolv.conf
 docker_compose_version=$(curl -s -H "User-Agent:Mozilla/5.0 (Macintosh; Intel Mac OS X 11_2_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36" --connect-timeout ${curl_timeout} https://github.com/docker/compose/tags | grep "/docker/compose/releases/tag/" | head -1 | awk -F'"' '{print $2}' | xargs basename)
@@ -102,7 +102,7 @@ EOF
 /bin/bash $back_task &
 
 # 使用国内源加速下载
-curl -sL --connect-timeout 5 "https://get.daocloud.io/docker/compose/releases/download/${docker_compose_version}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+curl -sL --connect-timeout 5 "https://get.daocloud.io/docker/compose/releases/download/${docker_compose_version}/docker-compose-linux-amd64" -o /usr/local/bin/docker-compose
 chmod +x /usr/local/bin/docker-compose
 echo  # 换行，与小点隔开
 echo_info docker-compose已部署成功，版本信息如下：
