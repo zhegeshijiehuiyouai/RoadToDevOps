@@ -70,6 +70,10 @@ function download_tar_gz(){
             mkdir -p $1 && cd $1
             echo -e "\033[32m[+] 下载 $download_file_name 至 $(pwd)/\033[0m"
             wget $2
+            if [ $? -ne 0 ];then
+                echo_error 下载 $2 失败！
+                exit 1
+            fi
             file_in_the_dir=$(pwd)
             # 返回脚本所在目录，这样这个函数才可以多次使用
             cd ${back_dir}
@@ -81,6 +85,10 @@ function download_tar_gz(){
             # 进入此处表示${src_dir}目录内没有压缩包
                 echo -e "\033[32m[+] 下载 $download_file_name 至 $(pwd)/\033[0m"
                 wget $2
+                if [ $? -ne 0 ];then
+                    echo_error 下载 $2 失败！
+                    exit 1
+                fi
                 file_in_the_dir=$(pwd)
                 cd ${back_dir}
             else

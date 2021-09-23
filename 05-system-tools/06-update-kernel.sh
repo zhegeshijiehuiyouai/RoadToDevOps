@@ -1,6 +1,6 @@
 #!/bin/bash
 
-KERNEL_VERSION="5.4.141-1"
+KERNEL_VERSION="$(curl -s --connect-timeout 5 https://elrepo.org/linux/kernel/el7/x86_64/RPMS/ | grep "kernel-lt-[0-9].*" | awk -F 'href="' '{print $2}' | awk -F '"' '{print $1}' | tail -1 |awk -F "-" '{print $3}')-1"
 DOWNLOAD_DIR=00src00
 
 
@@ -46,6 +46,10 @@ function download_tar_gz(){
                 yum install -y wget
             fi
             wget $2
+            if [ $? -ne 0 ];then
+                echo_error 下载 $2 失败！
+                exit 1
+            fi
             file_in_the_dir=$(pwd)
             # 返回脚本所在目录，这样这个函数才可以多次使用
             cd ${back_dir}
@@ -62,6 +66,10 @@ function download_tar_gz(){
                     yum install -y wget
                 fi
                 wget $2
+                if [ $? -ne 0 ];then
+                    echo_error 下载 $2 失败！
+                    exit 1
+                fi
                 file_in_the_dir=$(pwd)
                 cd ${back_dir}
             else
