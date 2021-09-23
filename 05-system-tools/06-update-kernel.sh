@@ -88,6 +88,7 @@ function download_tar_gz(){
 
 download_tar_gz ${DOWNLOAD_DIR} https://elrepo.org/linux/kernel/el7/x86_64/RPMS/kernel-lt-${KERNEL_VERSION}.el7.elrepo.x86_64.rpm
 
+cd ${file_in_the_dir}
 rpm -ivh kernel-lt-${KERNEL_VERSION}.el7.elrepo.x86_64.rpm
 cat /boot/grub2/grub.cfg | grep menuentry
 grub2-set-default "CentOS Linux (${KERNEL_VERSION}.el7.elrepo.x86_64) 7 (Core)"
