@@ -99,11 +99,21 @@ function generate_nfs_conf() {
     echo_info 配置nfs
     get_machine_ip
     net_ip=$(echo ${machine_ip} | sed 's/[0-9]*$/0/')
+    net_mask=$(ip a | grep ${machine_ip} | awk '{print $2}' | awk -F "/" '{print $2}')
+    if [ $? -ne 0 ];then
+        echo_info 请手动输入子网掩码（24、32这种格式）
+        read INPUT_NET_MASK
+        if [[ ! ${INPUT_NET_MASK} =~ ^[0-9] ]];then
+            echo_error 错误的子网掩码格式，退出
+            exit 2
+        fi
+        net_mask=${INPUT_NET_MASK}
+    fi
     input_share_dir
     :>/etc/exports
     for i in ${share_dirs[@]};do
         cat >> /etc/exports <<EOF
-${i} ${net_ip}/24(rw,sync,no_wdelay,no_root_squash,no_subtree_check)
+${i} ${net_ip}/${net_mask}(rw,sync,no_wdelay,no_root_squash,no_subtree_check)
 EOF
     # rw：该主机对该共享目录有读写权限
     # ro：该主机对该共享目录有只读权限
@@ -134,7 +144,7 @@ function echo_summary() {
     # retry：失败后重试次数
 
     echo 服务端取消nfs共享目录命令：
-    echo -e "\033[45mexportfs -u ${net_ip}/24:${share_dirs[0]}\033[0m"
+    echo -e "\033[45mexportfs -u ${net_ip}/${net_mask}:${share_dirs[0]}\033[0m"
     echo 停止nfs命令：
     echo -e "\033[45msystemctl stop nfs\033[0m"
 }
