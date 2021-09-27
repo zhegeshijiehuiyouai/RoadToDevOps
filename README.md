@@ -55,7 +55,8 @@ rpm -Uvh ./*rpm
 │   ├── 33-flink
 │   ├── 34-apollo
 │   ├── 35-consul
-│   └── 36-flexgw
+│   ├── 36-flexgw
+│   └── 37-wireguard
 ├── 02-elasticsearch-tools
 │   ├── 01-clean-single-es-index-by-date.sh
 │   └── 02-clean-date-format-es-index-by-date.sh
