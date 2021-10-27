@@ -72,7 +72,8 @@ echo_info 部署docker-compose中，请耐心等候
 # sed -i '$d' /etc/resolv.conf
 
 # docker-compose v2命令和v1不一样了，故使用老版本
-docker_compose_version=1.29.2
+# docker-compose >= 1.28 需要将 .env 拷贝到 compose 目录，目前 docker 官方尚未对此问题进行定义是否属于 bug ，使用 1.27 版本，可以避免此问题
+docker_compose_version=1.27.4
 
 back_task=/tmp/.display_dot_to_show_aliviness
 # 显示变化小点，表示没有卡死
