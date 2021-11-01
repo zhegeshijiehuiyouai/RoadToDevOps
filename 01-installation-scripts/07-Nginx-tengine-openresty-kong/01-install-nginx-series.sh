@@ -455,23 +455,23 @@ EOF
 cat > /usr/lib/systemd/system/nginx.service <<EOF
 [Unit]
 Description=The nginx HTTP and reverse proxy server
-After=network.target remote-fs.target nss-lookup.target
+After=network-online.target remote-fs.target nss-lookup.target
+Wants=network-online.target
 
 [Service]
 Type=forking
 PIDFile=${installdir}/logs/nginx.pid
 # Nginx will fail to start if /run/nginx.pid already exists but has the wrong
-# SELinux context. This might happen when running "nginx -t" from the cmdline.
+# SELinux context. This might happen when running `nginx -t` from the cmdline.
 # https://bugzilla.redhat.com/show_bug.cgi?id=1268621
-# ExecStartPre=/usr/bin/rm -f ${installdir}/logs/nginx.pid
+ExecStartPre=/usr/bin/rm -f ${installdir}/logs/nginx.pid
 ExecStartPre=${installdir}/sbin/nginx -t
 ExecStart=${installdir}/sbin/nginx
-ExecReload=/bin/kill -s HUP \$MAINPID
+ExecReload=${installdir}/sbin/nginx -s reload
 KillSignal=SIGQUIT
 TimeoutStopSec=5
-KillMode=mixed
+KillMode=process
 PrivateTmp=true
-Restart=always
 
 [Install]
 WantedBy=multi-user.target
