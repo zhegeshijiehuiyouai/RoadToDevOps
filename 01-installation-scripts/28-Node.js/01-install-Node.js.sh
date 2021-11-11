@@ -1,6 +1,6 @@
 #!/bin/bash
 
-nodejs_version=v$(curl -s https://nodejs.org/zh-cn/download/ | grep "当前长期支持版" | awk -F'<strong>' '{print $2}' | awk -F'</strong>' '{print $1}')
+nodejs_version=v$(curl -s https://nodejs.org/zh-cn/download/ | grep "长期维护版" | awk -F'<strong>' '{print $2}' | awk -F'</strong>' '{print $1}')
 src_dir=$(pwd)/00src00
 mydir=$(pwd)
 
