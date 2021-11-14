@@ -150,10 +150,10 @@ function install_by_docker() {
         file_in_the_dir=${src_dir}
         cd ${file_in_the_dir}
     else
-        download_tar_gz ${src_dir} https://github.com/ctripcorp/apollo/archive/refs/heads/master.zip
+        download_tar_gz ${src_dir} https://github.com/apolloconfig/apollo/archive/refs/heads/master.zip
         if [ $? -ne 0 ];then
             echo_error 下载失败，可重试或手动下载压缩包放于当前目录，再运行本脚本
-            echo https://github.com/ctripcorp/apollo/archive/refs/heads/master.zip
+            echo https://github.com/apolloconfig/apollo/archive/refs/heads/master.zip
             exit 3
         fi
         cd ${file_in_the_dir}
