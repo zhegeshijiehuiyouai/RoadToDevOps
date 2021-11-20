@@ -23,6 +23,12 @@ yum remove docker \
     docker-engine \
     docker-ce
 
+# 检测是否有wget工具
+if [ ! -f /usr/bin/wget ];then
+    echo_info 安装wget工具
+    yum install -y wget
+fi
+
 echo_info 使用yum安装docker
 cd /etc/yum.repos.d/
 [ -f docker-ce.repo ] || wget https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
