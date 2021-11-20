@@ -20,7 +20,7 @@ PORT=3306
 # mysql部署好后，root的默认密码
 my_root_passwd=123456
 # mysql版本
-mysql_version=5.7.33
+mysql_version=5.7.36
 unit_file_name=mysqld.service
 
 #****************以上为通用变量*****************************
