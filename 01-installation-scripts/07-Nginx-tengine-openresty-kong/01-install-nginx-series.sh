@@ -462,7 +462,7 @@ Wants=network-online.target
 Type=forking
 # PIDFile=${installdir}/logs/nginx.pid
 # Nginx will fail to start if /run/nginx.pid already exists but has the wrong
-# SELinux context. This might happen when running `nginx -t` from the cmdline.
+# SELinux context. This might happen when running \`nginx -t\` from the cmdline.
 # https://bugzilla.redhat.com/show_bug.cgi?id=1268621
 ExecStartPre=/usr/bin/rm -f ${installdir}/logs/nginx.pid
 ExecStartPre=${installdir}/sbin/nginx -t
@@ -526,7 +526,7 @@ After=network.target remote-fs.target nss-lookup.target
 Type=forking
 PIDFile=${installdir}/logs/nginx.pid
 # Nginx will fail to start if /run/nginx.pid already exists but has the wrong
-# SELinux context. This might happen when running "nginx -t" from the cmdline.
+# SELinux context. This might happen when running \`nginx -t\` from the cmdline.
 # https://bugzilla.redhat.com/show_bug.cgi?id=1268621
 ExecStartPre=/usr/bin/rm -f ${installdir}/logs/nginx.pid
 ExecStartPre=${installdir}/sbin/nginx -t
