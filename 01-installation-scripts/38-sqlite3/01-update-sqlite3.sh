@@ -1,7 +1,8 @@
 #!/bin/bash
 # 用于CentOS7升级自带的sqlite3
 
-SQLITE_DOWNLOAD_DIR="https://www.sqlite.org/2021/sqlite-autoconf-3360000.tar.gz"
+OLD_VERSION=$(sqlite3 -version | awk '{print $1}')
+SQLITE_DOWNLOAD_DIR="https://www.sqlite.org/2021/sqlite-autoconf-3370000.tar.gz"
 SQLITE_TGZ_FILE=$(basename $SQLITE_DOWNLOAD_DIR)
 SQLITE_UNTGZ_DIR=$( echo ${SQLITE_TGZ_FILE} | awk -F'.' '{print $1}')
 # 包下载目录
@@ -121,7 +122,14 @@ function multi_core_compile(){
     fi
 }
 
-OLD_VERSION=$(sqlite3 -version | awk '{print $1}')
+OLD_VERSION_SEQ=$(echo ${OLD_VERSION} | tr -d ".")
+NEW_VERSION_SEQ_PRE=$(echo ${SQLITE_UNTGZ_DIR} | awk -F "-" '{print $3}')
+NEW_VERSION_SEQ=${NEW_VERSION_SEQ_PRE:0:4}
+
+if [ ${OLD_VERSION_SEQ} -ge ${NEW_VERSION_SEQ} ];then
+    echo_error "脚本中sqlite3的更新版本号(${NEW_VERSION_SEQ})不比服务器已部署的版本号(${OLD_VERSION_SEQ})新，请查看官网https://www.sqlite.org/download.html，修改脚本中的最新版本号"
+    exit 1
+fi
 
 echo_info 安装编译工具
 yum install -y gcc sqlite-devel
