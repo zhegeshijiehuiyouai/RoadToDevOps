@@ -15,8 +15,6 @@ function echo_error() {
 # 所有需要下载的文件都下载到当前目录下的${src_dir}目录中
 src_dir=00src00
 mydir=$(pwd)
-# 修改过后的server_token
-server_token_name=O_O
 
 ##################从官网获取最新版本号##################
 echo_info 从官网获取最新版本中
@@ -39,6 +37,9 @@ if [ ! ${nginx_version} ];then
 fi
 sed -i '$d' /etc/resolv.conf
 
+# 修改过后的server_token
+server_token_name=webserver-${nginx_version}
+
 tengine_default_version=2.3.2
 # tengine的版本(从官网获取最新版)
 echo "options timeout:${curl_timeout} attempts:1 rotate" >> /etc/resolv.conf
@@ -51,6 +52,9 @@ if [ ! ${tengine_version} ];then
 fi
 sed -i '$d' /etc/resolv.conf
 #######################################################
+
+
+
 
 # 首先判断当前目录是否有压缩包：
 #   I. 如果有压缩包，那么就在当前目录解压；
