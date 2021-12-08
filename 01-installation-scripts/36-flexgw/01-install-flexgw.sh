@@ -1,6 +1,6 @@
 #!/bin/bash
 
-src_dir=00src00
+src_dir=$(pwd)/00src00
 
 # 带格式的echo函数
 function echo_info() {
