@@ -2,7 +2,12 @@
 
 # 单位只能为G
 SWAP_SIZE=2G
-SWAP_DIR=$(pwd)/swap
+SWAP_FILE_NAME=swap
+SWAP_DIR=$(pwd)/${SWAP_FILE_NAME}
+# 修复在根目录下创建swap文件时，有两个/的问题
+if [ $(pwd) == "/" ];then
+    SWAP_DIR=/${SWAP_FILE_NAME}
+fi
 
 # 带格式的echo函数
 function echo_info() {
