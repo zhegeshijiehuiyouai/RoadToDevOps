@@ -45,7 +45,7 @@ function download_tar_gz(){
                 echo_info 安装wget工具
                 yum install -y wget
             fi
-            wget $2
+            wget --no-check-certificate $2
             if [ $? -ne 0 ];then
                 echo_error 下载 $2 失败！
                 exit 1
@@ -65,7 +65,7 @@ function download_tar_gz(){
                     echo_info 安装wget工具
                     yum install -y wget
                 fi
-                wget $2
+                wget --no-check-certificate $2
                 if [ $? -ne 0 ];then
                     echo_error 下载 $2 失败！
                     exit 1
