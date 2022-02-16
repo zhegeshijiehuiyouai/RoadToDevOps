@@ -63,4 +63,5 @@ then
 	df -h
 else
 	echo_error lvm创建失败！
+	exit 1
 fi
