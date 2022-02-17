@@ -128,7 +128,7 @@ echo_info 配置timezone
 echo "Asia/Shanghai" > /etc/timezone
 
 echo_info 禁止定时任务向root发送邮件
-sed -i 's/^MAILTO=root/MAILTO=""/' /etc/crontab
+sed -i 's/^MAILTO=root/MAILTO=""/' /etc/crontab
 
 echo_info 调整命令提示符显示格式
 echo "PS1='\[\e]0;\u@\h: \w\a\]\[\033[01;31m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\\$ '" > /etc/profile.d/PS.sh
