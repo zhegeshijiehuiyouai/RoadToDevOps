@@ -11,6 +11,9 @@ function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
 
+echo_info 检测lvm2
+yum install -y lvm2
+
 # only use in centos7
 partition=/data                # 定义最终挂载的名称
 vgname=vgdata                      # 定义逻辑卷组的名称
