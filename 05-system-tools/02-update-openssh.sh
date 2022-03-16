@@ -6,7 +6,7 @@
 
 # 如果没有检测到tar.gz包，则下载到这个目录
 openssh_source_dir=$(pwd)/00src00
-openssl_version=1.1.1j
+openssl_version=1.1.1n
 openssh_version=8.4p1
 
 # 带格式的echo函数
