@@ -13,7 +13,7 @@ function echo_error() {
 
 echo_info 添加镜像源
 rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
-rpm -Uvh http://www.elrepo.org/elrepo-release-7.0-2.el7.elrepo.noarch.rpm
+rpm -Uvh http://www.elrepo.org/elrepo-release-7.0-5.el7.elrepo.noarch.rpm
 
 echo_info 安装最新内核RPM包
 yum --enablerepo=elrepo-kernel install kernel-ml -y
