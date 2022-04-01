@@ -9,5 +9,5 @@
 - **create_variables**: 读取yaml文件，基于yaml文件的内容创建变量。
 
 ### 已知问题
-`Null` 必须用 `"attr: "` 来表示。
+`Null` 必须用 `"attr: "` 来表示。  
 键不能有 `.`，例如：`com.baidu: true`

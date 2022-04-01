@@ -137,6 +137,10 @@ EOF
 function echo_summary() {
     echo_info nfs已配置并启动完毕，相关使用命令如下：
     echo 客户端挂载nfs命令：
+    echo -e "\033[45m# nfs客户端并发数调优\033[0m"
+    echo -e "\033[45mecho \"options sunrpc tcp_slot_table_entries=128\" >> /etc/modprobe.d/sunrpc.conf\033[0m"
+    echo -e "\033[45mecho \"options sunrpc tcp_max_slot_table_entries=128\" >>  /etc/modprobe.d/sunrpc.conf\033[0m"
+    echo -e "\033[45msysctl -w sunrpc.tcp_slot_table_entries=128\033[0m"
     echo -e "\033[45mmount -t nfs -o soft,intr,timeo=5,retry=5 ${machine_ip}:${share_dirs[0]} MOUNT_POINT\033[0m"
     # soft：(默认值)当服务器端失去响应后，访问其上文件的应用程序将收到一个错误信号而不是被挂起。
     # timeo：与服务器断开后，尝试连接服务器的间隔时间，默认600（60秒）
