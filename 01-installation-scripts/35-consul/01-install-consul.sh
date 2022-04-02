@@ -292,6 +292,7 @@ User=${sys_user}
 Group=${sys_user}
 ExecStart=${consul_home}/bin/consul agent -config-dir=${consul_home}/conf/
 ExecReload=${consul_home}/bin/consul reload
+ExecStop=${consul_home}/bin/consul leave
 KillMode=process
 Restart=on-failure
 LimitNOFILE=65536
