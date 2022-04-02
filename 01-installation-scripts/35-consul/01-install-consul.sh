@@ -5,9 +5,12 @@ src_dir=$(pwd)/00src00
 my_dir=$(pwd)
 consul_version=1.10.1
 consul_home=${my_dir}/consul
+# 数据中心名称
+consul_datacenter=dc1
 # 启动服务的用户
 sys_user=consul
 unit_file_name=consul.service
+
 
 
 # 带格式的echo函数
@@ -159,7 +162,7 @@ function check_consul() {
 function set_consul_config() {
     cat > ${consul_home}/conf/consul.hcl << EOF
 # agent 所在的数据中心
-datacenter = "dc1"
+datacenter = "${consul_datacenter}"
 # agent 存储状态的目录
 data_dir = "${consul_home}/data"
 # Consul 网络通信的加密密钥
@@ -214,6 +217,7 @@ EOF
 function set_client_config() {
     cat > ${consul_home}/conf/client.hcl << EOF
 # 如有需要，自行手动添加
+ui = true
 EOF
     chmod 640 ${consul_home}/conf/client.hcl
 }
