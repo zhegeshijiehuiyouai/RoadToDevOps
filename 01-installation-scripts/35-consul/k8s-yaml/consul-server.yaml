@@ -1,0 +1,227 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: consul-server
+  namespace: yournamespace
+  labels:
+    app: consul
+    component: server
+spec:
+  serviceName: consul-server-headless
+  replicas: 3
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      app: consul
+      component: server
+  template:
+    metadata:
+      labels:
+        app: consul
+        component: server
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: consul
+                  component: server
+              topologyKey: kubernetes.io/hostname
+      imagePullSecrets:
+        - name: yoursecret  # 不需要的话注释掉
+      volumes:
+      - name: host-time
+        hostPath:
+          path: /etc/localtime
+      # - name: config
+      #   configMap:
+      #     name: consul-config
+      containers:
+      - name: consul-server
+        image: yourharbor/consul:1.9.16
+        imagePullPolicy: IfNotPresent
+        args:
+          - "agent"
+          - "-server"                  # 以server加入集群
+          - "-datacenter=yourdc"
+          - "-ui"
+          - "-bind=0.0.0.0"
+          - "-client=0.0.0.0"
+          - "-bootstrap-expect=3"      # 组成集群预期需要的数量
+          # - "-config-dir=/etc/consul/config"         #配置文件目录，所有以.json结尾的文件都会被加载，可以是服务或consul自身的配置。但可以被命令行参数覆盖，优先级：命令行 > 配置文件
+          - "-advertise=$(POD_IP)"      # 节点地址
+          - "-retry-join=consul-server-0.consul-server-headless.$(NAMESPACE).svc.cluster.local"   # 对已知地址情况下，启动时加入的另一位代理的地址
+          - "-retry-join=consul-server-1.consul-server-headless.$(NAMESPACE).svc.cluster.local"
+          - "-retry-join=consul-server-2.consul-server-headless.$(NAMESPACE).svc.cluster.local"
+        volumeMounts:
+          - name: consul-server-data
+            mountPath: /consul/data
+          - name: host-time
+            mountPath: /etc/localtime
+          # - name: config
+          #   mountPath: /etc/consul/config
+        env:
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+        ports:
+          - containerPort: 8500     # HTTP API 及 Web UI
+            name: http
+          - containerPort: 8300     #  Server RPC，server 用于接受其他 agent 的请求
+            name: server
+          - containerPort: 8301     # Serf LAN，数据中心内 gossip 交换数据用
+            name: serflan
+          - containerPort: 8302     # Serf WAN，跨数据中心 gossip 交换数据用
+            name: serfwan
+          - containerPort: 8400     # CLI RPC，接受命令行的 RPC 调用
+            name: cli-port
+          - containerPort: 8600     # DNS 服务，可以把它配置到 53 端口来响应 dns 请求
+            name: consuldns
+        resources:
+          limits:
+            cpu: "100m"
+            memory: "128Mi"
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - consul leave
+  volumeClaimTemplates:
+  - metadata:
+      name: consul-server-data
+      namespace: yournamespace
+    spec:
+      accessModes:
+        - ReadWriteMany
+      resources:
+        requests:
+          storage: 1Gi
+      storageClassName: dev-01
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: consul-server-headless
+  namespace: yournamespace
+  labels:
+    name: consul
+    component: server
+spec:
+  clusterIP: None
+  ports:
+    - name: http
+      port: 8500
+      targetPort: 8500
+    - name: server
+      port: 8300
+      targetPort: 8300
+    - name: serflan-tcp
+      protocol: "TCP"
+      port: 8301
+      targetPort: 8301
+    - name: serflan-udp
+      protocol: "UDP"
+      port: 8301
+      targetPort: 8301
+    - name: serfwan-tcp
+      protocol: "TCP"
+      port: 8302
+      targetPort: 8302
+    - name: serfwan-udp
+      protocol: "UDP"
+      port: 8302
+      targetPort: 8302
+    - name: cli-port
+      port: 8400
+      targetPort: 8400
+    - name: consuldns
+      port: 8600
+      targetPort: 8600
+  selector:
+    app: consul
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: consul-web
+  namespace: yournamespace
+  labels:
+    name: consul
+    component: server
+spec:
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8500
+      targetPort: 8500
+  selector:
+    app: consul
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: consul-web-nodeport
+  namespace: yournamespace
+  labels:
+    name: consul
+    component: server
+spec:
+  ports:
+    - name: http
+      protocol: TCP
+      nodePort: 30500
+      port: 8500
+      targetPort: 8500
+  selector:
+    app: consul
+  type: NodePort
+
+
+# ---
+# apiVersion: v1
+# kind: ConfigMap
+# metadata:
+#   name: consul-config
+#   namespace: yournamespace
+# data:
+#   server.json: |
+#     {
+#       "bind_addr": "0.0.0.0",           // 应为内部集群通信绑定的地址
+#       "client_addr": "0.0.0.0",         // consul绑定客户端接口的地址
+#       "disable_host_node_id": true,     // 将此设置为true将阻止Consul使用来自主机的信息生成确定性节点标识，并将生成随机节点标识，该标识将保留在数据目录中
+#       "data_dir": "/consul/data",       // consul持久化数据存储位置
+#       "datacenter": "shisuyun",         // 数据中心名称
+#       "bootstrap_expect": 3,            // 组成集群预期需要的数量
+#       "server": true,                   // 表示当前使用的server模式
+#       "domain": "cluster.consul",       // 默认情况下，Consul响应"consul"中的DNS查询
+#       "retry_join": [                   // k8s集群
+#         "provider=k8s namespace=demo label_selector=\"app=consul,component=server\""
+#       ],
+#       "telemetry": {
+#         "prometheus_retention_time": "5m"
+#       }
+#     }
+#   ui.json: |
+#     {
+#       "ui" : true,                      // 启用内置的Web UI服务器和所需的HTTP路由
+#       "client_addr" : "0.0.0.0",
+#       "enable_script_checks" : false,
+#       "disable_remote_exec" : true
+#     }
+

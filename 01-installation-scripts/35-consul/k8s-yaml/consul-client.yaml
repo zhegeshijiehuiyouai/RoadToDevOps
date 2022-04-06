@@ -1,0 +1,71 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: consul-client
+  namespace: yournamespace
+spec:
+  selector:
+    matchLabels:
+      app: consul
+      component: client
+  template:
+    metadata:
+      labels:
+        app: consul
+        component: client
+    spec:
+      imagePullSecrets:
+        - name: yoursecret  # 不需要的话注释掉    
+      containers:
+      - name: consul-client
+        image: yourharbor/consul:1.9.16
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 8500
+            name: http
+          - containerPort: 8600
+            name: dns-tcp
+            protocol: TCP
+          - containerPort: 8600
+            name: dns-udp
+            protocol: UDP
+          - containerPort: 8301
+            name: serflan
+          - containerPort: 8302
+            name: serfwan
+          - containerPort: 8300
+            name: server
+        env:
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+        args:
+          - "agent"
+          - "-advertise=$(POD_IP)"
+          - "-bind=0.0.0.0"
+          - "-client=0.0.0.0"
+          - "-ui"
+          - "-datacenter=yourdc"
+          - "-retry-join=consul-server-0.consul-server-headless.$(NAMESPACE).svc.cluster.local"
+          - "-retry-join=consul-server-1.consul-server-headless.$(NAMESPACE).svc.cluster.local"
+          - "-retry-join=consul-server-2.consul-server-headless.$(NAMESPACE).svc.cluster.local"
+        resources:
+          limits:
+            cpu: "60m"
+            memory: "100Mi"
+          requests:
+            cpu: "60m"
+            memory: "100Mi"
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - consul leave

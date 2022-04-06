@@ -1,0 +1,182 @@
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  finalizers:
+    - kubernetes.io/pv-protection
+  name: nfs-pv-dev-01
+spec:
+  accessModes:
+    - ReadWriteMany
+  capacity:
+    storage: 20Gi
+  mountOptions: []
+  nfs:
+    path: /data/nfsdata
+    server: 172.16.20.8
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs-storageclass-provisioner
+  volumeMode: Filesystem
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  finalizers:
+    - kubernetes.io/pvc-protection
+  name: nfs-pvc-dev-01
+  namespace: kube-system
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: nfs-storageclass-provisioner
+  volumeMode: Filesystem
+  volumeName: nfs-pv-dev-01
+
+---
+apiVersion: v1 
+kind: ServiceAccount
+metadata:
+  name: eip-nfs-client-provisioner
+  namespace: kube-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: eip-nfs-client-provisioner-runner
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ''
+    resources:
+      - persistentvolumes
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - delete
+  - apiGroups:
+      - ''
+    resources:
+      - persistentvolumeclaims
+    verbs:
+      - get
+      - list
+      - watch
+      - update
+  - apiGroups:
+      - storage.k8s.io
+    resources:
+      - storageclasses
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ''
+    resources:
+      - events
+    verbs:
+      - create
+      - update
+      - patch
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: eip-run-nfs-client-provisioner
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: eip-nfs-client-provisioner-runner
+subjects:
+  - kind: ServiceAccount
+    name: eip-nfs-client-provisioner
+    namespace: kube-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: eip-leader-locking-nfs-client-provisioner
+  namespace: kube-system
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - endpoints
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: eip-leader-locking-nfs-client-provisioner
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: eip-leader-locking-nfs-client-provisioner
+subjects:
+  - kind: ServiceAccount
+    name: eip-nfs-client-provisioner
+    namespace: kube-system
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: eip-nfs-dev-01
+  name: eip-nfs-dev-01
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: eip-nfs-dev-01
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: eip-nfs-dev-01
+    spec:
+      containers:
+        - env:
+            - name: PROVISIONER_NAME
+              value: nfs-dev-01
+            - name: NFS_SERVER
+              value: 172.16.20.8
+            - name: NFS_PATH
+              value: /data/nfsdata
+          image: >-
+            swr.cn-east-2.myhuaweicloud.com/kuboard-dependency/nfs-subdir-external-provisioner:v4.0.2
+          name: nfs-client-provisioner
+          volumeMounts:
+            - mountPath: /persistentvolumes
+              name: nfs-client-root
+      serviceAccountName: eip-nfs-client-provisioner
+      volumes:
+        - name: nfs-client-root
+          persistentVolumeClaim:
+            claimName: nfs-pvc-dev-01
