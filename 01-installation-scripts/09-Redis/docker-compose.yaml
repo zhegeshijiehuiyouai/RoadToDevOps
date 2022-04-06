@@ -1,0 +1,10 @@
+version: '3'
+services:
+  redis:
+    image: redis:6.2.6-alpine3.15
+    container_name: redis
+    ports:
+      - 6379:6379
+    command: redis-server --requirepass yourpassword
+    volumes:
+      - ./redis_data:/data
