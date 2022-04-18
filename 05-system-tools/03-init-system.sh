@@ -127,7 +127,7 @@ systemctl restart sshd
 echo_info 配置timezone
 echo "Asia/Shanghai" > /etc/timezone
 
-echo_info 禁止定时任务向root发送邮件
+echo_info 禁止定时任务向root发送邮件
 sed -i 's/^MAILTO=root/MAILTO=""/' /etc/crontab
 
 echo_info 调整命令提示符显示格式
