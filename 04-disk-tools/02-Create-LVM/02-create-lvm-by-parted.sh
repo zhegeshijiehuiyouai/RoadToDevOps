@@ -1,4 +1,9 @@
 #!/bin/bash
+# only use in centos7
+partition=/data                # 定义最终挂载的名称
+vgname=vgdata                      # 定义逻辑卷组的名称
+lvmname=lvmdata                     # 定义逻辑卷的名称
+code='vdb'   # 根据分区的实际情况修改
 
 # 带格式的echo函数
 function echo_info() {
@@ -14,12 +19,6 @@ function echo_error() {
 echo_info 检测lvm2
 yum install -y lvm2
 
-# only use in centos7
-partition=/data                # 定义最终挂载的名称
-vgname=vgdata                      # 定义逻辑卷组的名称
-lvmname=lvmdata                     # 定义逻辑卷的名称
-code='vdb'   # 根据分区的实际情况修改
-
 if [ -d $partition ];then
 	echo_error ${partition}目录已存在，退出
 	exit 1
@@ -28,6 +27,11 @@ fi
 disk=
 for i in $code  
 do
+lsblk | grep $i | grep disk &> /dev/null
+if [ $? -ne 0 ];then
+    echo_error 为发现硬盘/dev/$i，退出
+	exit 2
+fi
 # 这里自动化完成了所有分区fdisk苦逼的交互步骤
 parted -s /dev/$i mklabel gpt
 parted /dev/$i << EOF          
