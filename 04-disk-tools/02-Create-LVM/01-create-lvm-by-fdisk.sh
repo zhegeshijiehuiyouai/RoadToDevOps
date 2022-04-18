@@ -29,7 +29,7 @@ for i in $code
 do
 lsblk | grep $i | grep disk &> /dev/null
 if [ $? -ne 0 ];then
-    echo_error 为发现硬盘/dev/$i，退出
+    echo_error 未发现硬盘/dev/$i，退出
 	exit 2
 fi
 # 这里自动化完成了所有分区fdisk苦逼的交互步骤
