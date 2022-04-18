@@ -78,11 +78,11 @@ EOF
 echo_info 调整文件最大句柄数量
 grep -E "root.*soft.*nofile" /etc/security/limits.conf &> /dev/null
 if [ $? -ne 0 ];then
-    sed -i '/End of file/a root soft nofile 65535' /etc/security/limits.conf
+    sed -i '/End of file/a root soft nofile 65536' /etc/security/limits.conf
 fi
 grep -E "root.*hard.*nofile" /etc/security/limits.conf &> /dev/null
 if [ $? -ne 0 ];then
-    sed -i '/root.*soft.*nofile/a root hard nofile 65535' /etc/security/limits.conf
+    sed -i '/root.*soft.*nofile/a root hard nofile 65536' /etc/security/limits.conf
 fi
 
 echo_info 内核参数调整
