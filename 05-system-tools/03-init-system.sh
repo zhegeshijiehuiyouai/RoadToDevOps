@@ -99,7 +99,10 @@ cat > /etc/sysctl.conf << EOF
 # For more information, see sysctl.conf(5) and sysctl.d(5).
 
 net.ipv4.ip_forward = 1
-fs.file-max = 6815744
+# 单个进程能打开2千万个句柄
+fs.nr_open = 20000000
+# 操作系统一共能打开5千万个文件句柄
+fs.file-max = 50000000
 EOF
 sysctl -p &> /dev/null
 
