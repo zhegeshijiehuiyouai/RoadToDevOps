@@ -127,7 +127,7 @@ NEW_VERSION_SEQ_PRE=$(echo ${SQLITE_UNTGZ_DIR} | awk -F "-" '{print $3}')
 NEW_VERSION_SEQ=${NEW_VERSION_SEQ_PRE:0:4}
 
 if [ ${OLD_VERSION_SEQ} -ge ${NEW_VERSION_SEQ} ];then
-    echo_error "脚本中sqlite3的更新版本号(${NEW_VERSION_SEQ})不比服务器已部署的版本号(${OLD_VERSION_SEQ})新，请查看官网https://www.sqlite.org/download.html，修改脚本中的最新版本号"
+    echo_error "脚本中sqlite3的更新版本号(${NEW_VERSION_SEQ})未高于服务器已部署的版本号(${OLD_VERSION_SEQ})，请查看官网https://www.sqlite.org/download.html，修改脚本中的最新版本号"
     exit 1
 fi
 
