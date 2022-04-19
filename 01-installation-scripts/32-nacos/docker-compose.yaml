@@ -1,0 +1,16 @@
+version: '3'
+services:
+  nacos-server:
+    image: nacos/nacos-server:1.4.0
+    container_name: nacos-server
+    environment:
+      MODE: cluster
+      NACOS_SERVER_IP: "172.16.20.8"
+      NACOS_SERVERS: "172.16.21.83:8848 172.16.21.84:8848 172.16.22.83:8848 172.16.20.8:8848"
+      SPRING_DATASOURCE_PLATFORM: mysql
+      MYSQL_SERVICE_HOST: 172.16.21.112
+      MYSQL_SERVICE_DB_NAME: nacos
+      MYSQL_SERVICE_USER: fan_hairong
+      MYSQL_SERVICE_PASSWORD: fan_hairong_passwd
+      MYSQL_SERVICE_DB_PARAM: "characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useUnicode=true&useSSL=false&serverTimezone=UTC"
+    network_mode: host
