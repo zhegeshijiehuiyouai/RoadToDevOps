@@ -13,7 +13,7 @@ esxi_ssh_password=yourpassword
 # esxi上，存储的目录
 esxi_store_dir=/vmfs/volumes/cd-md3820i-1
 # 迁移到vm的哪台新建虚拟机上，这台虚拟机需要提前创建
-esxi_vm_name=172.16.20.2-vm-test
+esxi_vm_name=$2
 # 第一个参数是pve虚拟机的id
 pve_vm_id=$1
 
@@ -44,15 +44,14 @@ print_logo
 
 function print_usage() {
     echo
-    echo "用法：$0 pve虚拟机id"
-    echo "      pve虚拟机id请登录pve控制台查看"
+    echo "用法：$0 <pve虚拟机id> <esxi虚拟机名字>"
     echo
 }
 
 workdir=$(pwd)
 
-if [ $# -eq 0 ];then
-    echo_error 未传递参数
+if [ $# -ne 2 ];then
+    echo_error 参数传递错误
     print_usage
     exit 1
 fi
