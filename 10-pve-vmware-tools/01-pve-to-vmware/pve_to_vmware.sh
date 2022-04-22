@@ -16,6 +16,8 @@ esxi_store_dir=/vmfs/volumes/cd-md3820i-1
 esxi_vm_name=$2
 # 第一个参数是pve虚拟机的id
 pve_vm_id=$1
+# expect超时时间
+timeout=15000
 
 # 带格式的echo函数
 function echo_info() {
@@ -101,7 +103,7 @@ input_and_confirm
 function send_vmdk_to_esxi() {
     send_file=$1
     expect <<EOF
-        set timeout 3600
+        set timeout ${timeout}
         spawn scp -P $esxi_ssh_port $send_file $esxi_ssh_user@$esxi_ip:${esxi_store_dir}/${esxi_vm_name}
         expect {
             "yes/no" { send "yes\n";exp_continue }
@@ -124,7 +126,7 @@ function convert_to_thin_disk() {
     after_convert_disk=$3
     if [ ${thin_index} -eq 0 ];then
         expect <<EOF
-            set timeout 14400
+            set timeout ${timeout}
             spawn ssh -p $esxi_ssh_port $esxi_ssh_user@$esxi_ip
             expect "Password" { send "$esxi_ssh_password\n" }
             expect "root@" { send "cd ${esxi_store_dir}/${esxi_vm_name} && vmkfstools -i ${convert_disk} ${after_convert_disk}.vmdk -d thin && rm -f ${convert_disk}\n" }
@@ -133,7 +135,7 @@ function convert_to_thin_disk() {
 EOF
     else
         expect <<EOF
-            set timeout 14400
+            set timeout ${timeout}
             spawn ssh -p $esxi_ssh_port $esxi_ssh_user@$esxi_ip
             expect "Password" { send "$esxi_ssh_password\n" }
             expect "root@" { send "cd ${esxi_store_dir}/${esxi_vm_name} && vmkfstools -i ${convert_disk} ${after_convert_disk}_${thin_index}.vmdk -d thin && rm -f ${convert_disk}\n" }
