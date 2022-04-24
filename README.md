@@ -84,7 +84,9 @@ rpm -Uvh ./*rpm
 │   ├── 01-show-busy-java-threads.sh
 │   ├── 02-show-duplicate-java-classes.py
 │   └── 03-find-in-jars.sh
-├── 08-ssl-gen
+├── 08-ssl-tools
+│   ├── 01-ssl-gen
+│   └── 02-ssl-check
 ├── 09-parse-file
 │   ├── 01-yaml
 │   └── 02-ini
