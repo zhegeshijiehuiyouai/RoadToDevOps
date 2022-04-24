@@ -145,7 +145,7 @@ check_ssl(){
             echo
         }&
     done | tee -a $log_file
-    done
+    wait
 }
 
 error_msg(){
