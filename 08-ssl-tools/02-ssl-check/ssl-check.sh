@@ -4,12 +4,13 @@ unset LANG
 
 domain_list=${domain_list:-$PWD/domain.list}
 log=${log:-false}
+verbose=${log:-false}
 timeout=${timeout:-10}
 timezone=${timezone:-Asia/Shanghai}
 
-author="<mail@zhuangzhuang,ml>"
-version=v1.0.1
-update=2021-09-10
+author="<mail@zhuangzhuang,ml> & zhegeshijiehuiyouai[github]"
+version=v1.0.2
+update=2022-04-25
 
 usage(){
     cat <<EOF
@@ -21,7 +22,8 @@ Options:
         -t, --timeout           指定超时时间    (默认：${timeout}s)
         -T, --timezone          指定时区        (默认：$timezone)
         -L, --log               生成日志文件    (路径：/var/log/$(basename $0)/)
-        -v, --version           查看版本信息
+        -V, --version           查看版本信息
+        -v, --verbose           显示详细输出
         -h，--help              查看帮助
 Example:
         $(basename $0) -Ld example.com
@@ -32,7 +34,7 @@ EOF
 }
 
 get_opt(){
-    ARGS=$(getopt -o d:l:t:T:Lvh -l domain:,list:,timeout:,timezone:,log,version,help -n "$(basename $0)" -- "$@")
+    ARGS=$(getopt -o d:l:t:T:LvVh -l domain:,list:,timeout:,timezone:,log,version,help,verbose -n "$(basename $0)" -- "$@")
     [ $? != 0 ] && usage && exit 1
     eval set -- "${ARGS}"
 
@@ -55,7 +57,7 @@ get_opt(){
                 timezone=$2
                 shift 2
                 ;;
-            (-v|--version)
+            (-V|--version)
                 echo "$(basename $0): $version $update $author"
                 exit 0
                 ;;
@@ -65,6 +67,10 @@ get_opt(){
                 ;;
             (-L|--log)
                 log=true
+                shift 1
+                ;;
+            (-v|--verbose)
+                verbose=true
                 shift 1
                 ;;
             (--)
@@ -122,9 +128,24 @@ check_ssl(){
 
             curl https://$domain --connect-timeout $timeout -v -s -o /dev/null 2> $tmp
             
+            start_time_txt=$(grep "start date" $tmp | sed "s/.*start date: //")
+            expire_time_txt=$(grep "expire date" $tmp | sed "s/.*expire date: //")
+
             ssl_check_timestamp=$(date +"%s")
-            ssl_start_timestamp=$(date --date="$(grep "start date" $tmp | sed "s/.*start date: //")" +"%s")
-            ssl_expire_timestamp=$(date --date="$(grep "expire date" $tmp | sed "s/.*expire date: //")" +"%s")
+            ssl_start_timestamp=$(date --date="${start_time_txt}" +"%s")
+            ssl_expire_timestamp=$(date --date="${expire_time_txt}" +"%s")
+
+            # 查不到证书信息的情况
+            if [ -z "${start_time_txt}" ];then
+                if [ $verbose == true ]; then
+                    # 输出成一行，是为了避免多个后台执行的子shell同时echo造成混淆
+                    echo -e "\n检查域名: $domain\n【未检测到域名证书信息】\n"
+                else
+                    printf "%-44s%-40s\n" $domain "【未检测到域名证书信息】"
+                fi
+                # 因为在后台执行，所以可以exit
+                exit 0
+            fi
             
             remaining_time_second=$[($ssl_expire_timestamp-$ssl_check_timestamp)%60]
             remaining_time_minute=$[($ssl_expire_timestamp-$ssl_check_timestamp)/60%60]
@@ -133,16 +154,21 @@ check_ssl(){
             
             issuer_name=$(grep "issuer" $tmp | sed "s/.*issuer: //")
             server_name=$(grep "subject:" $tmp | sed "s/.*CN=//" | awk -F, '{print $1}')
-            
-            echo
-            echo "检查域名: $domain"
-            echo "通用名称: $server_name"
-            echo "检查时间: $(TZ="$timezone" date -d "@$ssl_check_timestamp" +"%F %T")"
-            echo "颁发时间: $(TZ="$timezone" date -d "@$ssl_start_timestamp" +"%F %T")"
-            echo "到期时间: $(TZ="$timezone" date -d "@$ssl_expire_timestamp" +"%F %T")"
-            echo "剩余时间: ${remaining_time_day}天 ${remaining_time_hour}小时${remaining_time_minute}分${remaining_time_second}秒"
-            echo "颁发机构: $issuer_name"
-            echo
+
+            # 证书过期的情况
+            if [ $ssl_check_timestamp -gt $ssl_expire_timestamp ];then
+                if [ $verbose == true ]; then
+                    echo -e "\n检查域名: $domain\n通用名称: $server_name\n检查时间: $(TZ="$timezone" date -d "@$ssl_check_timestamp" +"%F %T")\n颁发时间: $(TZ="$timezone" date -d "@$ssl_start_timestamp" +"%F %T")\n到期时间: $(TZ="$timezone" date -d "@$ssl_expire_timestamp" +"%F %T")\n【已过期】${remaining_time_day}天 ${remaining_time_hour}小时${remaining_time_minute}分${remaining_time_second}秒\n颁发机构: $issuer_name\n"
+                else
+                    echo -e "$domain:【已过期】"
+                fi
+            else
+                if [ $verbose == true ]; then
+                    echo -e "\n检查域名: $domain\n通用名称: $server_name\n检查时间: $(TZ="$timezone" date -d "@$ssl_check_timestamp" +"%F %T")\n颁发时间: $(TZ="$timezone" date -d "@$ssl_start_timestamp" +"%F %T")\n到期时间: $(TZ="$timezone" date -d "@$ssl_expire_timestamp" +"%F %T")\n剩余时间: ${remaining_time_day}天 ${remaining_time_hour}小时${remaining_time_minute}分${remaining_time_second}秒\n颁发机构: $issuer_name\n"
+                else
+                    printf "%-44s%-40s\n" $domain "${remaining_time_day}天后到期"
+                fi
+            fi
         }&
     done | tee -a $log_file
     wait
