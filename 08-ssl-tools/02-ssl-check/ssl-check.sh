@@ -99,7 +99,7 @@ check_opt(){
 
     cat $domain_list | while read domain
     do
-        echo $domain | grep -v "^#" | sed "s#https\?://##" | grep -qP "^(?=^.{3,255}$)[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+$"
+        echo $domain | grep -v "^#" | sed "s#https\?://##" | grep -qP "^(?=^.{3,255}$)[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+(:[0-9]{1,5})$"
         [ $? != 0 ] && error_msg "$domain 域名不合法"
     done
 
