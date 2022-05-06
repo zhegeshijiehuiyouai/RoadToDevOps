@@ -16,7 +16,7 @@ function echo_error() {
 
 function yum_install_basic_packages() {
     echo_info 安装常用软件包
-    yum install -y vim net-tools telnet bash-completion glances # wget需要提前安装，故此处注释掉
+    yum install -y vim net-tools telnet bash-completion  # wget需要提前安装，故此处注释掉
 }
 
 echo_info 检测是否能连接到互联网
