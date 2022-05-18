@@ -33,7 +33,7 @@ log_dir=/data/myapp/logs
 inner_log_dir=/data/logs
 host=`hostname`
 current_dir=`pwd`
-image=docker.elastic.co/beats/filebeat:7.9.1
+image=docker.elastic.co/beats/filebeat:8.2.0
 
 [ -d ${current_dir}/filebeat ] || mkdir -p ${current_dir}/filebeat
 if [ ! -f "${current_dir}/filebeat/filebeat.yml" ];then
@@ -44,14 +44,23 @@ filebeat.inputs:
     enabled: true
     paths:
       - ${inner_log_dir}/log1.log
+      - ${inner_log_dir}/log1_01.log
     fields:
       type: "log1"
+      # log_topic: "log1"
     multiline:
       pattern: '^[[:space:]]' # 所有的空白行，合并到前面不是空白的那行
       negate: false
       match: after
       timeout: 15s
       max_lines: 500
+    # 下面是另一套多行日志采集逻辑，将202开头的日志归为一条，适用于日志都是以202x年开头的日志
+    # multiline:
+    #   pattern: '^202'
+    #   negate: true
+    #   match: after
+    #   timeout: 15s
+    #   max_lines: 500
 # 打开以下注释和output中的注释，即可配置多目录日志采集
 #  - type: log
 #    enabled: true
@@ -77,7 +86,43 @@ output.elasticsearch:
 #    - index: "${host}-log2-%{+yyyy.MM.dd}" #指定index name
 #      when.equals:
 #        fields.type: "log2"
+
+# 输出到kafka的话，参考下面的配置
+# output.kafka:
+#   hosts: ["192.168.1.1:9092", "192.168.1.2:9092", "192.168.1.3:9092"]
+#   topic: '%{[fields.log_topic]}'
+#   version: "0.11.0"
+#   partition.round_robin:
+#     reachable_only: true
+
+# ================================= Processors =================================
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_cloud_metadata: ~
+  - add_docker_metadata: ~
+  - add_kubernetes_metadata: ~
+
+  # 对字段做一些替换，适用于dissect也无法很好处理的情况
+  # - script:
+  #     lang: javascript
+  #     id: remove_ipv6
+  #     source: >
+  #       function process(event) {
+  #           var message = event.Get("host.ip")
+  #           for (var i=0; i<message.length; i++)
+  #           {
+  #               if(new RegExp(".*\..*\..*\..*").test(message[i]))
+  #               {
+  #                   event.Put("host.ip",message[i])
+  #                   break;
+  #               }
+  #           }
+  #       }
+
+
 EOF
+
 fi
 
 echo_info 通过docker启动filebeat
