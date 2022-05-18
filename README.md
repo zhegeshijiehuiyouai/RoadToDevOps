@@ -77,7 +77,8 @@ rpm -Uvh ./*rpm
 │   ├── 03-init-system.sh
 │   ├── 04-tcp-connection-state-counter.sh
 │   ├── 05-uq.sh
-│   └── 06-update-kernel.sh
+│   ├── 06-update-kernel.sh
+│   └── 07-show-file-create-time.sh
 ├── 06-Antivirus-tools
 │   └── 01-kill-miner-proc.sh
 ├── 07-java-tools
