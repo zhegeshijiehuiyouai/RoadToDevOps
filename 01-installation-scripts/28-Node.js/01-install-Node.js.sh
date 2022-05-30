@@ -120,7 +120,7 @@ function main() {
     source /etc/profile
 
     echo_info 配置镜像
-    npm config set registry=https://registry.npm.taobao.org/
+    npm config set registry=https://registry.npmmirror.com/
 
     echo_info npm部署yarn
     npm install -g yarn
