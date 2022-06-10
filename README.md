@@ -58,7 +58,8 @@ rpm -Uvh ./*rpm
 │   ├── 36-flexgw
 │   ├── 37-wireguard
 │   ├── 38-sqlite3
-│   └── 39-git
+│   ├── 39-git
+│   └── 40-ffmpeg
 ├── 02-elasticsearch-tools
 │   ├── 01-clean-single-es-index-by-date.sh
 │   └── 02-clean-date-format-es-index-by-date.sh
