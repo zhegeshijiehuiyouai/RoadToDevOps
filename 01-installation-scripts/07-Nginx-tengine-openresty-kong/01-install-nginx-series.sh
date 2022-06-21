@@ -292,8 +292,6 @@ http {
     fastcgi_connect_timeout 1000;
     fastcgi_send_timeout 1000;
     fastcgi_read_timeout 1000;
-##########不显示目录######### 
-    autoindex off;
 ##########动态访问proxy缓存配置################
     # proxy_cache_path /data/nginx/cache levels=1:2 keys_zone=cache_one:10m max_size=1G inactive=1d; 
 #########获取真实IP访问头######################    
@@ -364,6 +362,13 @@ http {
             root   html;
             index  index.html index.htm;
         }
+
+############显示目录######### 
+#         location /show_dir/ {
+#             autoindex on;
+#             # autoindex_format json; # 默认html
+#             autoindex_localtime on; # 使用服务器文件时间作为显示时间，仅在autoindex_format为html时生效
+#         }
 
 #########反向代理简单配置
 #        location /proxy_url/ {
