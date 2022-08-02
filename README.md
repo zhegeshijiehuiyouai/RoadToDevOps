@@ -71,7 +71,8 @@ rpm -Uvh ./*rpm
 │   └── 05-java
 ├── 04-disk-tools
 │   ├── 01-Create-Swap
-│   └── 02-Create-LVM
+│   ├── 02-Create-LVM
+│   └── 03-delete-empty-dir.sh
 ├── 05-system-tools
 │   ├── 01-check-package-manager.sh
 │   ├── 02-update-openssh.sh
