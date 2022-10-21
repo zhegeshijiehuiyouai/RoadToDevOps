@@ -1,0 +1,10 @@
+# 默认账号/密码：admin/123456
+version: '3.1'
+services:
+  eagle:
+    container_name: eagle
+    image: nickzurich/efak:3.0.1
+    environment:
+      EFAK_CLUSTER_ZK_LIST: 10.20.2.71:2181/kafka
+    ports:
+      - 8048:8048
