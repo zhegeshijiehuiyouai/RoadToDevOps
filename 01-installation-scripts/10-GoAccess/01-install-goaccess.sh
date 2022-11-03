@@ -1,7 +1,7 @@
 #!/bin/bash 
 
 # 定义变量
-version=1.4
+version=1.6.5
 src_dir=00src00
 
 # GeoIP2需要从 MaxMind 下载 城市/国家 数据库，并通过 --geoip-database 设定。
@@ -10,7 +10,7 @@ src_dir=00src00
 # 必须注册登录下载，注册登录后，进入自己的账号界面，有下载链接
 #
 # 使用 GeoIP2 的话，需要安装依赖库
-# wget https://github.com/maxmind/libmaxminddb/releases/download/1.4.3/libmaxminddb-1.4.3.tar.gz
+# wget --no-check-certificate https://github.com/maxmind/libmaxminddb/releases/download/1.4.3/libmaxminddb-1.4.3.tar.gz
 # tar xf libmaxminddb-1.4.3.tar.gz
 # cd libmaxminddb-1.4.3
 # ./configure
@@ -70,7 +70,7 @@ function download_tar_gz(){
                 echo_info 安装wget工具
                 yum install -y wget
             fi
-            wget $2
+            wget --no-check-certificate $2
             if [ $? -ne 0 ];then
                 echo_error 下载 $2 失败！
                 exit 1
@@ -90,7 +90,7 @@ function download_tar_gz(){
                     echo_info 安装wget工具
                     yum install -y wget
                 fi
-                wget $2
+                wget --no-check-certificate $2
                 if [ $? -ne 0 ];then
                     echo_error 下载 $2 失败！
                     exit 1
