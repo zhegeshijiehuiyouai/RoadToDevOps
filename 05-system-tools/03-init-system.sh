@@ -57,16 +57,16 @@ else
     fi
 fi
 
-echo_info 配置hosts文件，解封github
-cat >> /etc/hosts <<EOF
+# echo_info 配置hosts文件，解封github
+# cat >> /etc/hosts <<EOF
 
-# generate by https://github.com/zhegeshijiehuiyouai/RoadToDevOps
-13.229.188.59   github.com
-52.74.223.119   www.github.com
-199.232.69.194  github.global.ssl.fastly.net
-185.199.108.153 assets-cdn.github.com
-185.199.108.133 user-images.githubusercontent.com
-EOF
+# # generate by https://github.com/zhegeshijiehuiyouai/RoadToDevOps
+# 13.229.188.59   github.com
+# 52.74.223.119   www.github.com
+# 199.232.69.194  github.global.ssl.fastly.net
+# 185.199.108.153 assets-cdn.github.com
+# 185.199.108.133 user-images.githubusercontent.com
+# EOF
 
 echo_info 配置历史命令格式
 cat > /etc/profile.d/init.sh << EOF
@@ -75,15 +75,6 @@ USER_IP=\$(who -u am i 2>/dev/null| awk '{print \$NF}'|sed -e 's/[()]//g')
 export HISTTIMEFORMAT="\${USER_IP} > %F %T [\$(whoami)@\$(hostname)] "
 EOF
 
-echo_info 调整文件最大句柄数量
-grep -E "root.*soft.*nofile" /etc/security/limits.conf &> /dev/null
-if [ $? -ne 0 ];then
-    sed -i '/End of file/a root soft nofile 65536' /etc/security/limits.conf
-fi
-grep -E "root.*hard.*nofile" /etc/security/limits.conf &> /dev/null
-if [ $? -ne 0 ];then
-    sed -i '/root.*soft.*nofile/a root hard nofile 65536' /etc/security/limits.conf
-fi
 
 echo_info 内核参数调整
 cat > /etc/sysctl.conf << EOF
@@ -105,6 +96,42 @@ fs.nr_open = 20000000
 fs.file-max = 50000000
 EOF
 sysctl -p &> /dev/null
+
+
+
+echo_info 调整文件最大句柄数量
+echo_info 'fs.file-max ≥ fs.nr_open ≥ /etc/security/limits.conf中的nofile、noproc ≥ ulimit -n xxx'
+
+sed -i 's|^\* hard nofile|#* hard nofile|' /etc/security/limits.conf
+sed -i 's|^\* soft nofile|#* soft nofile|' /etc/security/limits.conf
+sed -i 's|^root hard nofile|#root hard nofile|' /etc/security/limits.conf
+sed -i 's|^root soft nofile|#root soft nofile|' /etc/security/limits.conf
+
+cat >>/etc/security/limits.conf<<"_EOF_"
+### Max open file limit
+* soft nofile 15000000
+* hard nofile 15000000
+* soft noproc 15000000
+* hard noproc 15000000
+_EOF_
+
+sed -i 's|^\*          soft    nproc     4096|#*          soft    nproc     4096|' /etc/security/limits.d/20-nproc.conf
+
+cat >>/etc/security/limits.d/20-nproc.conf<<"_EOF_"
+### Max open file limit by icekredit
+*          soft    nproc     unlimited
+_EOF_
+
+cat >>'/etc/systemd/system.conf' <<"_EOF_"
+DefaultTimeoutStartSec=15s
+DefaultTimeoutStopSec=1s
+DefaultRestartSec=100ms
+DefaultLimitCORE=infinity
+DefaultLimitNOFILE=infinity
+DefaultLimitNPROC=infinity
+_EOF_
+
+systemctl daemon-reload
 
 echo_info 关闭防火墙，如有需求请使用iptables规则，不要使用firewalld
 systemctl stop firewalld &> /dev/null
