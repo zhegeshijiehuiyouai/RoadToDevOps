@@ -1,6 +1,7 @@
 #!/bin/bash
 
-nodejs_version=v$(curl -s https://nodejs.org/zh-cn/download/ | grep "长期维护版" | awk -F'<strong>' '{print $2}' | awk -F'</strong>' '{print $1}')
+# nodejs_version=v$(curl -s https://nodejs.org/zh-cn/download/ | grep "长期维护版" | awk -F'<strong>' '{print $2}' | awk -F'</strong>' '{print $1}')
+nodejs_version=v16.15.0
 src_dir=$(pwd)/00src00
 mydir=$(pwd)
 
@@ -106,7 +107,8 @@ function check_nodejs_dir() {
 
 function main() {
     check_nodejs_dir
-    download_tar_gz ${src_dir} https://nodejs.org/dist/${nodejs_version}/node-${nodejs_version}-linux-x64.tar.xz
+    # download_tar_gz ${src_dir} https://nodejs.org/dist/${nodejs_version}/node-${nodejs_version}-linux-x64.tar.xz
+    download_tar_gz ${src_dir} https://nodejs.org/download/release/v16.15.0/node-v16.15.0-linux-x64.tar.xz
     cd ${file_in_the_dir}
     untar_tgz node-${nodejs_version}-linux-x64.tar.xz
     mv node-${nodejs_version}-linux-x64 ${mydir}/node-${nodejs_version}
