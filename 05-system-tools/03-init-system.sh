@@ -94,6 +94,9 @@ net.ipv4.ip_forward = 1
 fs.nr_open = 20000000
 # 操作系统一共能打开5千万个文件句柄
 fs.file-max = 50000000
+
+# 适配elasticsearch
+vm.max_map_count = 262184
 EOF
 sysctl -p &> /dev/null
 
