@@ -212,28 +212,28 @@ cat > /etc/my.cnf << EOF
 socket=/var/lib/mysql/mysql.sock
 
 [mysql]
-default-character-set=utf8mb4
+default_character_set=utf8mb4
 socket=/var/lib/mysql/mysql.sock
 
 [mysqld]
-#skip-grant-tables
+#skip_grant_tables
 # 跳过dns解析，提升连接速度
-skip-name-resolve
+skip_name_resolve
 port=${PORT}
 socket=${DIR}/${mysql_dir_name}/data/mysql.sock
 basedir=${DIR}/${mysql_dir_name}
 datadir=${DIR}/${mysql_dir_name}/data
 max_connections=200
-character-set-server=utf8mb4
-default-storage-engine=INNODB
+character_set_server=utf8mb4
+default_storage_engine=INNODB
 max_allowed_packet=16M
 # 不区分大小写
 lower_case_table_names = 1
 
 datadir=/var/lib/mysql
 socket=/var/lib/mysql/mysql.sock
-log-error=/var/log/mysqld.log
-pid-file=/var/run/mysqld/mysqld.pid
+log_error=/var/log/mysqld.log
+pid_file=/var/run/mysqld/mysqld.pid
 EOF
 
     systemctl start mysqld  # 这里启动是为了生成临时密码
@@ -292,15 +292,15 @@ default-character-set=utf8mb4
 socket=${DIR}/${mysql_dir_name}/data/mysql.sock
 
 [mysqld]
-#skip-grant-tables
-skip-name-resolve
+#skip_grant_tables
+skip_name_resolve
 port=${PORT}
 socket=${DIR}/${mysql_dir_name}/data/mysql.sock
 basedir=${DIR}/${mysql_dir_name}
 datadir=${DIR}/${mysql_dir_name}/data
 max_connections=200
-character-set-server=utf8mb4
-default-storage-engine=INNODB
+character_set_server=utf8mb4
+default_storage_engine=INNODB
 max_allowed_packet=16M
 # 不区分大小写
 lower_case_table_names = 1
@@ -308,7 +308,7 @@ lower_case_table_names = 1
 ### binlog日志设置
 binlog_format = ROW
 #设置日志路径，注意路经需要mysql用户有权限写,这里可以写绝对路径,也可以直接写mysql-bin(后者默认就是在/var/lib/mysql目录下)
-log-bin = ${DIR}/${mysql_dir_name}/data/mysql-bin.log
+log_bin = ${DIR}/${mysql_dir_name}/data/mysql-bin.log
 #设置binlog清理时间
 expire_logs_days = 7
 #binlog每个日志文件大小
@@ -318,7 +318,7 @@ binlog_cache_size = 4m
 #最大binlog缓存大小
 max_binlog_cache_size = 512m
 #配置serverid
-server-id=1
+server_id=1
 EOF
 
     # 设置systemctl控制

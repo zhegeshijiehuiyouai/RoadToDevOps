@@ -157,19 +157,19 @@ cat > /etc/my.cnf << EOF
 socket=${DIR}/${mysql_dir_name}/data/mysql.sock
 
 [mysql]
-default-character-set=utf8mb4
+default_character_set=utf8mb4
 socket=${DIR}/${mysql_dir_name}/data/mysql.sock
 
 [mysqld]
-skip-grant-tables
-skip-name-resolve
+skip_grant_tables
+skip_name_resolve
 port=${PORT}
 socket=${DIR}/${mysql_dir_name}/data/mysql.sock
 basedir=${DIR}/${mysql_dir_name}
 datadir=${DIR}/${mysql_dir_name}/data
 max_connections=200
-character-set-server=utf8mb4
-default-storage-engine=INNODB
+character_set_server=utf8mb4
+default_storage_engine=INNODB
 max_allowed_packet=16M
 lower_case_table_names = 1
 EOF
@@ -231,7 +231,7 @@ EOF
     echo -e "\033[32mmysql> use mysql;\033[0m"
     echo -e "\033[32mmysql> update user set authentication_string = '' where user = 'root';\033[0m"
     echo -e "\033[32mmysql> flush privileges;\033[0m"
-    echo -e "请务必在修改密码后将/etc/my.cnf的skip-grant-tables注释掉并重启mysql"
+    echo -e "请务必在修改密码后将/etc/my.cnf的skip_grant_tables注释掉并重启mysql"
     echo "然后修改密码，不修改将无法操作"
     echo -e "\033[32mmysql> ALTER USER 'root'@'localhost' IDENTIFIED BY '123456' PASSWORD EXPIRE NEVER; \033[0m"
     echo -e "\033[32mmysql> flush privileges;\033[0m"

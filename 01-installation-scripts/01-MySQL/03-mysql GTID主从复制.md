@@ -3,14 +3,14 @@
 ## 1、mysql主服务器/etc/my.cnf修改，新增内容
 ```shell
 cat >> /etc/my.cnf <<EOF
-server-id = 1
+server_id = 1
 binlog_format = row
 expire_logs_days = 30
 max_binlog_size  = 100M
 gtid_mode = ON
 enforce_gtid_consistency = ON
-master-verify-checksum = 1
-log-bin = mysql-bin
+master_verify_checksum = 1
+log_bin = mysql-bin
 EOF
 ```
 
@@ -28,11 +28,11 @@ show master status;
 ## 4、mysql从服务器/etc/my.cnf修改，注意server-id要和主服务器不一样
 ```shell
 cat >> /etc/my.cnf <<EOF
-server-id = 2
+server_id = 2
 gtid_mode = ON
 enforce_gtid_consistency = ON
-log-bin = mysql-bin
-log-slave-updates = ON
+log_bin = mysql-bin
+log_slave_updates = ON
 expire_logs_days = 30
 max_binlog_size  = 100M
 master_info_repository=TABLE
