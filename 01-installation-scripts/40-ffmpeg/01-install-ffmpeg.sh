@@ -98,8 +98,7 @@ function multi_core_compile(){
             exit 1
         fi
     else
-        make prefix=/usr/local/git all
-        make prefix=/usr/local/git install
+        make && make install
         if [ $? -ne 0 ];then
             echo_error 编译安装出错，请检查脚本
             exit 1
