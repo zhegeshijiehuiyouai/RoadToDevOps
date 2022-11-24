@@ -2,8 +2,8 @@
 # 用于CentOS7升级自带的sqlite3
 
 OLD_VERSION=$(sqlite3 -version | awk '{print $1}')
-SQLITE_DOWNLOAD_DIR="https://www.sqlite.org/2021/sqlite-autoconf-3370000.tar.gz"
-SQLITE_TGZ_FILE=$(basename $SQLITE_DOWNLOAD_DIR)
+SQLITE_DOWNLOAD_URL="https://www.sqlite.org/2021/sqlite-autoconf-3370000.tar.gz"
+SQLITE_TGZ_FILE=$(basename $SQLITE_DOWNLOAD_URL)
 SQLITE_UNTGZ_DIR=$( echo ${SQLITE_TGZ_FILE} | awk -F'.' '{print $1}')
 # 包下载目录
 src_dir=$(pwd)/00src00
@@ -134,7 +134,7 @@ fi
 echo_info 安装编译工具
 yum install -y gcc sqlite-devel
 
-download_tar_gz ${src_dir} ${SQLITE_DOWNLOAD_DIR}
+download_tar_gz ${src_dir} ${SQLITE_DOWNLOAD_URL}
 cd ${file_in_the_dir}
 untar_tgz ${SQLITE_TGZ_FILE}
 cd ${SQLITE_UNTGZ_DIR}
