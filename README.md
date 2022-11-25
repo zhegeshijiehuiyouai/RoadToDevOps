@@ -1,7 +1,7 @@
 [![GitHub Stars](https://img.shields.io/github/stars/zhegeshijiehuiyouai/RoadToDevOps)](https://github.com/zhegeshijiehuiyouai/RoadToDevOps/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/zhegeshijiehuiyouai/RoadToDevOps)](https://github.com/zhegeshijiehuiyouai/RoadToDevOps/fork)
 
-***本项目在 CentOS 7.6 环境下开发***  
+***本项目在 CentOS 7.9 环境下开发***  
 
 ## 🔧 脚本用法
 - 本项目中的各脚本，请在 `/root/` 目录以外的任意普通目录执行，否则部分脚本无法执行成功，建议 `/data/` 目录（虽然大部分脚本在 `/root/` 目录也能执行成功）。  
@@ -80,7 +80,8 @@ rpm -Uvh ./*rpm
 │   ├── 04-tcp-connection-state-counter.sh
 │   ├── 05-uq.sh
 │   ├── 06-update-kernel.sh
-│   └── 07-show-file-create-time.sh
+│   ├── 07-show-file-create-time.sh
+│   └── 08-update-gcc.sh
 ├── 06-Antivirus-tools
 │   └── 01-kill-miner-proc.sh
 ├── 07-java-tools
