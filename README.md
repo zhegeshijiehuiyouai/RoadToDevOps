@@ -81,7 +81,8 @@ rpm -Uvh ./*rpm
 │   ├── 05-uq.sh
 │   ├── 06-update-kernel.sh
 │   ├── 07-show-file-create-time.sh
-│   └── 08-update-gcc.sh
+│   ├── 08-update-gcc.sh
+│   └── 09-update-make.sh
 ├── 06-Antivirus-tools
 │   └── 01-kill-miner-proc.sh
 ├── 07-java-tools
