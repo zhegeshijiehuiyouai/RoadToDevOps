@@ -179,6 +179,11 @@ function init_account(){
     echo -e "\033[37m                  停止：systemctl stop ${unit_file_name}\033[0m"
 }
 
+function pre_install(){
+    echo_info 安装依赖
+    yum install -y perl-Data-Dumper perl-JSON libaio libaio-devel
+}
+
 ########## rpm安装mysql
 function install_by_rpm(){
     rm -f /var/log/mysqld.log
@@ -186,8 +191,8 @@ function install_by_rpm(){
     cd ${file_in_the_dir}
     untar_tgz mysql-${mysql_version}-1.el7.x86_64.rpm-bundle.tar
 
-    echo_info 安装依赖
-    yum install -y perl-Data-Dumper perl-JSON
+    pre_install
+
     echo_info 使用rpm包安装mysql
     rpm -Uvh ./mysql-community-*rpm 
     #yum install -y ./mysql-community-*rpm 
@@ -253,6 +258,8 @@ function install_by_tgz(){
     #download_tar_gz ${src_dir} https://mirrors.cloud.tencent.com/mysql/downloads/MySQL-5.7/${mysql_tgz}
     cd ${file_in_the_dir}
     untar_tgz ${mysql_tgz}
+
+    pre_install
 
     check_dir ${DIR}/${mysql_dir_name}
     mv ${FILE} ${DIR}/${mysql_dir_name}
