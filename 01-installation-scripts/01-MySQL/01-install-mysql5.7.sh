@@ -234,6 +234,8 @@ default_storage_engine=INNODB
 max_allowed_packet=16M
 # 不区分大小写
 lower_case_table_names = 1
+# 可以避免一些问题
+sql_mode = 
 
 datadir=/var/lib/mysql
 socket=/var/lib/mysql/mysql.sock
@@ -311,6 +313,8 @@ default_storage_engine=INNODB
 max_allowed_packet=16M
 # 不区分大小写
 lower_case_table_names = 1
+# 可以避免一些问题
+sql_mode = 
 
 ### binlog日志设置
 binlog_format = ROW
