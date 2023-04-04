@@ -126,9 +126,9 @@ cat >>/etc/security/limits.d/20-nproc.conf<<"_EOF_"
 _EOF_
 
 cat >>'/etc/systemd/system.conf' <<"_EOF_"
-DefaultTimeoutStartSec=15s
-DefaultTimeoutStopSec=1s
-DefaultRestartSec=100ms
+DefaultTimeoutStartSec=30s
+DefaultTimeoutStopSec=30s
+DefaultRestartSec=5s
 DefaultLimitCORE=infinity
 DefaultLimitNOFILE=infinity
 DefaultLimitNPROC=infinity
