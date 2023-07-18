@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# 腾讯镜像只有最新两个版本，找老版本的话，要去官网：https://kafka.apache.org/downloads
 download_url=https://mirrors.cloud.tencent.com/apache/kafka/2.7.0/kafka_2.13-2.7.0.tgz
 src_dir=$(pwd)/00src00
 kafka_port=9092

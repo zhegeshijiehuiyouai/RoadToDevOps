@@ -1,7 +1,11 @@
 - 服务端工具  
-  - kafka egale -- 较重，且感觉界面较乱（虽然示例中截图漂亮，但部署出来看着乱）
-  - CMAK -- 对`jdk`，`zookeeper`版本有要求 
-  - kafka-manager，有docker镜像，部署起来还是方便
+  - kafka egale，较重，且感觉界面较乱（虽然示例中截图漂亮，但部署出来看着乱）
+  - CMAK，对`jdk`，`zookeeper`版本有要求 
+  - kafka-manager，CMAK前身
+  - KnowStreaming，较重，需要`kafka`开启`JMX_PORT`，报错时负载较高
 - 客户端工具  
   - 名称：Kafka Tool  
   - 官网：https://www.kafkatool.com/download.html
+
+- 命令行工具
+  - kaf，github地址：https://github.com/birdayz/kaf
