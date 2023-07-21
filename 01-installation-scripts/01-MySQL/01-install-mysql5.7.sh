@@ -182,6 +182,16 @@ function init_account(){
 function pre_install(){
     echo_info 安装依赖
     yum install -y perl-Data-Dumper perl-JSON libaio libaio-devel
+    # 卸载mariadb
+    mariadb_pkgs=$(rpm -qa | grep -i mariadb)
+    mariadb_pkgs_num=$(echo $mariadb_pkgs | wc -l)
+    if [ $mariadb_pkgs_num -ne 0 ];then
+        echo_info 卸载mariadb相关包中，请耐心等待...
+        for pkg in $mariadb_pkgs
+        do
+            rpm -e --nodeps $pkg
+        done
+    fi
 }
 
 ########## rpm安装mysql
