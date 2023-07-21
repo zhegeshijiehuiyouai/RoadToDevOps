@@ -187,7 +187,7 @@ function pre_install(){
 ########## rpm安装mysql
 function install_by_rpm(){
     rm -f /var/log/mysqld.log
-    download_tar_gz ${src_dir} http://mirrors.163.com/mysql/Downloads/MySQL-5.7/mysql-${mysql_version}-1.el7.x86_64.rpm-bundle.tar
+    download_tar_gz ${src_dir} https://mirrors.aliyun.com/mysql/MySQL-5.7/mysql-${mysql_version}-1.el7.x86_64.rpm-bundle.tar
     cd ${file_in_the_dir}
     untar_tgz mysql-${mysql_version}-1.el7.x86_64.rpm-bundle.tar
 
@@ -256,7 +256,7 @@ function check_dir() {
 }
 
 function install_by_tgz(){
-    download_tar_gz ${src_dir} http://mirrors.163.com/mysql/Downloads/MySQL-5.7/${mysql_tgz}
+    download_tar_gz ${src_dir} https://mirrors.aliyun.com/mysql/MySQL-5.7/${mysql_tgz}
     #download_tar_gz ${src_dir} https://mirrors.cloud.tencent.com/mysql/downloads/MySQL-5.7/${mysql_tgz}
     cd ${file_in_the_dir}
     untar_tgz ${mysql_tgz}
