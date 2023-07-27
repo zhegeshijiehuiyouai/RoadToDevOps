@@ -1,5 +1,5 @@
 #!/bin/bash
-# 基于CentOS 7.9和Ubuntu 20.04
+# 基于CentOS 7.9/Ubuntu 20.04/Ubuntu 22.04
 
 # 全局变量
 devops_sysctl_conf=/etc/sysctl.d/99-zz-devops.conf
@@ -46,7 +46,7 @@ if [ -f "/opt/._install.lock" ];then
     exit 0
 fi
 
-echo_warning 5秒后自动执行，预计需要5分钟，请耐心等待）：
+echo_warning 5秒后自动执行，预计需要5分钟，请耐心等待
 echo_info 5
 sleep 1
 echo_info 4
@@ -169,6 +169,10 @@ function yum_install_basic_packages() {
         yum update -y
         yum install -y vim wget net-tools telnet bash-completion lsof gdisk cloud-utils-growpart
     elif [[ $os == 'ubuntu' ]];then
+        # 阻止配置更新弹窗
+        export UCF_FORCE_CONFFOLD=1
+        # 阻止应用重启弹窗
+        export NEEDRESTART_SUSPEND=1
         apt update -y
         apt upgrade -y
         apt install -y net-tools
@@ -533,6 +537,7 @@ _EOF_
     fi
 }
 
+######################## 初始化操作 ###########################
 yum_install_basic_packages
 create_swapfile
 format_disk
@@ -548,6 +553,7 @@ config_privillege
 config_hardening
 config_sshd
 
+######################## 重启服务器 ###########################
 echo_warning 服务器初始化已完毕，即将重启
 echo_warning 5秒后自动重启，请耐心等待）：
 echo_info 5
