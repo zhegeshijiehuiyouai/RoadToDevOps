@@ -42,7 +42,7 @@ function adjust_docker_configuration() {
     "log-opts": {"max-size":"10m", "max-file":"1"}
 }
 EOF
-    systemctl start docker
+    systemctl restart docker
     systemctl enable docker &> /dev/null
 
     echo_info docker已部署成功，版本信息如下：
