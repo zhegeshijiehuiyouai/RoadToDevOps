@@ -28,6 +28,14 @@ function untar_tgz(){
 
 # 此download函数为定制，不要复制给其他脚本使用
 function download_tar_gz(){
+    # 检测下载文件在服务器上是否存在
+    http_code=$(curl -IsS $2 | head -1 | awk '{print $2}')
+    if [ $http_code -ne 200 ];then
+        echo_error $2
+        echo_error 服务端文件不存在，退出
+        exit 98
+    fi
+    
     download_file_name=${tgzfile}
     back_dir=$(pwd)
     file_in_the_dir=''  # 这个目录是后面编译目录的父目录

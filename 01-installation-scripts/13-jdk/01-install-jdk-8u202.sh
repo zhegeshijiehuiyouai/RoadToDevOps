@@ -31,6 +31,14 @@ function echo_error() {
 # 语法： download_tar_gz 保存的目录 下载链接
 # 使用示例： download_tar_gz /data/openssh-update https://mirrors.cloud.tencent.com/openssl/source/openssl-1.1.1h.tar.gz
 function download_tar_gz(){
+    # 检测下载文件在服务器上是否存在
+    http_code=$(curl -IsS $2 | head -1 | awk '{print $2}')
+    if [ $http_code -ne 200 ];then
+        echo_error $2
+        echo_error 服务端文件不存在，退出
+        exit 98
+    fi
+    
     download_file_name=$(echo $2 |  awk -F"/" '{print $NF}')
     back_dir=$(pwd)
     file_in_the_dir=''  # 这个目录是后面编译目录的父目录

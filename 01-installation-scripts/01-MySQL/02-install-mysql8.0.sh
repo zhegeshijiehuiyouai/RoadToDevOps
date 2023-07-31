@@ -57,6 +57,14 @@ function download_tar_gz(){
         yum install -y wget
     fi
 
+    # 检测下载文件是否在服务器上存在
+    http_code=$(curl -IsS $2 | head -1 | awk '{print $2}')
+    if [ $http_code -ne 200 ];then
+        echo_error $2
+        echo_error 服务端文件不存在，退出
+        exit 98
+    fi
+
     download_file_name=$(echo $2 |  awk -F"/" '{print $NF}')
     back_dir=$(pwd)
     file_in_the_dir=''  # 这个目录是后面编译目录的父目录

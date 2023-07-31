@@ -22,8 +22,26 @@ my_root_passwd=123456
 # mysql版本
 mysql_version=5.7.38
 unit_file_name=mysqld.service
-
 #****************以上为通用变量*****************************
+
+# 脚本执行用户检测
+if [[ $(whoami) != 'root' ]];then
+    echo_error 请使用root用户执行
+    exit 99
+fi
+
+# 检测操作系统
+if grep -qs "ubuntu" /etc/os-release; then
+	os="ubuntu"
+    os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
+elif [[ -e /etc/centos-release ]]; then
+	os="centos"
+	os_version=$(grep -oE '[0-9]+\.?.*\s' /etc/centos-release)
+else
+	echo_error 不支持的操作系统
+	exit 99
+fi
+
 #****************以下为二进制部署才需要的变量******************
 # 部署目录的父目录
 DIR=$(pwd)
@@ -70,6 +88,14 @@ function untar_tgz(){
 # 语法： download_tar_gz 保存的目录 下载链接
 # 使用示例： download_tar_gz /data/openssh-update https://mirrors.cloud.tencent.com/openssl/source/openssl-1.1.1h.tar.gz
 function download_tar_gz(){
+    # 检测下载文件在服务器上是否存在
+    http_code=$(curl -IsS $2 | head -1 | awk '{print $2}')
+    if [ $http_code -ne 200 ];then
+        echo_error $2
+        echo_error 服务端文件不存在，退出
+        exit 98
+    fi
+
     download_file_name=$(echo $2 |  awk -F"/" '{print $NF}')
     back_dir=$(pwd)
     file_in_the_dir=''  # 这个目录是后面编译目录的父目录
@@ -202,6 +228,9 @@ function install_by_rpm(){
     untar_tgz mysql-${mysql_version}-1.el7.x86_64.rpm-bundle.tar
 
     pre_install
+
+    # 删除测试套件，不需要
+    rm -f mysql-community-test-*rpm
 
     echo_info 使用rpm包安装mysql
     rpm -Uvh ./mysql-community-*rpm 
