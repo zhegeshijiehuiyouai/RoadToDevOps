@@ -29,7 +29,7 @@ src_dir=$(pwd)/00src00
 # 端口
 PORT=3306
 # mysql部署好后，root的默认密码
-# 仅centos有效，ubuntu需要交互式的手动输入root密码
+# 注：该选项对ubuntu环境deb安装时无效，需要交互式的手动输入root密码
 my_root_passwd=123456
 # mysql版本
 mysql_version=5.7.38
@@ -58,9 +58,11 @@ else
 	exit 99
 fi
 
+# mysql二进制包名字
+mysql_tgz=mysql-${mysql_version}-linux-glibc2.12-x86_64.tar.gz
+
+
 if [[ $os == 'centos' ]];then
-    # mysql二进制包名字
-    mysql_tgz=mysql-${mysql_version}-linux-glibc2.12-x86_64.tar.gz
     unit_file_name=mysqld.service
 elif [[ $os == 'ubuntu' ]];then
     unit_file_name=mysql.service
@@ -186,7 +188,11 @@ function init_account(){
     source /etc/profile
 
     echo_info 设置密码
-    mysql -uroot -p"${login_pass}" --connect-expired-password -e "SET PASSWORD = PASSWORD('${my_root_passwd}');flush privileges;" &> /dev/null
+    if [[ $os == 'centos' ]];then
+        mysql -uroot -p"${login_pass}" --connect-expired-password -e "SET PASSWORD = PASSWORD('${my_root_passwd}');flush privileges;" &> /dev/null
+    elif [[ $os == 'ubuntu' ]];then
+        mysql -uroot --connect-expired-password -e "SET PASSWORD = PASSWORD('${my_root_passwd}');flush privileges;" &> /dev/null
+    fi
     
     echo_info 重启mysql
     systemctl restart ${unit_file_name}
@@ -230,22 +236,32 @@ function pre_install(){
         fi
 
         echo_info 安装相关依赖
-        apt install -y libtinfo5 libmecab2
+        apt install -y libtinfo5 libmecab2 libncurses5
     fi
 }
 
 function gen_my_cnf() {
-    echo_info 配置/etc/my.cnf
-    check_dir ${DIR}/${mysql_dir_name}
-    # 创建数据目录
+    if [ $software -eq 1 ];then
+        # rpm或deb安装需要检测目录，二进制包部署的，在gen_my_cnf之间就检查过了，要跳过
+        check_dir ${DIR}/${mysql_dir_name}
+    fi
+    echo_info 创建数据目录/日志目录
     mkdir -p ${DIR}/${mysql_dir_name}/{data,log}
     chown -R mysql:mysql ${DIR}/${mysql_dir_name}
 
     if [[ $os == 'centos' ]];then
         my_cnf_file=/etc/my.cnf
     elif [[ $os == 'ubuntu' ]];then
-        my_cnf_file=/etc/mysql/mysql.conf.d/mysqld.cnf
+        # deb安装
+        if [ $software -eq 1 ];then
+            my_cnf_file=/etc/mysql/mysql.conf.d/mysqld.cnf
+        # 二进制包安装
+        elif [ $software -eq 2 ];then
+            my_cnf_file=/etc/my.cnf
+        fi
     fi
+
+    echo_info 配置$my_cnf_file
 
     if [ -f $my_cnf_file ];then
         mv $my_cnf_file ${my_cnf_file}_`date +%F`
@@ -253,7 +269,6 @@ function gen_my_cnf() {
     fi
 
     # 生成新的配置文件
-    echo_info 初始化${my_cnf_file}
 cat > ${my_cnf_file} << EOF
 # The MySQL  Server configuration file.
 # For advice on how to change settings please see
@@ -366,8 +381,12 @@ function install_by_tgz(){
     echo_info 初始化mysql
     # 初始化
     cd ${DIR}/${mysql_dir_name}
-    bin/mysqld --initialize --basedir=${DIR}/${mysql_dir_name} --datadir=${DIR}/${mysql_dir_name}/data  --pid-file=${DIR}/${mysql_dir_name}/data/mysql.pid >/tmp/mysql_password.txt 2>&1
-
+    if [[ $os == 'centos' ]];then
+        bin/mysqld --initialize --basedir=${DIR}/${mysql_dir_name} --datadir=${DIR}/${mysql_dir_name}/data  --pid-file=${DIR}/${mysql_dir_name}/data/mysql.pid >/tmp/mysql_password.txt 2>&1
+    elif [[ $os == 'ubuntu' ]];then
+        # ubuntu不会有初始密码，所以直接不设置密码
+        bin/mysqld --initialize-insecure --basedir=${DIR}/${mysql_dir_name} --datadir=${DIR}/${mysql_dir_name}/data  --pid-file=${DIR}/${mysql_dir_name}/data/mysql.pid >/tmp/mysql_password.txt 2>&1
+    fi
     # 获取初始密码
     init_password=$(awk '/password/ {print $11}' /tmp/mysql_password.txt)
     rm -f /tmp/mysql_password.txt
@@ -384,6 +403,8 @@ cat > /lib/systemd/system/${unit_file_name} << EOF
 Description=mysql
 After=network.target
 [Service]
+User=mysql
+Group=mysql
 Type=forking
 ExecStart=${DIR}/${mysql_dir_name}/support-files/mysql.server start
 ExecStop=${DIR}/${mysql_dir_name}/support-files/mysql.server stop
@@ -522,7 +543,7 @@ function install_main_func(){
             2)
                 echo_info 即将使用 二进制包 安装mysql
                 sleep 1
-                install_by_tgz_ubuntu
+                install_by_tgz
                 ;;
             q|Q)
                 exit 0
