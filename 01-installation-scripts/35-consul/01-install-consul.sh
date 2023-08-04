@@ -39,7 +39,7 @@ function echo_error() {
 function download_tar_gz(){
     # 检测下载文件在服务器上是否存在
     http_code=$(curl -IsS $2 | head -1 | awk '{print $2}')
-    if [ $http_code -ne 200 ];then
+    if [ $http_code -eq 404 ];then
         echo_error $2
         echo_error 服务端文件不存在，退出
         exit 98
