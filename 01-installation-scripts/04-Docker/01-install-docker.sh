@@ -90,6 +90,7 @@ function install_docker() {
         adjust_docker_configuration
         echo_warning 非root用户要使用docker命令的话，请执行命令：
         echo 'gpasswd -a 用户名 docker'
+        echo 'systemctl restart docker'
     elif [[ $os == 'ubuntu' ]];then
         echo_info 清理之前安装的docker（如果有）
         apt remove -y docker.io docker-doc docker-compose podman-docker containerd runc
@@ -117,6 +118,7 @@ function install_docker() {
         echo 'gpasswd -a 用户名 docker'
         echo 'su - 用户名'
         echo 'newgrp docker'
+        echo 'systemctl restart docker'
     fi
 }
 
