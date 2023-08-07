@@ -134,6 +134,8 @@ sed -i '/\s<mirrors>/ r /tmp/.temp_repo_file' ${back_dir}/maven/conf/settings.xm
 rm -f /tmp/.temp_repo_file
 
 echo_warning 由于bash特性限制，在本终端使用 mvn 命令，需要先手动执行 source /etc/profile 加载环境变量，或者新开一个终端连接mongodb
-echo_info maven已部署完毕，版本信息如下：
+echo_info maven已部署完毕，相关信息如下：
 source /etc/profile
+echo_info "全局配置文件：${back_dir}/maven/conf/settings.xml"
+echo_info 版本：
 mvn -version
