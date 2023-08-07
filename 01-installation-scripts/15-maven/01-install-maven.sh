@@ -2,7 +2,7 @@
 
 # 包下载目录
 src_dir=$(pwd)/00src00
-version=3.6.3
+version=3.9.4
 
 # 带格式的echo函数
 function echo_info() {
