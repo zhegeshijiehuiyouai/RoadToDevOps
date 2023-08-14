@@ -181,8 +181,8 @@ function yum_install_basic_packages() {
 
 function config_profile(){
     echo_info 配置历史命令格式
-    mkdir -p /data/log/history
-    chmod 777 /data/log/history
+    mkdir -p /data/logs/history
+    chmod 777 /data/logs/history
     cat > /etc/profile.d/devops.sh <<"_EOF_"
 
 ### 初始化脚本生成
@@ -191,7 +191,7 @@ export TMOUT=300
 USER_IP=$(who -u am i 2>/dev/null| awk '{print $NF}'|sed -e 's/[()]//g')
 export HISTTIMEFORMAT="${USER_IP} $$ > %F %T [$(whoami)@$(hostname)] "
 
-export HISTORY_FILE=/data/log/history/${LOGNAME}-$(date '+%Y-%m-%d-%H-%M-%S')-session-$$.log
+export HISTORY_FILE=/data/logs/history/${LOGNAME}-$(date '+%Y-%m-%d-%H-%M-%S')-session-$$.log
 export PROMPT_COMMAND='{ date +" $(history 1 | { read x cmd; echo "$cmd"; })"; } >> $HISTORY_FILE'
 _EOF_
 
@@ -480,13 +480,13 @@ function config_privillege(){
 #!/bin/bash
 
 #delete logs
-find /data/logs -maxdepth 3 -mtime +0 -name "*20*.log" -exec rm -f {} \;
+find /data/logs -maxdepth 3 -mtime +7 -name "*20*.log" ! -path "*history*" -exec rm -f {} \;
 
 #delete system log
 find /var/log -maxdepth 3 -mtime +7 -name "*20*" -exec rm -f {} \;
 
 # 删除历史命令记录
-find /data/log/history -mtime +90 | xargs rm -f
+find /data/logs/history -mtime +90 | xargs rm -f
 
 #delete logs for tomcat
 find /home/devops/*/logs -maxdepth 3 -mtime +0 -name "*20*.log" -exec rm -f {} \;
