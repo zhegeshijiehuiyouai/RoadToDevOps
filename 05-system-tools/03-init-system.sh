@@ -321,6 +321,10 @@ fs.file-max = 50000000
 
 # elasticsearch required
 vm.max_map_count = 262184
+
+# avoid kernel bug: task blocked for more than 120 seconds
+vm.dirty_background_ratio = 5
+vm.dirty_ratio = 10
 _EOF_
     sysctl -p &> /dev/null
 }
