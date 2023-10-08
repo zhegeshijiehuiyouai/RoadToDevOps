@@ -157,7 +157,7 @@ EOF
 
 #-------------------------------------------------
 function input_machine_ip_fun() {
-    read input_machine_ip
+    read -e input_machine_ip
     machine_ip=${input_machine_ip}
     if [[ ! $machine_ip =~ ^([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))(\.([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))){3} ]];then
         echo_error 错误的ip格式，退出
@@ -299,7 +299,7 @@ function install_kafka() {
 }
 
 function accept_zk_addr() {
-    read zk_addr
+    read -e zk_addr
     if [ "" != "$zk_addr" ];then
         # 进入此处，表示用户输入了值，需要重置空行标志位
         zk_null_flag=0
@@ -338,7 +338,7 @@ function start_the_installation_by_confirm_zk() {
     echo "2 - 已部署zookeeper，输入zookeeper地址"
     echo "3 - 使用kafka自带的zookeeper"
     function input_confirm_zk_number() {
-        read -p "输入数字选择(q 键退出)：" confirm_zk_choice
+        read -p "输入数字选择(q 键退出)：" -e confirm_zk_choice
         case $confirm_zk_choice in
         1)
             echo_warning 请部署好zookeeper后再执行此脚本

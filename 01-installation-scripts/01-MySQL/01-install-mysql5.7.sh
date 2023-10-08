@@ -488,7 +488,7 @@ function install_by_deb() {
     systemctl start ${unit_file_name}
 
     echo_info 设置所有主机均可访问mysql
-    read -p "请输入刚才设置的root密码：" my_root_passwd
+    read -p "请输入刚才设置的root密码：" -e my_root_passwd
     mysql -uroot -p"${my_root_passwd}" -e "grant all on *.* to root@'%' identified by '${my_root_passwd}' WITH GRANT OPTION;" &> /dev/null
     if [ $? -ne 0 ];then
         echo_error 设置权限失败，请确认输入的密码是否正确
@@ -511,7 +511,7 @@ function install_by_deb() {
 
 
 function install_main_func(){
-    read -p "请输入数字选择安装类型（如需退出请输入q）：" software
+    read -p "请输入数字选择安装类型（如需退出请输入q）：" -e software
     if [[ $os == 'centos' ]];then
         case $software in
             1)

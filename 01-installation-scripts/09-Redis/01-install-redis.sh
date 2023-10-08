@@ -304,7 +304,7 @@ echo_info iredis介绍：
 echo -e "\033[37m                  iredis是一个具有代码补全和语法高亮的redis命令行客户端，github项目地址：\033[0m"
 echo -e "\033[37m                  https://github.com/laixintao/iredis\033[0m"
 function iredisyn() {
-read -p "是否添加iredis (y/n)：" choice
+read -p "是否添加iredis (y/n)：" -e choice
 case ${choice} in
     y|Y)
         yum install -y python3-pip

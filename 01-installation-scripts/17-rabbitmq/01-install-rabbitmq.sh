@@ -201,7 +201,7 @@ function install_by_docker() {
 }
 
 function install_main_func(){
-    read -p "请输入数字选择安装类型（如需退出请输入q）：" software
+    read -p "请输入数字选择安装类型（如需退出请输入q）：" -e software
     case $software in
         1)
             # 安装前先判断是否已经安装了rabbitmq

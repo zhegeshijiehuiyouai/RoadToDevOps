@@ -24,7 +24,7 @@ function check_rsync_server() {
 
 function get_machine_ip() {
     function input_machine_ip_fun() {
-        read input_machine_ip
+        read -e input_machine_ip
         machine_ip=${input_machine_ip}
         if [[ ! $machine_ip =~ ^([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))(\.([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))){3} ]];then
             echo_error 错误的ip格式，退出
@@ -45,7 +45,7 @@ function get_machine_ip() {
 
 function input_share_dir() {
     function accept_share_dir() {
-        read share_dir
+        read -e share_dir
 
         if [ "" != "$share_dir" ];then
             # 进入此处，表示用户输入了值，需要重置空行标志位
@@ -88,7 +88,7 @@ function input_share_dir() {
     # 该标志位用户是否输入了空行，输入两次空行则表示没有输入了，继续下一步
     dir_null_flag=0
     echo_info 请输入要共享的目录，如有多个，请回车后继续输入，连输两次空行继续下一步部署操作：
-    # read -p $'请输入要共享的目录: \n' share_dir
+    # read -p $'请输入要共享的目录: \n' -e share_dir
     accept_share_dir
     check_share_dir_is_legal
 }

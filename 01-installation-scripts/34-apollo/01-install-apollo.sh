@@ -135,7 +135,7 @@ function add_user_and_group(){
 
 #--------
 function input_machine_ip_fun() {
-    read input_machine_ip
+    read -e input_machine_ip
     machine_ip=${input_machine_ip}
     if [[ ! $machine_ip =~ ^([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))(\.([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))){3} ]];then
         echo_error 错误的ip格式，退出
@@ -364,7 +364,7 @@ function init_mysql() {
 
 function is_init_portal_mysql() {
     echo_warning "是否初始化portal数据库？默认不初始化 [y|N]"
-    read USER_INPUT
+    read -e USER_INPUT
     if [ ! -z ${USER_INPUT} ];then
         case ${USER_INPUT} in
             y|Y|yes)
@@ -382,7 +382,7 @@ function is_init_portal_mysql() {
 
 function is_init_config_admin_mysql() {
     echo_warning "是否初始化config/admin数据库？默认不初始化 [y|N]"
-    read USER_INPUT
+    read -e USER_INPUT
     if [ ! -z ${USER_INPUT} ];then
         case ${USER_INPUT} in
             y|Y|yes)
@@ -433,7 +433,7 @@ function check_ip_legal() {
 function input_apollo_config_admin_ip() {
     get_machine_ip
     echo_info 请输入 apollo-configservice / apollo-adminservice 的IP地址，默认为 ${machine_ip} ：
-    read USER_INPUT
+    read -e USER_INPUT
     check_ip_legal ${USER_INPUT}
     apollo_config_admin_ip=${USER_INPUT}
 }
@@ -644,7 +644,7 @@ function main() {
     echo "[3] 只部署apollo-portal"
     echo "[4] 只部署apollo-adminservice、apollo-configservice"
     echo
-    read -p "请输入数字选择部署方式：" USER_INPUT_INSTALL
+    read -p "请输入数字选择部署方式：" -e USER_INPUT_INSTALL
 
     preinstall
     case ${USER_INPUT_INSTALL} in

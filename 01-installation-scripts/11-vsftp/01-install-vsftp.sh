@@ -363,7 +363,7 @@ chmod +x /etc/vsftpd/${help_doc}
 
 
 function install_main_func(){
-    read -p "请输入数字选择要安装类型（如需退出请输入q）：" software
+    read -p "请输入数字选择要安装类型（如需退出请输入q）：" -e software
     case $software in
         1)
             echo_info 即将安装使用 系统用户 登录的vsftp
@@ -391,7 +391,7 @@ echo -e "\033[36m[2]\033[32m 虚拟用户登录\033[0m"
 install_main_func
 
 function install_lftp(){
-    read -p "是否安装ftp客户端lftp（Y/n）：" yes_or_no
+    read -p "是否安装ftp客户端lftp（Y/n）：" -e yes_or_no
     case $yes_or_no in
         y|Y)
             echo_info 安装lftp中，请耐心等待

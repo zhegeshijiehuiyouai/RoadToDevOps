@@ -45,7 +45,7 @@ function add_user_and_group(){
 
 #-------------------------------------------------
 function input_machine_ip_fun() {
-    read input_machine_ip
+    read -e input_machine_ip
     machine_ip=${input_machine_ip}
     if [[ ! $machine_ip =~ ^([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))(\.([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))){3} ]];then
         echo_error 错误的ip格式，退出
@@ -261,7 +261,7 @@ function init_nacos_mysql() {
 
 function is_init_nacos_mysql() {
     echo_warning "是否初始化nacos数据库？默认不初始化 [y|N]"
-    read USER_INPUT
+    read -e USER_INPUT
     if [ ! -z ${USER_INPUT} ];then
         case ${USER_INPUT} in
             y|Y|yes)
@@ -323,7 +323,7 @@ function install_cluster_by_binary() {
 }
 
 function install_main_func(){
-    read -p "请输入数字选择安装类型（如需退出请输入q）：" software
+    read -p "请输入数字选择安装类型（如需退出请输入q）：" -e software
     case $software in
         1)
             install_by_docker

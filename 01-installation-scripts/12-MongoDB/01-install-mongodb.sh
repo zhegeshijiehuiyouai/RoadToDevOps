@@ -330,7 +330,7 @@ function install_main_func(){
         echo_error ${dbpath} 目录已存在，退出
         exit 10
     fi
-    read -p "请输入数字选择部署方式（如需退出请输入q）：" software
+    read -p "请输入数字选择部署方式（如需退出请输入q）：" -e software
     case $software in
         1)
             echo_info 即将使用 yum 部署mongodb
