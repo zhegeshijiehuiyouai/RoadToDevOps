@@ -1,5 +1,9 @@
 #!/bin/bash
-# 可根据需要选择部署nginx、tengine、openresty、kong
+# 可根据需要选择部署nginx、tengine
+
+# 默认版本
+nginx_default_version=1.22.1
+tengine_default_version=2.4.1
 
 # 带格式的echo函数
 function echo_info() {
@@ -16,42 +20,33 @@ function echo_error() {
 src_dir=00src00
 mydir=$(pwd)
 
-##################从官网获取最新版本号##################
-echo_info 从官网获取最新版本中
 
-# 该变量用于显示下载的版本是不是最新版，如果从官网获取版本号失败，就提示是默认版本
-version_nginx_hint="（官网最新版）"
-version_tengine_hint="（官网最新版）"
+function get_latest_version() {
+    echo_info 从官网获取最新版本中
 
-nginx_default_version=1.20.2
-# nginx的版本(从官网获取最新版)
-curl_timeout=2
-# 设置dns超时时间，避免没网情况下等很久
-echo "options timeout:${curl_timeout} attempts:1 rotate" >> /etc/resolv.conf
-nginx_version=$(curl -s  --connect-timeout ${curl_timeout} http://nginx.org/en/CHANGES | head -3 | grep nginx | awk '{print $4}')
-# 接口正常，[ ! ${nginx_version} ]为1；接口失败，[ ! ${nginx_version} ]为0
-if [ ! ${nginx_version} ];then
-    echo_error nginx接口访问超时，使用默认版本：${nginx_default_version}
-    nginx_version=${nginx_default_version}
-    version_nginx_hint="（默认版本）"
-fi
-sed -i '$d' /etc/resolv.conf
-
-# 修改过后的server_token
-server_token_name=webserver-${nginx_version}
-
-tengine_default_version=2.3.2
-# tengine的版本(从官网获取最新版)
-echo "options timeout:${curl_timeout} attempts:1 rotate" >> /etc/resolv.conf
-tengine_version=$(curl -s --connect-timeout 3 http://tengine.taobao.org/changelog_cn.html | awk -F'class="article-entry"' '{print $2}' | awk -F'id="Tengine' '{print $2}' | grep -oE "\".*\"" | grep -oE "title=.*" | awk -F"-" '{print $2}' | awk '{print $1}')
-# 接口正常，[ ! ${tengine_version} ]为1；接口失败，[ ! ${tengine_version} ]为0
-if [ ! ${tengine_version} ];then
-    echo_error tengine接口访问超时，使用默认版本：${tengine_default_version}
-    tengine_version=${tengine_default_version}
-    version_tengine_hint="（默认版本）"
-fi
-sed -i '$d' /etc/resolv.conf
-#######################################################
+    # 设置dns超时时间，避免没网情况下等很久
+    curl_timeout=3
+    echo "options timeout:${curl_timeout} attempts:1 rotate" >> /etc/resolv.conf
+    if [[ $tag == 'nginx' ]];then
+        nginx_version=$(curl -sS  --connect-timeout ${curl_timeout} http://nginx.org/en/download.html | grep -oP 'Stable version.*?nginx-\K[0-9.]+' | sed 's/.$//')
+        # 接口正常，[ ! ${nginx_version} ]为1；接口失败，[ ! ${nginx_version} ]为0
+        if [ ! ${nginx_version} ];then
+            echo_error nginx接口访问超时，使用默认版本：${nginx_default_version}
+            nginx_version=${nginx_default_version}
+        fi
+        echo_info "nginx最新稳定版本：${nginx_version}"
+    elif [[ $tag == 'tengine' ]];then
+        tengine_version=$(curl -sS --connect-timeout ${curl_timeout} http://tengine.taobao.org/changelog_cn.html | awk -F'class="article-entry"' '{print $2}' | awk -F'id="Tengine' '{print $2}' | grep -oE "\".*\"" | grep -oE "title=.*" | awk -F"-" '{print $2}' | awk '{print $1}')
+        # 接口正常，[ ! ${tengine_version} ]为1；接口失败，[ ! ${tengine_version} ]为0
+        if [ ! ${tengine_version} ];then
+            echo_error tengine接口访问超时，使用默认版本：${tengine_default_version}
+            tengine_version=${tengine_default_version}
+        fi
+        echo_info "tengine最新版本：${tengine_version}"
+    fi
+    # 删除刚刚插入的最后一行
+    sed -i '$d' /etc/resolv.conf
+}
 
 
 
@@ -197,12 +192,45 @@ function add_user_and_group(){
     fi
 }
 
+function use_default_or_latest_version() {
+    read -p "是否联网获取最新版本[y/n]（默认y）：" -e online_version
+    online_version=${online_version:=y} # 如果用户没有输入，就使用默认值y
+    case $online_version in
+        y|Y)
+            return 2
+            ;;
+        n|N)
+            return 1
+            ;;
+        q|Q)
+            echo_info "用户手动退出"
+            exit 0
+            ;;
+        *)
+            use_default_or_latest_version
+            ;;
+    esac
+}
+
 # 编译安装Nginx
 function install_nginx(){
     # 用tag标识部署什么，后续脚本中调用
     tag=nginx
     # 部署目录
     installdir=${mydir}/${tag}
+
+    use_default_or_latest_version
+    result=$?
+    # 使用默认返回1，使用最新返回2
+    if [ $result -eq 1 ];then
+        nginx_version=${nginx_default_version}
+        echo_info "使用默认版本：${nginx_version}"
+    elif [ $result -eq 2 ];then
+        get_latest_version
+    else
+        echo_error "use_default_or_latest_version函数返回参数错误，退出"
+        exit 20
+    fi
 
     download ${tag} ${tag}-${nginx_version}.tar.gz
     cd ${file_in_the_dir}
@@ -214,6 +242,7 @@ function install_nginx(){
     add_user_and_group ${tag}
     cd ${tag}-${nginx_version}
     # 修改server_token
+    server_token_name=webserver-${nginx_version}
     sed -i 's@#define NGINX_VER          "nginx/" NGINX_VERSION@#define NGINX_VER          "'${server_token_name}'"@' src/core/nginx.h
 
     echo_info 配置编译参数
@@ -506,6 +535,20 @@ function install_tengine(){
     tag=tengine
     # 部署目录
     installdir=${mydir}/${tag}
+
+    use_default_or_latest_version
+    result=$?
+    # 使用默认返回1，使用最新返回2
+    if [ $result -eq 1 ];then
+        tengine_version=${tengine_default_version}
+        echo_info "使用默认版本：${tengine_version}"
+    elif [ $result -eq 2 ];then
+        get_latest_version
+    else
+        echo_error "use_default_or_latest_version函数返回参数错误，退出"
+        exit 20
+    fi
+
     download ${tag} ${tag}-${tengine_version}.tar.gz
     cd ${file_in_the_dir}
     untar_tgz ${tag}-${tengine_version}.tar.gz
@@ -566,224 +609,9 @@ systemctl daemon-reload
     echo -e "\033[37m                  systemctl start tengine\033[0m"
 }
 
-# yum安装openresty
-function install_openresty(){
-    echo_info 下载openresty官方repo
-    [ -f /etc/yum.repos.d/openresty.repo ] && rm -f /etc/yum.repos.d/openresty.repo
-    wget -O /etc/yum.repos.d/openresty.repo https://openresty.org/package/centos/openresty.repo
-    echo_info 通过yum安装openresty
-    yum install -y openresty
-    if [ $? -eq 0 ];then
-        echo_info penresty已安装成功，版本信息如下：
-        openresty -v
-        echo_info 查看帮助：
-        echo -e "\033[37m                  openresty -h\033[0m"
-    else
-        echo_error 安装出错，请检查系统！
-        exit 2
-    fi
-}
-
-# 安装docker
-function install_docker(){
-    cd /etc/yum.repos.d/
-    [ -f docker-ce.repo ] || wget https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
-    yum makecache
-
-    # 根据CentOS版本（7还是8）来进行安装
-    osv=$(cat /etc/redhat-release | awk '{print $4}' | awk -F'.' '{print $1}')
-    if [ $osv -eq 7 ]; then
-        yum install docker-ce -y
-    elif [ $osv -eq 8 ];then
-        dnf install docker-ce --nobest -y
-    else
-        echo_error 当前版本不支持
-        exit 1
-    fi
-
-    echo_info docker配置优化
-    mkdir -p /etc/docker
-    cd /etc/docker
-    cat > daemon.json << EOF
-{
-    "registry-mirrors": ["https://bxsfpjcb.mirror.aliyuncs.com"],
-    "data-root": "/data/docker",
-    "log-opts": {"max-size":"10m", "max-file":"1"}
-}
-EOF
-    systemctl start docker
-    systemctl enable docker
-}
-
-function kong_info(){
-    echo_info kong已成功启动，端口信息如下：
-    echo -e "\033[37m                  web_port：8000\033[0m"
-    echo -e "\033[37m                  web_ssl_port：8443\033[0m"
-    echo -e "\033[37m                  admin_port：8001 (127.0.0.1)\033[0m"
-    echo -e "\033[37m                  admin_ssl_port：8444 (127.0.0.1)\033[0m"
-}
-
-function kong_with_database(){
-    echo_info 启动PostgreSQL容器
-    docker run -d --name kong-database \
-               --network=kong-net \
-               -p 5432:5432 \
-               -e "POSTGRES_USER=kong" \
-               -e "POSTGRES_DB=kong" \
-               -e "POSTGRES_PASSWORD=kong" \
-               postgres:9.6
-    if [ $? -ne 0 ];then
-        echo_error 启动PostgreSQL容器失败，请检查！
-        exit 50
-    fi
-    # 等上面的容器启动好
-    sleep 6
-    echo_info 启动临时kong容器迁移数据
-    docker run --rm \
-               --network=kong-net \
-               -e "KONG_DATABASE=postgres" \
-               -e "KONG_PG_HOST=kong-database" \
-               -e "KONG_PG_USER=kong" \
-               -e "KONG_PG_PASSWORD=kong" \
-               -e "KONG_CASSANDRA_CONTACT_POINTS=kong-database" \
-               kong:latest kong migrations bootstrap
-    if [ $? -ne 0 ];then
-        echo_error 启动临时kong容器迁移数据失败，请检查！
-        exit 51
-    fi
-    echo_info 启动kong容器
-    docker run -d --name kong \
-               --network=kong-net \
-               -e "KONG_DATABASE=postgres" \
-               -e "KONG_PG_HOST=kong-database" \
-               -e "KONG_PG_USER=kong" \
-               -e "KONG_PG_PASSWORD=kong" \
-               -e "KONG_CASSANDRA_CONTACT_POINTS=kong-database" \
-               -e "KONG_PROXY_ACCESS_LOG=/dev/stdout" \
-               -e "KONG_ADMIN_ACCESS_LOG=/dev/stdout" \
-               -e "KONG_PROXY_ERROR_LOG=/dev/stderr" \
-               -e "KONG_ADMIN_ERROR_LOG=/dev/stderr" \
-               -e "KONG_ADMIN_LISTEN=0.0.0.0:8001, 0.0.0.0:8444 ssl" \
-               -p ${web_port}:8000 \
-               -p ${web_ssl_port}:8443 \
-               -p 127.0.0.1:${admin_port}:8001 \
-               -p 127.0.0.1:${admin_ssl_port}:8444 \
-               kong:latest
-    if [ $? -ne 0 ];then
-        echo_error 启动kong容器失败，请检查！
-        exit 52
-    fi
-    kong_info
-}
-
-function kong_without_database(){
-    kong_dir=/data/kong
-    echo_info 检测kong专用目录 ${kong_dir}
-    if [ -d ${kong_dir} ];then
-        echo_warning 目录已存在，无需创建
-    else
-        echo_info 未检测到目录，创建目录
-        mkdir -p ${kong_dir}
-    fi
-    [ -d ${kong_dir}/conf ] || mkdir -p ${kong_dir}/conf
-    echo_info 生成配置 ${kong_dir}/conf/kong.yml
-cat > ${kong_dir}/conf/kong.yml << EOF
-_format_version: "2.1"
-_transform: true
-
-services:
-- name: my-service
-  url: https://example.com
-  plugins:
-  - name: key-auth
-  routes:
-  - name: my-route
-    paths:
-    - /
-
-consumers:
-- username: my-user
-  keyauth_credentials:
-  - key: my-key
-EOF
-    echo_info 启动kong容器
-    docker run -d --name kong \
-               --network=kong-net \
-               -v "${kong_dir}/conf:/usr/local/kong/declarative" \
-               -e "KONG_DATABASE=off" \
-               -e "KONG_DECLARATIVE_CONFIG=/usr/local/kong/declarative/kong.yml" \
-               -e "KONG_PROXY_ACCESS_LOG=/dev/stdout" \
-               -e "KONG_ADMIN_ACCESS_LOG=/dev/stdout" \
-               -e "KONG_PROXY_ERROR_LOG=/dev/stderr" \
-               -e "KONG_ADMIN_ERROR_LOG=/dev/stderr" \
-               -e "KONG_ADMIN_LISTEN=0.0.0.0:8001, 0.0.0.0:8444 ssl" \
-               -p ${web_port}:8000 \
-               -p ${web_ssl_port}:8443 \
-               -p 127.0.0.1:${admin_port}:8001 \
-               -p 127.0.0.1:${admin_ssl_port}:8444 \
-               kong:latest
-    
-    if [ $? -ne 0 ];then
-        echo_error 启动kong容器失败，请检查！
-        exit 53
-    fi
-    kong_info
-}
-
-function choose_kong(){
-    read -p "请输入数字选择（如需退出请输入q）：" kong_choice
-    case $kong_choice in
-        1)
-            echo_info 即将安装 带PostgreSQL数据库的kong
-            sleep 1
-            kong_with_database
-            ;;
-        2)
-            echo_info 即将安装 不带数据库的kong
-            sleep 1
-            kong_without_database
-            ;;
-        q|Q)
-            exit 0
-            ;;
-        *)
-            choose_kong
-            ;;
-    esac
-}
-
-# docker安装kong
-function install_kong(){
-    web_port=8000
-    web_ssl_port=8443
-    admin_port=8001
-    admin_ssl_port=8444
-
-    # 判断是否部署了docker
-    echo_info 正在检测是否安装了docker
-    docker -v &> /dev/null
-    if [ $? -eq 0 ];then
-        echo_info 检测到docker已部署
-    else
-        echo_info 未检测到docker，安装docker中
-        install_docker
-    fi
-
-    docker network list | grep -E "[[:space:]]kong-net[[:space:]]" &> /dev/null
-    if [ $? -ne 0 ];then
-        echo_info 创建kong专用的网络 kong-net
-        docker network create kong-net
-    fi
-
-    # 选择安装带数据库的还是不带数据库的版本
-    echo -e "\033[32m\n本脚本支持部署两种类型的kong：\033[0m"
-    echo -e "\033[36m[1]\033[32m - 带PostgreSQL数据库的kong\033[0m"
-    echo -e "\033[36m[2]\033[32m - 不带数据库的kong\033[0m"
-    choose_kong
-}
 
 function install_main_func(){
-    read -p "请输入数字选择要安装的服务（如需退出请输入q）：" software
+    read -p "请输入数字选择要安装的服务（如需退出请输入q）：" -e software
     case $software in
         1)
             echo_info 即将安装 nginx
@@ -796,17 +624,8 @@ function install_main_func(){
             sleep 1
             install_tengine
             ;;
-        3)
-            echo_info 即将安装 openresty
-            sleep 1
-            install_openresty
-            ;;
-        4)
-            echo_info 即将安装 kong
-            sleep 1
-            install_kong
-            ;;
         q|Q)
+            echo_info "用户手动退出"
             exit 0
             ;;
         *)
@@ -816,8 +635,6 @@ function install_main_func(){
 }
 
 echo -e "\033[32m本脚本支持一键部署：\033[0m"
-echo -e "\033[36m[1]\033[32m nginx     - 编译安装，${nginx_version} 版本${version_nginx_hint}\033[0m"
-echo -e "\033[36m[2]\033[32m tengine   - 编译安装，${tengine_version} 版本${version_tengine_hint}\033[0m"
-echo -e "\033[36m[3]\033[32m openresty - yum安装，官方repo仓库最新版\033[0m"
-echo -e "\033[36m[4]\033[32m kong      - docker安装，官方docker仓库最新版\033[0m"
+echo -e "\033[36m[1]\033[32m nginx     - 编译安装\033[0m"
+echo -e "\033[36m[2]\033[32m tengine   - 编译安装\033[0m"
 install_main_func
