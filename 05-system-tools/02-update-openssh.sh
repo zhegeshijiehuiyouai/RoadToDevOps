@@ -2,11 +2,12 @@
 # centos7.6下进行的测试
 # 本脚本中为了加速下载，使用的是腾讯云镜像站下载，如果想访问官网下载：
 # openssl官网下载：wget https://ftp.openssl.org/source/openssl-${openssl_version}.tar.gz
+# openssl官网只有最新版，需要老版本的话，从这个下载：https://www.openssl.org/source/old/
 # openssh官网下载：wget https://openbsd.hk/pub/OpenBSD/OpenSSH/portable/openssh-${openssh_version}.tar.gz
 
 # 如果没有检测到tar.gz包，则下载到这个目录
 openssh_source_dir=$(pwd)/00src00
-openssl_version=1.1.1n
+openssl_version=1.1.1w
 openssh_version=8.4p1
 
 # 带格式的echo函数
