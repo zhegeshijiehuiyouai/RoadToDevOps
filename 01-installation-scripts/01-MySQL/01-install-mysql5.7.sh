@@ -264,8 +264,8 @@ function gen_my_cnf() {
     echo_info 配置$my_cnf_file
 
     if [ -f $my_cnf_file ];then
-        mv $my_cnf_file ${my_cnf_file}_`date +%F`
-        echo_warning 检测到配置文件，已备份为${my_cnf_file}_`date +%F`
+        mv $my_cnf_file ${my_cnf_file}_`date +%Y.%m.%d-%T`
+        echo_warning 检测到配置文件，已备份为${my_cnf_file}_`date +%Y.%m.%d-%T`
     fi
 
     # 生成新的配置文件
@@ -381,15 +381,16 @@ function install_by_tgz(){
     echo_info 初始化mysql
     # 初始化
     cd ${DIR}/${mysql_dir_name}
+    mkdir -p log
+    touch log/mysqld.log
     if [[ $os == 'centos' ]];then
-        bin/mysqld --initialize --basedir=${DIR}/${mysql_dir_name} --datadir=${DIR}/${mysql_dir_name}/data  --pid-file=${DIR}/${mysql_dir_name}/data/mysql.pid >/tmp/mysql_password.txt 2>&1
+        bin/mysqld --initialize --basedir=${DIR}/${mysql_dir_name} --datadir=${DIR}/${mysql_dir_name}/data  --pid-file=${DIR}/${mysql_dir_name}/data/mysql.pid &> /dev/null
     elif [[ $os == 'ubuntu' ]];then
         # ubuntu不会有初始密码，所以直接不设置密码
-        bin/mysqld --initialize-insecure --basedir=${DIR}/${mysql_dir_name} --datadir=${DIR}/${mysql_dir_name}/data  --pid-file=${DIR}/${mysql_dir_name}/data/mysql.pid >/tmp/mysql_password.txt 2>&1
+        bin/mysqld --initialize-insecure --basedir=${DIR}/${mysql_dir_name} --datadir=${DIR}/${mysql_dir_name}/data  --pid-file=${DIR}/${mysql_dir_name}/data/mysql.pid &> /dev/null
     fi
     # 获取初始密码
-    init_password=$(awk '/password/ {print $11}' /tmp/mysql_password.txt)
-    rm -f /tmp/mysql_password.txt
+    init_password=$(awk '/password/ {print $11}' log/mysqld.log)
 
     # 初始化完成后，data目录会生成文件，所以重新赋权
     chown -R mysql:mysql ${DIR}/${mysql_dir_name}/
