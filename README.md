@@ -76,7 +76,7 @@ rpm -Uvh ./*rpm
 │   └── 03-delete-empty-dir.sh
 ├── 05-system-tools
 │   ├── 01-check-package-manager.sh
-│   ├── 02-update-openssh.sh
+│   ├── 02-update-openssl-and-openssh.sh
 │   ├── 03-init-system.sh
 │   ├── 04-tcp-connection-state-counter.sh
 │   ├── 05-uq.sh
