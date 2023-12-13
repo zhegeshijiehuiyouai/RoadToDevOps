@@ -137,8 +137,7 @@ function download_tar_gz(){
 
 # 升级openssl
 echo_info 准备升级 openssl
-
-yum install -y gcc
+yum install -y gcc zlib-devel
 echo_info 备份 /usr/bin/openssl 为 /usr/bin/openssl_old
 mv -f /usr/bin/openssl /usr/bin/openssl_old
 
@@ -147,8 +146,7 @@ cd ${file_in_the_dir}
 untar_tgz openssl-${openssl_version}.tar.gz
 
 cd openssl-${openssl_version}
-./config --prefix=${openssl_prefix_dir} --openssldir=${openssl_prefix_dir} shared
-#./config shared
+./config --prefix=${openssl_prefix_dir} --openssldir=${openssl_prefix_dir} shared zlib
 multi_core_compile
 
 echo_info 更新环境变量
@@ -167,6 +165,11 @@ ldconfig
 # 退出openssl源码目录
 cd ..
 
+######################################################################
+# 删除下面的内容的话，就是单独升级openssl
+######################################################################
+
+
 echo_info 备份 /etc/ssh目录 为 /etc/ssh_old目录
 [ -d /etc/ssh_old ] && rm -rf /etc/ssh_old
 mkdir /etc/ssh_old
@@ -175,8 +178,7 @@ mv /etc/ssh/* /etc/ssh_old/
 
 # 升级openssh
 echo_info 准备升级 openssh
-
-yum install zlib-devel openssl-devel pam-devel -y
+yum install openssl-devel pam-devel -y # zlib-devel
 download_tar_gz ${openssh_source_dir} https://mirrors.cloud.tencent.com/OpenBSD/OpenSSH/portable/openssh-${openssh_version}.tar.gz
 cd ${file_in_the_dir}
 untar_tgz openssh-${openssh_version}.tar.gz
@@ -193,7 +195,7 @@ echo_info 优化sshd.service
 sed -i 's/^Type/#&/' /usr/lib/systemd/system/sshd.service
 
 echo_info 升级后的版本：
-openssl version
+${openssl_prefix_dir}/bin/openssl version
 ssh -V
 
 echo_info 重启sshd服务
