@@ -7,6 +7,7 @@
 
 # 如果没有检测到tar.gz包，则下载到这个目录
 openssh_source_dir=$(pwd)/00src00
+openssl_prefix_dir=/usr/local/openssl
 openssl_version=1.1.1w
 openssh_version=8.4p1
 
@@ -146,13 +147,22 @@ cd ${file_in_the_dir}
 untar_tgz openssl-${openssl_version}.tar.gz
 
 cd openssl-${openssl_version}
-./config shared
-multi_core_compile 
+./config --prefix=${openssl_prefix_dir} --openssldir=${openssl_prefix_dir} shared
+#./config shared
+multi_core_compile
 
-echo_info 配置软链接
-ln -s /usr/local/bin/openssl /usr/bin/openssl
-[ -f /usr/lib64/libssl.so.1.1 ] || ln -s /usr/local/lib64/libssl.so.1.1 /usr/lib64/
-[ -f /usr/lib64/libcrypto.so.1.1 ] || ln -s /usr/local/lib64/libcrypto.so.1.1 /usr/lib64/
+echo_info 更新环境变量
+echo 'export PATH="'${openssl_prefix_dir}'/bin:$PATH"' > /etc/profile.d/openssl.sh
+# 其他软件编译时使用到openssl的环境变量
+if [ -z $LDFLAGS ];then
+    echo 'export LDFLAGS="-L'${openssl_prefix_dir}'/lib"' >> /etc/profile.d/openssl.sh
+fi
+if [ -z $CPPFLAGS ];then
+    echo 'export CPPFLAGS="-I'${openssl_prefix_dir}'/include"' >> /etc/profile.d/openssl.sh
+fi
+echo_info 更新动态链接器的运行时绑定
+echo "${openssl_prefix_dir}/lib" > /etc/ld.so.conf.d/openssl.conf
+ldconfig
 
 # 退出openssl源码目录
 cd ..
