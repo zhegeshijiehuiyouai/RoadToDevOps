@@ -121,9 +121,6 @@ function main() {
     untar_tgz node-${nodejs_version}-linux-x64.tar.xz
     mv node-${nodejs_version}-linux-x64 ${mydir}/node-${nodejs_version}
 
-    echo_info 设置环境变量
-    echo "export PATH=\$PATH:${mydir}/node-${nodejs_version}/bin" > /etc/profile.d/nodejs.sh
-
     echo_info 配置环境变量
     echo "export NODE_HOME=${mydir}/node-${nodejs_version}" > /etc/profile.d/nodejs.sh
     echo "export PATH=\$PATH:${mydir}/node-${nodejs_version}/bin" >> /etc/profile.d/nodejs.sh
