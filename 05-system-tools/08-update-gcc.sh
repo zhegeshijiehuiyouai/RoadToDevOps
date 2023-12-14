@@ -209,7 +209,7 @@ cd build/
 # –disable-multilib不生成编译为其他平台可执行代码的交叉编译器。
 # –disable-checking生成的编译器在编译过程中不做额外检查，
 # 也可以使用*–enable-checking=xxx*来增加一些检查
-../configure -enable-checking=release -enable-languages=c,c++ -disable-multilib
+../configure --prefix=/usr --mandir=/usr/share/man --infodir=/usr/share/info -enable-checking=release --enable-bootstrap --enable-shared --enable-threads=posix --with-system-zlib --enable-__cxa_atexit --disable-libunwind-exceptions --enable-gnu-unique-object --enable-linker-build-id --with-linker-hash-style=gnu --enable-languages=c,c++,objc,obj-c++,fortran,go,lto -disable-multilib --enable-plugin --enable-initfini-array --disable-libgcj --enable-gnu-indirect-function --with-tune=generic --with-arch_32=x86-64 --build=x86_64-redhat-linux
 if [ $? -ne 0 ];then
     echo_error 编译失败，退出
     exit 1
