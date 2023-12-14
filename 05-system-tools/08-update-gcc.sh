@@ -141,11 +141,7 @@ function multi_core_compile(){
 }
 
 # 比较版本号
-tempfile=gcc_version_compare.tmp
-echo ${gcc_new_version} >> ${tempfile}
-echo ${gcc_old_version} >> ${tempfile}
-latest_version=$(cat ${tempfile} | sort -V | tail -1)
-rm -f ${tempfile}
+latest_version=$(printf '%s\n%s\n' "$gcc_old_version" "$gcc_new_version" | sort -V | tail -n1)
 
 if [[ ${latest_version} == ${gcc_old_version} ]];then
     echo_error "升级版本（${gcc_new_version}）小于等于已安装版本（${gcc_old_version}），请查看网址http://mirrors.cloud.tencent.com/gnu/gcc/ 获取最新版本，并修改脚本中的最新版本号"
