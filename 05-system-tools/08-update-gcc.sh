@@ -164,32 +164,22 @@ cd gmp-${gmp_version}
 ./configure
 multi_core_compile
 echo_info --------------- GMP ${gmp_version} DONE ---------------
+
 download_tar_gz ${src_dir} http://mirrors.cloud.tencent.com/gnu/mpfr/mpfr-${mpfr_version}.tar.xz
 cd ${file_in_the_dir}
 untar_tgz mpfr-${mpfr_version}.tar.xz
 cd mpfr-${mpfr_version}
 ./configure
 multi_core_compile
-# gcc需要libmpfr.so.6，但编译后是libmpfr.so.4，所以做个软链接
-if [ -f /usr/lib64/libmpfr.so.4 ];then
-    if [ -f /usr/lib64/libmpfr.so.6 ];then
-        temp_a=$(ls -l /usr/lib64/libmpfr.so.6)
-        if [[ ${temp_a:0:1} == l ]];then
-            rm -f /usr/lib64/libmpfr.so.6
-            ln -s  /usr/lib64/libmpfr.so.4 /usr/lib64/libmpfr.so.6
-        fi
-    else
-        ln -s  /usr/lib64/libmpfr.so.4 /usr/lib64/libmpfr.so.6
-    fi
-fi
 echo_info --------------- MPFR ${mpfr_version} DONE ---------------
+
 download_tar_gz ${src_dir} http://mirrors.cloud.tencent.com/gnu/mpc/mpc-${mpc_version}.tar.gz
 cd ${file_in_the_dir}
 untar_tgz mpc-${mpc_version}.tar.gz
 cd mpc-${mpc_version}
 ./configure
 multi_core_compile
-echo_info --------------- MPFR ${mpfr_version} DONE ---------------
+echo_info --------------- MPC ${mpc_version} DONE ---------------
 echo
 
 echo_info 安装gcc本体
@@ -198,6 +188,8 @@ cd ${file_in_the_dir}
 untar_tgz gcc-${gcc_new_version}.tar.xz
 
 cd ${file_in_the_dir}/gcc-${gcc_new_version}
+# 为了解决libmpfr.so.6这个共享库文件无法被找到的问题
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib/
 mkdir build
 cd build/
 # --prefix=/usr/local 配置安装目录
