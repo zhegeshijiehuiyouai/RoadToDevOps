@@ -163,8 +163,11 @@ untar_tgz make-${make_new_version}.tar.gz
 cd make-${make_new_version}
 mkdir build
 cd build
-../configure --prefix=/usr
+../configure --prefix=/usr/local/make
 sh build.sh
 multi_core_compile
+
+mv /usr/bin/make /usr/bin/make.bak
+ln -s /usr/local/make/bin/make /usr/bin/make
 
 echo_info make安装完毕，版本：${make_new_version}
