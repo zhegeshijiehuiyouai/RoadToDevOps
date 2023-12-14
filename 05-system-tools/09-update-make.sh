@@ -4,7 +4,7 @@ make_new_version=4.4
 src_dir=$(pwd)/00src00
 mydir=$(pwd)
 
-# 获取gcc老版本
+# 获取make老版本
 make --help &> /dev/null
 if [ $? -eq 0 ];then
     make_old_version=$(make --version | head -1 | awk '{print $3}')
