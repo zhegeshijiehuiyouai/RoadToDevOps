@@ -187,9 +187,26 @@ download_tar_gz ${src_dir} http://mirrors.cloud.tencent.com/gnu/gcc/gcc-${gcc_ne
 cd ${file_in_the_dir}
 untar_tgz gcc-${gcc_new_version}.tar.xz
 
-cd ${file_in_the_dir}/gcc-${gcc_new_version}
+
 # 为了解决libmpfr.so.6这个共享库文件无法被找到的问题
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib/
+echo $LD_LIBRARY_PATH | grep '/usr/local/lib/' &> /dev/null
+if [ $? -ne 0 ];then
+    if [ -z $LD_LIBRARY_PATH ];then
+        echo 'export LD_LIBRARY_PATH=/usr/local/lib/' > /etc/profile.d/gcc-update.sh
+    else
+        echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib/' > /etc/profile.d/gcc-update.sh
+    fi
+    source /etc/profile.d/gcc-update.sh
+fi
+if [ -f /lib64/libstdc++.so.6.0.28-gdb.py ];then
+    mkdir -p /lib64/00_none_ELF
+    mv /lib64/libstdc++.so.6.0.28-gdb.py /lib64/00_none_ELF
+fi
+echo "/usr/local/lib/" > /etc/ld.so.conf.d/gcc-update.conf
+ldconfig
+
+
+cd ${file_in_the_dir}/gcc-${gcc_new_version}
 mkdir build
 cd build/
 # --prefix=/usr/local 配置安装目录
