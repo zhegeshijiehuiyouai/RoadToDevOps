@@ -1,6 +1,6 @@
 #!/bin/bash
 
-make_new_version=4.4
+make_new_version=4.2.1
 src_dir=$(pwd)/00src00
 mydir=$(pwd)
 

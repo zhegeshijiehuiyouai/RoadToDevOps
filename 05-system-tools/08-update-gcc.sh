@@ -1,6 +1,6 @@
 #!/bin/bash
 
-gcc_new_version=11.2.0
+gcc_new_version=8.2.0
 src_dir=$(pwd)/00src00
 mydir=$(pwd)
 
