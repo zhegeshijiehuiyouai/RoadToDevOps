@@ -15,6 +15,12 @@ function echo_error() {
 }
 
 function check_rsync_server() {
+    rpm -qa | grep rsync &> /dev/null
+    if [ $? -ne 0 ];then
+        echo_info 安装rsync包
+        yum install -y rsync
+    fi
+    
     ps -ef | grep rsync | grep -v grep &> /dev/null
     if [ $? -eq 0 ];then
         echo_error 检测到 rsync 服务正在运行中，退出
