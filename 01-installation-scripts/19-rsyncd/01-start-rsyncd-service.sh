@@ -190,7 +190,7 @@ function echo_summary() {
     echo -e "\033[45m[ -d /etc/rsync.d ] || mkdir -p /etc/rsync.d\033[0m"
     echo -e "\033[45mecho \""${rsyncd_password}"\" > /etc/rsync.d/rsync.password\033[0m"
     echo -e "\033[45mchmod 600 /etc/rsync.d/rsync.password\033[0m"
-    echo -e "\033[45mrsync -aogvz --port=873 --delete --password-file=/etc/rsync.d/rsync.password 客户端文件 ${rsyncd_user}@${machine_ip}::${formated_share_dir[0]}\033[0m"
+    echo -e "\033[45mrsync -avz --port=873 --delete --password-file=/etc/rsync.d/rsync.password 客户端文件 ${rsyncd_user}@${machine_ip}::${formated_share_dir[0]}\033[0m"
 }
 
 function main() {
