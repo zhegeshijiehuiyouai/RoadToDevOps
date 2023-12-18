@@ -2,6 +2,7 @@
 
 rsyncd_user=shijie
 rsyncd_password=huiui
+rsyncd_port=873
 
 # 带格式的echo函数
 function echo_info() {
@@ -144,7 +145,7 @@ use chroot = yes
 #监听地址
 address = ${machine_ip}
 #监听端口
-port 873
+port ${rsyncd_port}
 #最大并发连接数，以保护服务器，超过限制的连接数请求时，将被暂时限制。默为0(没有限制)
 # max connections = 4
 #定义服务器信息
@@ -190,7 +191,7 @@ function echo_summary() {
     echo -e "\033[45m[ -d /etc/rsync.d ] || mkdir -p /etc/rsync.d\033[0m"
     echo -e "\033[45mecho \""${rsyncd_password}"\" > /etc/rsync.d/rsync.password\033[0m"
     echo -e "\033[45mchmod 600 /etc/rsync.d/rsync.password\033[0m"
-    echo -e "\033[45mrsync -avz --port=873 --delete --password-file=/etc/rsync.d/rsync.password 客户端文件 ${rsyncd_user}@${machine_ip}::${formated_share_dir[0]}\033[0m"
+    echo -e "\033[45mrsync -avz --port=${rsyncd_port} --delete --password-file=/etc/rsync.d/rsync.password /path/to/sorce/dir/ ${rsyncd_user}@${machine_ip}::${formated_share_dir[0]}\033[0m"
 }
 
 function main() {
