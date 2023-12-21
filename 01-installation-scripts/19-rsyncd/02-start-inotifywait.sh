@@ -50,6 +50,52 @@ function check_is_exist_inotifywait() {
     if [ $? -ne 0 ];then
         echo "echo $af_max_user_watches > /proc/sys/fs/inotify/max_user_watches" >> /etc/rc.d/rc.local
     fi
+
+    # 检测是否有inotitywait进程存在
+    function user_input_func() {
+        read -p "请输入数字进行选择：" user_input
+        case ${user_input} in
+            1)
+                true
+                ;;
+            2)
+                ps -ef | grep 'inotifywait -mrq --format' | grep -v grep
+                user_input_func
+                ;;    
+            3)
+                inotifywait_pids=$(ps -ef | grep 'inotifywait -mrq --format' | grep -v grep | awk '{print $2}')
+                for i in $(echo $inotifywait_pids);do
+                    kill -9 $i
+                done
+                ;;
+            4)
+                inotifywait_pids=$(ps -ef | grep 'inotifywait -mrq --format' | grep -v grep | awk '{print $2}')
+                for i in $(echo $inotifywait_pids);do
+                    kill -9 $i
+                done
+                echo_warning 用户手动退出
+                exit 0
+                ;;
+            5)
+                echo_warning 用户手动退出
+                exit 0
+                ;;
+            *)
+                user_input_func
+                ;;
+        esac
+    }
+
+    ps -ef | grep 'inotifywait -mrq --format' | grep -v grep &> /dev/null
+    if [ $? -eq 0 ];then
+        echo_warning 检测到已启动的inotifywait进程
+        echo_warning "[1] 忽略，继续操作"
+        echo_warning "[2] 查看已启动的inotifywait进程，然后再次选择"
+        echo_warning "[3] 杀死已启动的inotifywait进程，并继续操作"
+        echo_warning "[4] 杀死已启动的inotifywait进程，并退出"
+        echo_warning "[5] 退出"
+        user_input_func
+    fi
 }
 
 function launch_inotifywait() {
@@ -84,7 +130,8 @@ function launch_inotifywait() {
         if [[ $INO_EVENT =~ 'ATTRIB' ]];then
             rsync -avzcR --port=${rsyncd_port} --password-file=${rsync_passwd_file} ${INO_FILE} ${rsync_user}@${rsyncd_ip}::${des_rysncd} &> /dev/null
         fi
-    done
+    done &
+    echo_info "已启动对 ${src_local} 目录的监控，将实时同步到rsyncd服务器(${rsyncd_ip})的 ${des_rysncd} 共享模块"
 }
 
 
