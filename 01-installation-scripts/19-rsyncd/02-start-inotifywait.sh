@@ -18,6 +18,15 @@ function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
 
+function end_add_slash() {
+    # 检测传递的值是否有“/”，有的话直接返回，没有的话在末尾添加
+    my_string=$1
+    if [[ $my_string != */ ]]; then
+        my_string="$my_string/"
+    fi
+    echo $my_string
+}
+
 
 # 检查是否存在inofitywait命令
 function check_is_exist_inotifywait() {
@@ -101,7 +110,7 @@ function check_is_exist_inotifywait() {
 function launch_inotifywait() {
     # last_print_time=0 # 初始化一个变量来存储上一次打印的时间，初始值为0
 
-    # 此方法中，由于rsync同步的特性，这里必须要先cd到源目录，inotify再监听 ./ 才能rsync同步后目录结构一致。主要是在DELETE那块，同步上级目录才行，如果不cd到源目录，那么会将源目录本身同步到目标目录中。
+    # 此方法中，这里必须要先cd到源目录，inotify再监听 ./ 才能rsync同步后目录结构一致。主要是在DELETE那块，同步上级目录才行，如果不cd到源目录，那么会将源目录本身同步到目标目录中。
     cd ${src_local}
     inotifywait -mrq --format  '%Xe %w%f' -e modify,create,delete,attrib,close_write,move ./ | while read file         # 把监控到有发生更改的"文件路径列表"循环
     do
@@ -134,10 +143,26 @@ function launch_inotifywait() {
     echo_info "已启动对 ${src_local} 目录的监控，将实时同步到rsyncd服务器(${rsyncd_ip})的 ${des_rysncd} 共享模块"
 }
 
+function set_full_rsync_by_cornd() {
+    # 为了避免有没考虑到的问题，或者在同步过程中有什么意外，添加每天一次的全量同步任务
+    src_local_crontab=$(end_add_slash ${src_local})
+    crontab_temp_file=crontab_$(cat /dev/urandom | tr -dc A-Za-z0-9 | head -c 16)
+    crontab -l > ${crontab_temp_file}
+    cat ${crontab_temp_file} | grep rsync | grep $src_local &> /dev/null
+    if [ $? -eq 0 ];then
+        rm -f ${crontab_temp_file}
+        return
+    fi
+    echo "12 2 * * * rsync -avz --port=${rsyncd_port} --password-file=${rsync_passwd_file} ${src_local_crontab} ${rsync_user}@${rsyncd_ip}::${des_rysncd}" >> ${crontab_temp_file}
+    crontab ${crontab_temp_file}
+    rm -f ${crontab_temp_file}
+} 
+
 
 function main() {
     check_is_exist_inotifywait
     launch_inotifywait
+    set_full_rsync_by_cornd
 }
 
 main
