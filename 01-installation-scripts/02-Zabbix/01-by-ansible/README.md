@@ -7,7 +7,7 @@ zabbix服务端是yum部署的，详见 [官网](https://www.zabbix.com/cn/downl
 ## 部署命令
 该命令具有幂等性，可重复执行  
 ```shell
-ansible-playbook -i hosts site.yml
+ansible-playbook -i hosts zabbix_agent.yml
 ```
 
 ## 一些说明
