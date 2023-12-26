@@ -156,6 +156,24 @@ function multi_core_compile(){
     fi
 }
 
+function confirm_gcc() {
+    read -p "请输入数字进行选择：" user_input
+    case ${user_input} in
+        1)
+            yum install -y centos-release-scl-rh 
+            yum install -y devtoolset-9-gcc devtoolset-9-gcc-c++ devtoolset-9-binutils
+            source /opt/rh/devtoolset-9/enable
+            ;;
+        2)
+            echo_info 编译升级gcc，可使用脚本：https://github.com/zhegeshijiehuiyouai/RoadToDevOps/blob/master/05-system-tools/08-update-gcc.sh
+            exit 0
+            ;;
+        *)
+            confirm_gcc
+            ;;
+    esac
+}
+
 add_user_and_group redis
 
 # 如果同端口已被占用，则直接退出
@@ -175,11 +193,31 @@ cd ${DIR}/${redis_dir_name}
 redis_home=$(pwd)
 
 echo_info 检查编译环境
-yum install -y gcc
-yum install -y centos-release-scl-rh 
-yum install -y devtoolset-9-gcc devtoolset-9-gcc-c++ devtoolset-9-binutils
-# 升级gcc，6.x版本需要
-source /opt/rh/devtoolset-9/enable
+# 比较版本号
+redis_latest_version=$(printf '%s\n%s\n' "$redis_version" "6.0.0" | sort -V | tail -n1)
+gcc --version &> /dev/null
+# 没有安装gcc的情况下
+if [ $? -ne 0 ];then
+    # centos7默认的gcc版本是gcc 4.8
+    yum install -y gcc
+    # 6.0以上的，需要gcc5.3或以上版本
+    if [ $redis_latest_version != "6.0.0" ];then
+        yum install -y centos-release-scl-rh 
+        yum install -y devtoolset-9-gcc devtoolset-9-gcc-c++ devtoolset-9-binutils
+        source /opt/rh/devtoolset-9/enable
+    fi
+else # 安装了gcc的情况，需要判断gcc版本和redis版本
+    gcc_version=$(gcc --version | head -1 | awk '{print $3}')
+    gcc_latest_version=$(printf '%s\n%s\n' "$gcc_version" "5.2" | sort -V | tail -n1)
+    if [ gcc_latest_version == "5.2" ];then
+        if [ $redis_latest_version != "6.0.0" ];then
+            echo_warning "当前gcc版本 $gcc_version 不满足要求，redis 6.0及以上版本，需要5.3或更高版本的gcc"
+            echo_warning "[1] 使用scl源升级gcc，并继续安装redis"
+            echo_warning "[2] 退出，我要手动升级gcc"
+            confirm_gcc
+        fi
+    fi
+fi
 
 echo_info 编译redis
 # 清理先前编译出错的内容
@@ -226,6 +264,7 @@ WantedBy=multi-user.target
 EOF
 
 echo_info 设置停止redis脚本
+# 这是yum安装的redis带的脚本，这里抄过来
 cat > ${redis_home}/redis-shutdown << EOF
 #!/bin/bash
 #
@@ -244,10 +283,10 @@ fi
 CONFIG_FILE="${redis_home}/\$SERVICE_NAME.conf"
 
 # Use awk to retrieve host, port from config file
-HOST=$(awk '/^[[:blank:]]*bind/ { print \$2 }' \$CONFIG_FILE | tail -n1)
-PORT=$(awk '/^[[:blank:]]*port/ { print \$2 }' \$CONFIG_FILE | tail -n1)
-PASS=$(awk '/^[[:blank:]]*requirepass/ { print \$2 }' \$CONFIG_FILE | tail -n1)
-SOCK=$(awk '/^[[:blank:]]*unixsocket\s/ { print \$2 }' \$CONFIG_FILE | tail -n1)
+HOST=\$(awk '/^[[:blank:]]*bind/ { print \$2 }' \$CONFIG_FILE | tail -n1)
+PORT=\$(awk '/^[[:blank:]]*port/ { print \$2 }' \$CONFIG_FILE | tail -n1)
+PASS=\$(awk '/^[[:blank:]]*requirepass/ { print \$2 }' \$CONFIG_FILE | tail -n1)
+SOCK=\$(awk '/^[[:blank:]]*unixsocket\s/ { print \$2 }' \$CONFIG_FILE | tail -n1)
 
 # Just in case, use default host, port
 HOST=\${HOST:-127.0.0.1}
