@@ -161,6 +161,7 @@ do
 
     # 如果父进程消失了，表示用户手动取消，需要退出本脚本。head -1是必须的，不然会取到多个父shell pid
     fatherpid=\$(ps -ef | grep /tmp/.display_dot_to_show_aliviness | grep -v grep | awk '{print \$3}' | head -1)
+    # 判断父进程ID是否等于1，如果是，表示父进程已经不存在了，因为1是init进程的ID，它是所有进程的祖先进程
     if [ 1 -eq \$fatherpid ];then
         exit 1
     fi
