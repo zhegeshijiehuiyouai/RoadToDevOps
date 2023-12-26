@@ -1,4 +1,6 @@
-## 替换sqlite3为mysql数据库
+## 与LDAP集成
+参考  [https://github.com/sftpgo/sftpgo-plugin-auth](https://github.com/sftpgo/sftpgo-plugin-auth)
+## 数据库替换为mysql的方法
 ```
 vim /etc/sftpgo/sftpgo.json
 
