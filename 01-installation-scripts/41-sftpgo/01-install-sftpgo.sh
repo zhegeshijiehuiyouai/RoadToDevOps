@@ -185,6 +185,8 @@ rm -f ${temp_file}
 
 cat > sftpgo.env << __EOF__
 SFTPGO_LOG_FILE_PATH=${log_dir}/sftpgo.log
+# 支持的日志级别包括 debug、info、warn、error
+SFTPGO_LOG_LEVEL=info
 SFTPGO_SFTPD__LOGIN_BANNER_FILE=/etc/sftpgo/LOGIN_BANNER_FILE
 __EOF__
 cat > LOGIN_BANNER_FILE << __EOF__
