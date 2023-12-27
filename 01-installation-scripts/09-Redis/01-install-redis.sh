@@ -209,8 +209,8 @@ if [ $? -ne 0 ];then
 else # 安装了gcc的情况，需要判断gcc版本和redis版本
     gcc_version=$(gcc --version | head -1 | awk '{print $3}')
     gcc_latest_version=$(printf '%s\n%s\n' "$gcc_version" "5.2" | sort -V | tail -n1)
-    if [ gcc_latest_version == "5.2" ];then
-        if [ $redis_latest_version != "6.0.0" ];then
+    if [[ gcc_latest_version == "5.2" ]];then
+        if [[ $redis_latest_version != "6.0.0" ]];then
             echo_warning "当前gcc版本 $gcc_version 不满足要求，redis 6.0及以上版本，需要5.3或更高版本的gcc"
             echo_warning "[1] 使用scl源升级gcc，并继续安装redis"
             echo_warning "[2] 退出，我要手动升级gcc"

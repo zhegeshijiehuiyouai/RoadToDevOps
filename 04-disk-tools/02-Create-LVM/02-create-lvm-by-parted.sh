@@ -59,7 +59,7 @@ lvcreate -l 100%VG -n $lvmname $vgname &> /dev/null
 
 echo_info 创建xfs文件系统
 mkfs.xfs /dev/$vgname/$lvmname &> /dev/null
-if [ $? == 0 ]
+if [[ $? == 0 ]]
 then 
 	mkdir -p $partition
 	echo_info 更新/etc/fstab

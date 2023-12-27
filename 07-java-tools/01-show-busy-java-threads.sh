@@ -521,10 +521,10 @@ printStackOfThreads() {
         [ -f "${jstackFile}" ] || {
             # shellcheck disable=SC2206
             local -a jstack_cmd_line=("$jstack_path" ${force} $mix_native_frames $more_lock_info ${pid})
-            if [ "${user}" == "${USER}" ]; then
+            if [[ "${user}" == "${USER}" ]]; then
                 # run without sudo, when java process user is current user
                 logAndRun "${jstack_cmd_line[@]}" >"${jstackFile}"
-            elif [ $UID == 0 ]; then
+            elif [[ $UID == 0 ]]; then
                 # if java process user is not current user, must run jstack with sudo
                 logAndRun sudo -u "${user}" "${jstack_cmd_line[@]}" >"${jstackFile}"
             else
@@ -580,7 +580,7 @@ main() {
             tee ${append_file:+-a "$append_file"} ${store_dir:+-a "${store_file_prefix}$PROG"} >/dev/null
         ((update_count != 1)) && headInfo
 
-        if [ "$cpu_sample_interval" == 0 ]; then
+        if [[ "$cpu_sample_interval" == 0 ]]; then
             findBusyJavaThreadsByPs
         else
             findBusyJavaThreadsByTop

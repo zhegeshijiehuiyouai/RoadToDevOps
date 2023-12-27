@@ -165,7 +165,7 @@ EOF
 }
 
 function check_ip_legeal() {
-    if [ ${1} == "" ];then
+    if [[ ${1} == "" ]];then
         echo_error 未输入ip，退出
         exit 3
     fi

@@ -8,7 +8,7 @@ source /etc/profile
 
 echo 请确认已修改本脚本中zookeeper的地址 [ y/n ]
 read CONFIRM
-if [ ! ${CONFIRM} == "y" ];then
+if [[ ! ${CONFIRM} == "y" ]];then
     echo 用户未确认，退出
     exit 1
 fi

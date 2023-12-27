@@ -266,7 +266,7 @@ function install_kafka() {
     cd ${file_in_the_dir}
     untar_tgz $(basename ${download_url})
 
-    if [ ! "${file_in_the_dir}" == "${back_dir}" ];then
+    if [[ ! "${file_in_the_dir}" == "${back_dir}" ]];then
         mv ${bare_name} ${back_dir}/${bare_name}
     fi
 

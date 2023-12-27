@@ -61,7 +61,7 @@ echo_info 创建lv
 
 echo_info 创建xfs文件系统
 mkfs.xfs /dev/$vgname/$lvmname
-if [ $? == 0 ]
+if [[ $? == 0 ]]
 then 
 	mkdir -p $partition
 	echo_info 更新/etc/fstab

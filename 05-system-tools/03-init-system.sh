@@ -261,7 +261,7 @@ function config_system_parameter(){
 * hard noproc 15000000
 _EOF_
 
-    if [ $os == 'centos' ];then
+    if [[ $os == 'centos' ]];then
         sed -i 's|^\*          soft    nproc     4096|#*          soft    nproc     4096|' /etc/security/limits.d/20-nproc.conf
     fi
 

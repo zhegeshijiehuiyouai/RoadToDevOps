@@ -112,7 +112,7 @@ check_opt(){
         [ $? != 0 ] && error_msg "$timezone 时区不合法"
     fi
 
-    if [ $log == true ]; then
+    if [[ $log == true ]]; then
         log_dir=/var/log/$(basename $0)
         log_file=$log_dir/$(basename $0).log.$(date +"%s")
         [ ! -d $log_dir ] && mkdir -p $log_dir
@@ -137,7 +137,7 @@ check_ssl(){
 
             # 查不到证书信息的情况
             if [ -z "${start_time_txt}" ];then
-                if [ $verbose == true ]; then
+                if [[ $verbose == true ]]; then
                     # 输出成一行，是为了避免多个后台执行的子shell同时echo造成混淆
                     echo -e "\n检查域名: $domain\n【未检测到域名证书信息】\n"
                 else
@@ -157,13 +157,13 @@ check_ssl(){
 
             # 证书过期的情况
             if [ $ssl_check_timestamp -gt $ssl_expire_timestamp ];then
-                if [ $verbose == true ]; then
+                if [[ $verbose == true ]]; then
                     echo -e "\n检查域名: $domain\n通用名称: $server_name\n检查时间: $(TZ="$timezone" date -d "@$ssl_check_timestamp" +"%F %T")\n颁发时间: $(TZ="$timezone" date -d "@$ssl_start_timestamp" +"%F %T")\n到期时间: $(TZ="$timezone" date -d "@$ssl_expire_timestamp" +"%F %T")\n【已过期】${remaining_time_day}天 ${remaining_time_hour}小时${remaining_time_minute}分${remaining_time_second}秒\n颁发机构: $issuer_name\n"
                 else
                     echo -e "$domain:【已过期】"
                 fi
             else
-                if [ $verbose == true ]; then
+                if [[ $verbose == true ]]; then
                     echo -e "\n检查域名: $domain\n通用名称: $server_name\n检查时间: $(TZ="$timezone" date -d "@$ssl_check_timestamp" +"%F %T")\n颁发时间: $(TZ="$timezone" date -d "@$ssl_start_timestamp" +"%F %T")\n到期时间: $(TZ="$timezone" date -d "@$ssl_expire_timestamp" +"%F %T")\n剩余时间: ${remaining_time_day}天 ${remaining_time_hour}小时${remaining_time_minute}分${remaining_time_second}秒\n颁发机构: $issuer_name\n"
                 else
                     printf "%-44s%-40s\n" $domain "${remaining_time_day}天后到期"
