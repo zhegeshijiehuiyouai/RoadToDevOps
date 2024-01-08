@@ -170,7 +170,7 @@ EOF
 
     /bin/bash $back_task &
 
-    curl -sL --connect-timeout 5 "https://github.com/docker/compose/releases/download/${docker_compose_version}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    curl -sL --connect-timeout 5 "https://gh.con.sh/https://github.com/docker/compose/releases/download/${docker_compose_version}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
     chmod +x /usr/local/bin/docker-compose
     echo  # 换行，与小点隔开
     echo_info docker-compose已部署成功，版本信息如下：
