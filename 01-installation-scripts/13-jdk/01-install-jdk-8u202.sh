@@ -18,6 +18,26 @@ function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
 
+# 脚本执行用户检测
+if [[ $(whoami) != 'root' ]];then
+    echo_error 请使用root用户执行
+    exit 99
+fi
+
+# 检测操作系统
+# $os_version变量并不总是存在，但为了方便，仍然保留这个变量
+if grep -qs "ubuntu" /etc/os-release; then
+	os="ubuntu"
+	# os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2 | tr -d '.')
+    os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
+elif [[ -e /etc/centos-release ]]; then
+	os="centos"
+	os_version=$(grep -oE '[0-9]+\.?.*\s' /etc/centos-release)
+else
+	echo_error 不支持的操作系统
+	exit 99
+fi
+
 # 首先判断当前目录是否有压缩包：
 #   I. 如果有压缩包，那么就在当前目录解压；
 #   II.如果没有压缩包，那么就检查有没有 ${src_dir} 表示的目录;
@@ -97,23 +117,77 @@ function download_tar_gz(){
     fi
 }
 
-download_tar_gz $src_dir https://github.com/frekele/oracle-java/releases/download/8u202-b08/jdk-8u202-linux-x64.rpm
+# 解压
+function untar_tgz(){
+    echo_info 解压 $1 中
+    tar xf $1
+    if [ $? -ne 0 ];then
+        echo_error 解压出错，请检查！
+        exit 80
+    fi
+}
 
-cd ${file_in_the_dir}
-rpm -Uvh jdk-8u202-linux-x64.rpm
-if [ $? -ne 0 ];then
-    echo_error jdk安装失败，请检查rpm包是否下载完全。建议手动下载后，覆盖服务器上的rpm包
-    exit 1
-fi
+function pre_install_check() {
+    java -version &> /dev/null
+    if [ $? -eq 0 ];then
+        echo_error 检测到java命令，退出
+        exit 2
+    fi
+}
 
-echo_info 配置环境变量
-cat > /etc/profile.d/java.sh << EOF
+function set_env() {
+    echo_info 配置环境变量
+    cat > /etc/profile.d/java.sh << EOF
 #set java environment
-export JAVA_HOME=/usr/java/jdk1.8.0_202-amd64
-export JAVA_BIN=/usr/java/jdk1.8.0_202-amd64/bin
-export CLASSPATH=.:/lib/dt.jar:/lib/tools.jar
+export JAVA_HOME=$1
+export JRE_HOME=\${JAVA_HOME}/jre
+export JAVA_BIN=\${JAVA_HOME}/bin
+export CLASSPATH=.:\${JAVA_HOME}/lib:\${JRE_HOME}/lib  
+export PATH=\${JAVA_HOME}/bin:\$PATH  
 EOF
-source /etc/profile
+}
 
+function jdk_install_centos() {
+    # download_tar_gz $src_dir https://github.com/frekele/oracle-java/releases/download/8u202-b08/jdk-8u202-linux-x64.rpm
+    # github加速节点下载
+    download_tar_gz $src_dir https://gh.con.sh/https://github.com/frekele/oracle-java/releases/download/8u202-b08/jdk-8u202-linux-x64.rpm
+
+    cd ${file_in_the_dir}
+    rpm -Uvh jdk-8u202-linux-x64.rpm
+    if [ $? -ne 0 ];then
+        echo_error jdk安装失败，请检查rpm包是否下载完全。建议手动下载后，覆盖服务器上的rpm包
+        exit 1
+    fi
+    set_env /usr/java/jdk1.8.0_202-amd64
+    source /etc/profile
+}
+
+function jdk_install_ubuntu() {
+    download_tar_gz $src_dir https://gh.con.sh/https://github.com/frekele/oracle-java/releases/download/8u202-b08/jdk-8u202-linux-x64.tar.gz
+    cd ${file_in_the_dir}
+    untar_tgz jdk-8u202-linux-x64.tar.gz
+    [ -d /usr/java/jdk1.8.0_202 ] || rm -rf /usr/java/jdk1.8.0_202
+    mkdir -p /usr/java
+    mv jdk1.8.0_202 /usr/java/
+    set_env /usr/java/jdk1.8.0_202
+    source /etc/profile
+    echo_info 设置默认jdk
+    update-alternatives --install /usr/bin/java java /usr/java/jdk1.8.0_202/bin/java 300  
+    update-alternatives --install /usr/bin/javac javac /usr/java/jdk1.8.0_202/bin/javac 300  
+    update-alternatives --install /usr/bin/jar jar /usr/java/jdk1.8.0_202/bin/jar 300   
+    update-alternatives --install /usr/bin/javah javah /usr/java/jdk1.8.0_202/bin/javah 300   
+    update-alternatives --install /usr/bin/javap javap /usr/java/jdk1.8.0_202/bin/javap 300
+    update-alternatives --config java
+}
+
+
+
+######################################
+pre_install_check
+if [[ $os == 'centos' ]];then
+    jdk_install_centos
+elif [[ $os == 'ubuntu' ]];then
+    jdk_install_ubuntu
+fi
 echo_info jdk已安装成功，版本信息如下
 java -version
