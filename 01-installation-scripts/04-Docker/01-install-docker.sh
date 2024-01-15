@@ -90,17 +90,16 @@ function install_docker() {
         adjust_docker_configuration
         echo_warning 非root用户要使用docker命令的话，请执行命令：
         echo 'gpasswd -a 用户名 docker'
-        echo 'systemctl restart docker'
     elif [[ $os == 'ubuntu' ]];then
         echo_info 清理之前安装的docker（如果有）
-        apt remove -y docker.io docker-doc docker-compose podman-docker containerd runc
+        for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get -y remove $pkg; done
         rm -rf /var/lib/docker
         rm -rf /var/lib/containerd
 
         echo_info 配置docker仓库
-        apt update -y
-        apt install -y ca-certificates curl gnupg
-        # 添加docker官方gpg key
+        apt-get update -y
+        apt-get install ca-certificates curl gnupg -y
+        echo_info 添加docker官方gpg key
         install -m 0755 -d /etc/apt/keyrings
         [ -f /etc/apt/keyrings/docker.gpg ] && rm -f /etc/apt/keyrings/docker.gpg
         curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
@@ -109,16 +108,14 @@ function install_docker() {
 "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
 "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
         tee /etc/apt/sources.list.d/docker.list > /dev/null
+        apt-get update -y
 
         echo_info 安装docker-ce
-        apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+        apt-get -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
         adjust_docker_configuration
         echo_warning 非root用户要使用docker命令的话，请执行命令：
         echo 'gpasswd -a 用户名 docker'
-        echo 'su - 用户名'
-        echo 'newgrp docker'
-        echo 'systemctl restart docker'
     fi
 }
 
@@ -177,7 +174,25 @@ EOF
     docker-compose --version
 }
 
+function install_docker_compose_confirm() {
+    read -p "请输入数字进行选择：" user_input
+    case ${user_input} in
+        1)
+            exit 0
+            ;;
+        2)
+            install_docker_compose
+            ;;
+        *)
+            install_docker_compose_confirm
+            ;;
+    esac
+}
+
 
 ################################ 安装 ##############
 install_docker
-install_docker_compose
+echo_warning docker已自带compose插件，是否还单独安装docker-compose?
+echo [1] 放弃安装docker-compose
+echo [2] 继续安装docker-compose
+install_docker_compose_confirm
