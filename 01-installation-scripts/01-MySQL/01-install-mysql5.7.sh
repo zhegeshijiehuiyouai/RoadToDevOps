@@ -409,7 +409,6 @@ Group=mysql
 Type=forking
 ExecStart=${DIR}/${mysql_dir_name}/support-files/mysql.server start
 ExecStop=${DIR}/${mysql_dir_name}/support-files/mysql.server stop
-ExecRestart=${DIR}/${mysql_dir_name}/support-files/mysql.server restart
 ExecReload=${DIR}/${mysql_dir_name}/support-files/mysql.server reload
 PrivateTmp=true
 Restart=always
