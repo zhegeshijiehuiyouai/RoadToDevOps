@@ -22,6 +22,25 @@ function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
 
+# 检测操作系统
+if grep -qs "ubuntu" /etc/os-release; then
+	os="ubuntu"
+    os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
+elif [[ -e /etc/centos-release ]]; then
+	os="centos"
+	os_version=$(grep -oE '[0-9]+\.?.*\s' /etc/centos-release)
+else
+	echo_error 不支持的操作系统
+	exit 99
+fi
+
+if [[ $os == "ubuntu" ]];then
+    # 阻止配置更新弹窗
+    export UCF_FORCE_CONFFOLD=1
+    # 阻止应用重启弹窗
+    export NEEDRESTART_SUSPEND=1
+fi
+
 # 解压
 function untar_tgz(){
     echo_info 解压 $1 中
@@ -68,7 +87,11 @@ function download_tar_gz(){
             # 检测是否有wget工具
             if [ ! -f /usr/bin/wget ];then
                 echo_info 安装wget工具
-                yum install -y wget
+                if [[ $os == "centos" ]];then
+                    yum install -y wget
+                elif [[ $os == "ubuntu" ]];then
+                    apt install -y wget
+                fi
             fi
             wget $2
             if [ $? -ne 0 ];then
@@ -88,7 +111,11 @@ function download_tar_gz(){
                 # 检测是否有wget工具
                 if [ ! -f /usr/bin/wget ];then
                     echo_info 安装wget工具
-                    yum install -y wget
+                    if [[ $os == "centos" ]];then
+                        yum install -y wget
+                    elif [[ $os == "ubuntu" ]];then
+                        apt install -y wget
+                    fi
                 fi
                 wget $2
                 if [ $? -ne 0 ];then
@@ -134,9 +161,18 @@ function get_machine_ip() {
 }
 #-------------------------------------------------
 
+if [ -d /etc/sftpgo ];then
+    echo_error 检测到/etc/sftpgo目录，请确认是否重复安装了
+    exit 2
+fi
 
 echo_info 安装依赖工具
-yum install -y jq net-tools
+if [[ $os == "centos" ]];then
+    yum install -y jq net-tools
+elif [[ $os == "ubuntu" ]];then
+    apt install -y jq net-tools
+fi
+
 # 如果同端口已被占用，则直接退出
 netstat -tnlp | grep ${sftp_port}
 if [ $? -eq 0 ];then
@@ -149,11 +185,29 @@ if [ $? -eq 0 ];then
     exit 21
 fi
 
-# 使用github加速节点下载
-download_tar_gz $src_dir https://gh.con.sh/https://github.com/drakkan/sftpgo/releases/download/v${sftpgo_version}/sftpgo-${sftpgo_version}-1.x86_64.rpm
-cd $file_in_the_dir
-echo_info 安装sftpgo
-yum localinstall sftpgo-${sftpgo_version}-1.x86_64.rpm -y
+if [[ $os == "centos" ]];then
+    # 使用github加速节点下载
+    download_tar_gz $src_dir https://gh.con.sh/https://github.com/drakkan/sftpgo/releases/download/v${sftpgo_version}/sftpgo-${sftpgo_version}-1.x86_64.rpm
+    cd $file_in_the_dir
+    echo_info 安装sftpgo
+    yum localinstall -y sftpgo-${sftpgo_version}-1.x86_64.rpm
+elif [[ $os=="ubuntu" ]];then 
+    download_tar_gz $src_dir https://gh.con.sh/https://github.com/drakkan/sftpgo/releases/download/v${sftpgo_version}/sftpgo_${sftpgo_version}-1_amd64.deb
+    cd $file_in_the_dir
+    echo_info 安装sftpgo
+    apt install -y ./sftpgo_${sftpgo_version}-1_amd64.deb
+    if [ ! -d /etc/sftpgo ];then
+        # 可能之前存在sftpggo，只删除了/etc/sftpgo文件，没有卸载
+        apt purge -y sftpgo
+        apt install -y ./sftpgo_${sftpgo_version}-1_amd64.deb
+        # 还没有这个目录的话就是安装失败了
+        if [ ! -d /etc/sftpgo ];then
+            echo_error sftpgo安装失败，请检测服务器环境
+            exit 3
+        fi
+    fi
+fi
+
 
 # 下面的操作看起来很傻，不过如果修改了最开始的变量，那么这个就很有用了
 mkdir -p $data_dir
@@ -198,7 +252,11 @@ echo_info 初始化
 sftpgo initprovider
 chown_func
 echo_info 启动sftpgo
-systemctl start sftpgo
+systemctl restart sftpgo
+# ubuntu安装完后会自己启动，就会产生这些文件，删除
+[ -d /var/lib/sftpgo ] && rm -rf /var/lib/sftpgo
+[ -d /srv/sftpgo ] && rm -rf /srv/sftpgo
+
 
 echo_info sftpgo已部署，请前往管理界面创建admin账号
 echo_info 地址：http://${machine_ip}:${http_port}/web/admin/login
