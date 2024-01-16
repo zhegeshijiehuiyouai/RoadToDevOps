@@ -4,6 +4,9 @@
 # 默认版本
 nginx_default_version=1.22.1
 tengine_default_version=2.4.1
+# 所有需要下载的文件都下载到当前目录下的${src_dir}目录中
+src_dir=00src00
+mydir=$(pwd)
 
 # 带格式的echo函数
 function echo_info() {
@@ -16,10 +19,17 @@ function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
 
-# 所有需要下载的文件都下载到当前目录下的${src_dir}目录中
-src_dir=00src00
-mydir=$(pwd)
-
+# 检测操作系统
+if grep -qs "ubuntu" /etc/os-release; then
+	os="ubuntu"
+    os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
+elif [[ -e /etc/centos-release ]]; then
+	os="centos"
+	os_version=$(grep -oE '[0-9]+\.?.*\s' /etc/centos-release)
+else
+	echo_error 不支持的操作系统
+	exit 99
+fi
 
 function get_latest_version() {
     echo_info 从官网获取最新版本中
@@ -87,7 +97,11 @@ function download_tar_gz(){
             # 检测是否有wget工具
             if [ ! -f /usr/bin/wget ];then
                 echo_info 安装wget工具
-                yum install -y wget
+                if [[ $os == "centos" ]];then
+                    yum install -y wget
+                elif [[ $os == "ubuntu" ]];then
+                    apt install -y wget
+                fi
             fi
             wget $2
             if [ $? -ne 0 ];then
@@ -107,7 +121,11 @@ function download_tar_gz(){
                 # 检测是否有wget工具
                 if [ ! -f /usr/bin/wget ];then
                     echo_info 安装wget工具
-                    yum install -y wget
+                    if [[ $os == "centos" ]];then
+                        yum install -y wget
+                    elif [[ $os == "ubuntu" ]];then
+                        apt install -y wget
+                    fi
                 fi
                 wget $2
                 if [ $? -ne 0 ];then
@@ -159,6 +177,15 @@ function untar_tgz(){
 
 # 多核编译
 function multi_core_compile(){
+    # 检查make存不存在
+    make --version &> /dev/null
+    if [ $? -ne 0 ];then
+        if [[ $os == "centos" ]];then
+            yum install -y make
+        elif [[ $os == "ubuntu" ]];then
+            apt install -y make
+        fi
+    fi
     assumeused=$(w | grep 'load average' | awk -F': ' '{print $2}' | awk -F'.' '{print $1}')
     cpucores=$(cat /proc/cpuinfo | grep -c processor)
     compilecore=$(($cpucores - $assumeused - 1))
@@ -237,7 +264,12 @@ function install_nginx(){
     untar_tgz ${tag}-${nginx_version}.tar.gz
 
     echo_info 安装依赖程序
-    yum install -y gcc zlib zlib-devel openssl openssl-devel pcre pcre-devel
+    if [[ $os == "centos" ]];then
+        yum install -y gcc zlib zlib-devel openssl openssl-devel pcre pcre-devel
+    elif [[ $os == "ubuntu" ]];then
+        apt install -y gcc zlib1g zlib1g-dev openssl libssl-dev libpcre3 libpcre3-dev
+    fi
+
 
     add_user_and_group ${tag}
     cd ${tag}-${nginx_version}
@@ -554,7 +586,11 @@ function install_tengine(){
     untar_tgz ${tag}-${tengine_version}.tar.gz
 
     echo_info 安装依赖程序
-    yum install -y gcc zlib zlib-devel openssl openssl-devel pcre pcre-devel
+    if [[ $os == "centos" ]];then
+        yum install -y gcc zlib zlib-devel openssl openssl-devel pcre pcre-devel
+    elif [[ $os == "ubuntu" ]];then
+        apt install -y gcc zlib1g zlib1g-dev openssl libssl-dev libpcre3 libpcre3-dev
+    fi
 
     add_user_and_group ${tag}
     cd ${tag}-${tengine_version}
