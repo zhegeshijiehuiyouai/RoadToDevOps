@@ -38,6 +38,8 @@ mysql_version=5.7.38
 DIR=$(pwd)
 # 部署目录的名字，最终的部署目录为${DIR}/${mysql_dir_name}
 mysql_dir_name=mysql-${mysql_version}
+# mysql二进制包名字
+mysql_tgz=mysql-${mysql_version}-linux-glibc2.12-x86_64.tar.gz
 
 
 # 脚本执行用户检测
@@ -50,6 +52,10 @@ fi
 if grep -qs "ubuntu" /etc/os-release; then
 	os="ubuntu"
     os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
+    # 阻止配置更新弹窗
+    export UCF_FORCE_CONFFOLD=1
+    # 阻止应用重启弹窗
+    export NEEDRESTART_SUSPEND=1
 elif [[ -e /etc/centos-release ]]; then
 	os="centos"
 	os_version=$(grep -oE '[0-9]+\.?.*\s' /etc/centos-release)
@@ -57,9 +63,6 @@ else
 	echo_error 不支持的操作系统
 	exit 99
 fi
-
-# mysql二进制包名字
-mysql_tgz=mysql-${mysql_version}-linux-glibc2.12-x86_64.tar.gz
 
 
 if [[ $os == 'centos' ]];then

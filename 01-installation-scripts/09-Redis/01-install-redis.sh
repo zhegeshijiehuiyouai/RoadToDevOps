@@ -40,6 +40,22 @@ function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
 
+# 检测操作系统
+if grep -qs "ubuntu" /etc/os-release; then
+	os="ubuntu"
+    os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
+    # 阻止配置更新弹窗
+    export UCF_FORCE_CONFFOLD=1
+    # 阻止应用重启弹窗
+    export NEEDRESTART_SUSPEND=1
+elif [[ -e /etc/centos-release ]]; then
+	os="centos"
+	os_version=$(grep -oE '[0-9]+\.?.*\s' /etc/centos-release)
+else
+	echo_error 不支持的操作系统
+	exit 99
+fi
+
 # 解压
 function untar_tgz(){
     echo_info 解压 $1 中
@@ -78,7 +94,11 @@ function download_tar_gz(){
             # 检测是否有wget工具
             if [ ! -f /usr/bin/wget ];then
                 echo_info 安装wget工具
-                yum install -y wget
+                if [[ $os == "centos" ]];then
+                    yum install -y wget
+                elif [[ $os == "ubuntu" ]];then
+                    apt install -y wget
+                fi
             fi
             wget $2
             if [ $? -ne 0 ];then
@@ -98,7 +118,11 @@ function download_tar_gz(){
                 # 检测是否有wget工具
                 if [ ! -f /usr/bin/wget ];then
                     echo_info 安装wget工具
-                    yum install -y wget
+                    if [[ $os == "centos" ]];then
+                        yum install -y wget
+                    elif [[ $os == "ubuntu" ]];then
+                        apt install -y wget
+                    fi
                 fi
                 wget $2
                 if [ $? -ne 0 ];then
@@ -138,6 +162,15 @@ function add_user_and_group(){
 
 # 多核编译
 function multi_core_compile(){
+    # 检查make存不存在
+    make --version &> /dev/null
+    if [ $? -ne 0 ];then
+        if [[ $os == "centos" ]];then
+            yum install -y make
+        elif [[ $os == "ubuntu" ]];then
+            apt install -y make
+        fi
+    fi
     assumeused=$(w | grep 'load average' | awk -F': ' '{print $2}' | awk -F'.' '{print $1}')
     cpucores=$(cat /proc/cpuinfo | grep -c processor)
     compilecore=$(($cpucores - $assumeused - 1))
@@ -156,7 +189,7 @@ function multi_core_compile(){
     fi
 }
 
-function confirm_gcc() {
+function confirm_gcc_centos() {
     read -p "请输入数字进行选择：" user_input
     case ${user_input} in
         1)
@@ -169,7 +202,7 @@ function confirm_gcc() {
             exit 0
             ;;
         *)
-            confirm_gcc
+            confirm_gcc_centos
             ;;
     esac
 }
@@ -197,26 +230,30 @@ echo_info 检查编译环境
 redis_latest_version=$(printf '%s\n%s\n' "$redis_version" "6.0.0" | sort -V | tail -n1)
 gcc --version &> /dev/null
 # 没有安装gcc的情况下
-if [ $? -ne 0 ];then
-    # centos7默认的gcc版本是gcc 4.8
-    yum install -y gcc
-    # 6.0以上的，需要gcc5.3或以上版本
-    if [ $redis_latest_version != "6.0.0" ];then
-        yum install -y centos-release-scl-rh 
-        yum install -y devtoolset-9-gcc devtoolset-9-gcc-c++ devtoolset-9-binutils
-        source /opt/rh/devtoolset-9/enable
-    fi
-else # 安装了gcc的情况，需要判断gcc版本和redis版本
-    gcc_version=$(gcc --version | head -1 | awk '{print $3}')
-    gcc_latest_version=$(printf '%s\n%s\n' "$gcc_version" "5.2" | sort -V | tail -n1)
-    if [[ gcc_latest_version == "5.2" ]];then
-        if [[ $redis_latest_version != "6.0.0" ]];then
-            echo_warning "当前gcc版本 $gcc_version 不满足要求，redis 6.0及以上版本，需要5.3或更高版本的gcc"
-            echo_warning "[1] 使用scl源升级gcc，并继续安装redis"
-            echo_warning "[2] 退出，我要手动升级gcc"
-            confirm_gcc
+if [[ $os == "centos" ]];then
+    if [ $? -ne 0 ];then
+        # centos7默认的gcc版本是gcc 4.8
+        yum install -y gcc
+        # 6.0以上的，需要gcc5.3或以上版本
+        if [ $redis_latest_version != "6.0.0" ];then
+            yum install -y centos-release-scl-rh 
+            yum install -y devtoolset-9-gcc devtoolset-9-gcc-c++ devtoolset-9-binutils
+            source /opt/rh/devtoolset-9/enable
+        fi
+    else # 安装了gcc的情况，需要判断gcc版本和redis版本
+        gcc_version=$(gcc --version | head -1 | awk '{print $3}')
+        gcc_latest_version=$(printf '%s\n%s\n' "$gcc_version" "5.2" | sort -V | tail -n1)
+        if [[ gcc_latest_version == "5.2" ]];then
+            if [[ $redis_latest_version != "6.0.0" ]];then
+                echo_warning "当前gcc版本 $gcc_version 不满足要求，redis 6.0及以上版本，需要5.3或更高版本的gcc"
+                echo_warning "[1] 使用scl源升级gcc，并继续安装redis"
+                echo_warning "[2] 退出，我要手动升级gcc"
+                confirm_gcc_centos
+            fi
         fi
     fi
+elif [[ $os == "ubuntu" ]];then
+    apt install -y gcc
 fi
 
 echo_info 编译redis
@@ -346,7 +383,11 @@ function iredisyn() {
 read -p "是否添加iredis (y/n)：" -e choice
 case ${choice} in
     y|Y)
-        yum install -y python3-pip
+        if [[ $os == "centos" ]];then
+            yum install -y python3-pip
+        elif [[ $os == "ubuntu" ]];then
+            apt install -y python3-pip
+        fi
         pip3 install iredis -i https://pypi.tuna.tsinghua.edu.cn/simple
         echo
         ;;

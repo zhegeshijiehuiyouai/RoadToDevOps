@@ -23,6 +23,10 @@ function echo_error() {
 if grep -qs "ubuntu" /etc/os-release; then
 	os="ubuntu"
     os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
+    # 阻止配置更新弹窗
+    export UCF_FORCE_CONFFOLD=1
+    # 阻止应用重启弹窗
+    export NEEDRESTART_SUSPEND=1
 elif [[ -e /etc/centos-release ]]; then
 	os="centos"
 	os_version=$(grep -oE '[0-9]+\.?.*\s' /etc/centos-release)
@@ -57,8 +61,6 @@ function get_latest_version() {
     # 删除刚刚插入的最后一行
     sed -i '$d' /etc/resolv.conf
 }
-
-
 
 
 # 首先判断当前目录是否有压缩包：
