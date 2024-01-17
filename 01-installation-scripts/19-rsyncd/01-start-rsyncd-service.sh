@@ -1,7 +1,7 @@
 #!/bin/bash
-
-rsyncd_user=shijie
-rsyncd_password=huiui
+# rsync使用的认证用户和密码，不是指系统用户
+rsyncd_user=rsyncd
+rsyncd_password=rsyncdpass
 rsyncd_port=873
 
 # 带格式的echo函数
@@ -15,11 +15,27 @@ function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
 
+# 检测操作系统
+if grep -qs "ubuntu" /etc/os-release; then
+	os="ubuntu"
+    os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
+elif [[ -e /etc/centos-release ]]; then
+	os="centos"
+	os_version=$(grep -oE '[0-9]+\.?.*\s' /etc/centos-release)
+else
+	echo_error 不支持的操作系统
+	exit 99
+fi
+
 function check_rsync_server() {
-    rpm -qa | grep rsync &> /dev/null
+    rsync --version &> /dev/null
     if [ $? -ne 0 ];then
         echo_info 安装rsync包
-        yum install -y rsync
+        if [[ $os == "centos" ]];then
+            yum install -y rsync
+        elif [[ $os == "ubuntu" ]];then
+            apt install -y rsync
+        fi
     fi
     
     ps -ef | grep rsync | grep -v grep &> /dev/null
@@ -185,7 +201,7 @@ function echo_summary() {
     for i in ${formated_share_dir[@]};do
         echo $i
     done
-    echo_info 验证 rsyncd 命令：
+    echo_info 验证 rsyncd 命令（本机执行，密码：${rsyncd_password}）：
     echo -e "\033[45mrsync --list-only ${rsyncd_user}@${machine_ip}::${formated_share_dir[0]}\033[0m"
     echo_info 生产环境客户端同步命令：
     echo -e "\033[45m[ -d /etc/rsync.d ] || mkdir -p /etc/rsync.d\033[0m"
@@ -198,12 +214,24 @@ function main() {
     check_rsync_server
     input_share_dir
     generate_rsyncd_conf
-    systemctl start rsyncd
-    if [ $? -eq 0 ];then
-        echo_summary
-    else
-        echo_error rsyncd 启动失败，请检查！
-        exit 5
+    if [[ $os == "centos" ]];then
+        systemctl start rsyncd
+        if [ $? -eq 0 ];then
+            echo_info 启动 rysncd 服务：systemctl start rsyncd
+            echo_summary
+        else
+            echo_error rsyncd 启动失败，请检查！
+            exit 5
+        fi
+    elif [[ $os == "ubuntu" ]];then
+        systemctl start rsync
+        if [ $? -eq 0 ];then
+            echo_info 启动 rsyncd 服务：systemctl start rsync
+            echo_summary
+        else
+            echo_error rsyncd 启动失败，请检查！
+            exit 5
+        fi
     fi
 }
 
