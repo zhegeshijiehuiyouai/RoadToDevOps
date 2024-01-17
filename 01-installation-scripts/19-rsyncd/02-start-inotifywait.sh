@@ -1,8 +1,8 @@
 #!/bin/bash
 
-src_local=/data/temp    # 要同步的源目录，在本机上
+src_local=/data/00src00    # 要同步的源目录，在本机上
 des_rysncd=data_00src00     # 要同步的目标rsyncd共享模块，在rsyncd上，对应一个目录
-rsync_user=icekredit      # rsyncd中定义的验证用户名
+rsync_user=rsyncd      # rsyncd中定义的验证用户名
 rsync_passwd_file=/etc/rsync.d/rsync.password    # 密码文件，只需要填写上面这个账户的密码
 rsyncd_ip=172.16.20.66    # rsyncd的ip，同时也是目的服务器的ip
 rsyncd_port=873    # rsyncd服务端的端口
@@ -18,6 +18,22 @@ function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
 
+# 检测操作系统
+if grep -qs "ubuntu" /etc/os-release; then
+	os="ubuntu"
+    os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
+    # 阻止配置更新弹窗
+    export UCF_FORCE_CONFFOLD=1
+    # 阻止应用重启弹窗
+    export NEEDRESTART_SUSPEND=1
+elif [[ -e /etc/centos-release ]]; then
+	os="centos"
+	os_version=$(grep -oE '[0-9]+\.?.*\s' /etc/centos-release)
+else
+	echo_error 不支持的操作系统
+	exit 99
+fi
+
 function end_add_slash() {
     # 检测传递的值是否有“/”，有的话直接返回，没有的话在末尾添加
     my_string=$1
@@ -30,10 +46,19 @@ function end_add_slash() {
 
 # 检查是否存在inofitywait命令
 function check_is_exist_inotifywait() {
+    if [[ $os == "centos" ]];then
+        rc_local=/etc/rc.d/rc.local
+    elif [[ $os == "ubuntu" ]];then
+        rc_local=/etc/rc.local
+    fi
     which inotifywait &> /dev/null
     if [ $? -ne 0 ];then
         echo_info 安装inotify-tools
-        yum install -y inotify-tools
+        if [[ $os == "centos" ]];then
+            yum install -y inotify-tools
+        elif [[ $os == "ubuntu" ]];then
+            apt install -y inotify-tools
+        fi
     fi
     # 监控时件最大数量，需调整此文件默认大小
     bf_max_queued_events=$(cat /proc/sys/fs/inotify/max_queued_events)
@@ -43,9 +68,9 @@ function check_is_exist_inotifywait() {
         af_max_queued_events=327679
     fi
     echo $af_max_queued_events > /proc/sys/fs/inotify/max_queued_events
-    grep '/proc/sys/fs/inotify/max_queued_events' /etc/rc.d/rc.local &> /dev/null
+    grep '/proc/sys/fs/inotify/max_queued_events' $rc_local &> /dev/null
     if [ $? -ne 0 ];then
-        echo "echo $af_max_queued_events > /proc/sys/fs/inotify/max_queued_events" >> /etc/rc.d/rc.local
+        echo "echo $af_max_queued_events > /proc/sys/fs/inotify/max_queued_events" >> $rc_local
     fi
     # 用户实例可监控的最大目录及文件数量
     bf_max_user_watches=$(cat /proc/sys/fs/inotify/max_user_watches)
@@ -55,9 +80,9 @@ function check_is_exist_inotifywait() {
         af_max_user_watches=30000000
     fi
     echo $af_max_user_watches > /proc/sys/fs/inotify/max_user_watches
-    grep '/proc/sys/fs/inotify/max_user_watches' /etc/rc.d/rc.local &> /dev/null
+    grep '/proc/sys/fs/inotify/max_user_watches' $rc_local &> /dev/null
     if [ $? -ne 0 ];then
-        echo "echo $af_max_user_watches > /proc/sys/fs/inotify/max_user_watches" >> /etc/rc.d/rc.local
+        echo "echo $af_max_user_watches > /proc/sys/fs/inotify/max_user_watches" >> $rc_local
     fi
 
     # 检测是否有inotitywait进程存在
