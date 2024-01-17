@@ -11,6 +11,28 @@ function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
 
+# 脚本执行用户检测
+if [[ $(whoami) != 'root' ]];then
+    echo_error 请使用root用户执行
+    exit 99
+fi
+
+# 检测操作系统
+if grep -qs "ubuntu" /etc/os-release; then
+	os="ubuntu"
+    os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
+    # 阻止配置更新弹窗
+    export UCF_FORCE_CONFFOLD=1
+    # 阻止应用重启弹窗
+    export NEEDRESTART_SUSPEND=1
+elif [[ -e /etc/centos-release ]]; then
+	os="centos"
+	os_version=$(grep -oE '[0-9]+\.?.*\s' /etc/centos-release)
+else
+	echo_error 不支持的操作系统
+	exit 99
+fi
+
 function check_nfs_service() {
     ps -ef | grep -E "\[nfsd\]" | grep -v grep &> /dev/null
     if [ $? -eq 0 ];then
@@ -20,14 +42,21 @@ function check_nfs_service() {
 }
 
 function start_nfs() {
-    if [ ! -f /usr/sbin/nfsstat ];then
-        echo_info 安装 nfs-utils
-        yum install -y nfs-utils
+    if [[ ! -f /usr/sbin/nfsstat ]];then
+        echo_info 安装 nfs
+        if [[ $os == "centos" ]];then
+            yum install -y nfs-utils
+        elif [[ $os == "ubuntu" ]];then
+            apt install -y nfs-common nfs-kernel-server
+        fi
     fi
-    systemctl start rpcbind
-    systemctl enable rpcbind &> /dev/null
-    systemctl start nfs
-    systemctl enable nfs &> /dev/null
+
+    if [[ $os == "centos" ]];then
+        systemctl start rpcbind
+        systemctl start nfs
+    elif [[ $os == "ubuntu" ]];then
+        systemctl start nfs-kernel-server
+    fi
 }
 
 function get_machine_ip() {
@@ -140,6 +169,7 @@ function echo_summary() {
     echo -e "\033[45m# nfs客户端并发数调优\033[0m"
     echo -e "\033[45mecho \"options sunrpc tcp_slot_table_entries=128\" >> /etc/modprobe.d/sunrpc.conf\033[0m"
     echo -e "\033[45mecho \"options sunrpc tcp_max_slot_table_entries=128\" >>  /etc/modprobe.d/sunrpc.conf\033[0m"
+    echo -e "\033[45mmodprobe sunrpc\033[0m"
     echo -e "\033[45msysctl -w sunrpc.tcp_slot_table_entries=128\033[0m"
     echo -e "\033[45mmount -t nfs -o soft,intr,timeo=5,retry=5 ${machine_ip}:${share_dirs[0]} MOUNT_POINT\033[0m"
     # soft：(默认值)当服务器端失去响应后，访问其上文件的应用程序将收到一个错误信号而不是被挂起。
@@ -150,7 +180,12 @@ function echo_summary() {
     echo 服务端取消nfs共享目录命令：
     echo -e "\033[45mexportfs -u ${net_ip}/${net_mask}:${share_dirs[0]}\033[0m"
     echo 停止nfs命令：
-    echo -e "\033[45msystemctl stop nfs\033[0m"
+    if [[ $os == "centos" ]];then
+        echo -e "\033[45msystemctl stop nfs\033[0m"
+    elif [[ $os == "ubuntu" ]];then
+        echo -e "\033[45msystemctl stop nfs-kernel-server\033[0m"
+    fi
+    echo -e "\033[45msystemctl stop rpcbind\033[0m"
 }
 
 function main() {
