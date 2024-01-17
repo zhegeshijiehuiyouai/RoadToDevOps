@@ -140,7 +140,11 @@ function multi_core_compile(){
 
 
 echo_info 安装依赖
-yum install -y gcc perl-ExtUtils-MakeMaker curl-devel expat-devel gettext-devel openssl-devel zlib-devel asciidoc 
+gcc --version &> /dev/null
+if [ $? -ne 0 ];then
+    yum install -y gcc
+fi
+yum install -y perl-ExtUtils-MakeMaker curl-devel expat-devel gettext-devel openssl-devel zlib-devel asciidoc 
 
 echo_info 移除旧版本git
 yum remove git -y
