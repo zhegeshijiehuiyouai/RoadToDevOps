@@ -151,7 +151,7 @@ EOF
     # wdelay：如果多个用户要写入NFS目录，则归组写入，这样可以提高效率（默认设置）
     # no_wdelay：如果多个用户要写入NFS目录，则立即写入，【当使用async时，无需此设置】
     # all_squash：客户机上的任何用户访问该共享目录时都映射成匿名用户（nfsnobody）
-    # no_root_squash：客户机用root访问该共享文件夹时，不映射root用户为匿名用户
+    # no_root_squash：客户机用root访问该共享文件夹时，不映射root用户为匿名用户，即具有共享文件夹服务器的root权限
     # root_squash：客户机用root用户访问该共享文件夹时，将root用户映射成匿名用户
     # subtree_check：若输出目录是一个子目录，则nfs服务器将检查其父目录的权限(默认设置)；
     # no_subtree_check：即使输出目录是一个子目录，nfs服务器也不检查其父目录的权限，这样可以提高效率；
