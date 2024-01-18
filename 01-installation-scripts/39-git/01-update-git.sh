@@ -132,7 +132,6 @@ function multi_core_compile(){
     else
         make_cmd="make"
     fi
-    echo $make_cmd
     echo_info 多核编译
     assumeused=$(w | grep 'load average' | awk -F': ' '{print $2}' | awk -F'.' '{print $1}')
     cpucores=$(cat /proc/cpuinfo | grep -c processor)
