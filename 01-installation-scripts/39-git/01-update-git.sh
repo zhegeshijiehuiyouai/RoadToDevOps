@@ -16,13 +16,17 @@ function echo_error() {
 
 
 # 版本号判断，只有比服务器已部署的版本号新，才进行升级
-git_old_version=$(git --version | awk '{print $3}')
-if [ $? -ne 0 ];then
-    echo_error 获取git版本失败，请检查git是否安装
-    exit 1
+git --version &> /dev/null
+if [ $? -eq 0 ];then
+    git_old_version=$(git --version | awk '{print $3}')
+else
+    git_old_version=0
 fi
 
-if [ ${git_old_version} -ge ${git_version} ];then
+# 比较版本号
+latest_version=$(printf '%s\n%s\n' "$git_old_version" "$git_version" | sort -V | tail -n1)
+
+if [[ ${latest_version} == ${git_old_version} ]];then
     echo_error "要升级的git版本号(${git_version})未高于服务器已部署的版本号(${git_old_version})，退出"
     exit 1
 fi
@@ -115,22 +119,34 @@ function download_tar_gz(){
     fi
 }
 
-# 多核编译
+# 多核编译，升级openssl定制版
 function multi_core_compile(){
+    for i in $(ls /etc/ld.so.conf.d/);do
+        lib_path=$(cat /etc/ld.so.conf.d/$i | grep "openssl" | grep "lib" | grep -v "^#")
+        if [[ ! -z $lib_path ]];then
+            break
+        fi
+    done
+    if [[ ! -z $lib_path ]];then
+        make_cmd="make LDFLAGS='-L$lib_path -lssl -lcrypto'"
+    else
+        make_cmd="make"
+    fi
+    echo $make_cmd
     echo_info 多核编译
     assumeused=$(w | grep 'load average' | awk -F': ' '{print $2}' | awk -F'.' '{print $1}')
     cpucores=$(cat /proc/cpuinfo | grep -c processor)
     compilecore=$(($cpucores - $assumeused - 1))
     if [ $compilecore -ge 1 ];then
-        make -j $compilecore prefix=/usr/local/git all
-        make -j $compilecore prefix=/usr/local/git install
+        $make_cmd -j $compilecore prefix=/usr/local/git all
+        $make_cmd -j $compilecore prefix=/usr/local/git install
         if [ $? -ne 0 ];then
             echo_error 编译安装出错，请检查脚本
             exit 1
         fi
     else
-        make prefix=/usr/local/git all
-        make prefix=/usr/local/git install
+        $make_cmd prefix=/usr/local/git all
+        $make_cmd prefix=/usr/local/git install
         if [ $? -ne 0 ];then
             echo_error 编译安装出错，请检查脚本
             exit 1
