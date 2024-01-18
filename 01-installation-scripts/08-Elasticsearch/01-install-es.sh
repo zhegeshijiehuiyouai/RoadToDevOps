@@ -152,7 +152,7 @@ function install_main_func(){
     read -p "请输入数字选择安装类型（如需退出请输入q）：" -e software
     case $software in
         1)
-            # 安装前先判断是否已经安装了rabbitmq
+            # 安装前先判断是否已经安装了es
             is_installed_es
             echo_info 即将使用 yum 安装elasticsearch
             # 等待1秒，给用户手动取消的时间

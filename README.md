@@ -28,7 +28,7 @@ rpm -Uvh ./*rpm
 │   ├── 05-Jenkins
 │   ├── 06-Gitlab
 │   ├── 07-Nginx-tengine-openresty-kong
-│   ├── 08-EFK
+│   ├── 08-Elasticsearch
 │   ├── 09-Redis
 │   ├── 10-GoAccess
 │   ├── 11-vsftp
@@ -38,7 +38,7 @@ rpm -Uvh ./*rpm
 │   ├── 15-maven
 │   ├── 16-kafka
 │   ├── 17-rabbitmq
-│   ├── 18-Elasticsearch
+│   ├── 18-sftpgo
 │   ├── 19-rsyncd
 │   ├── 20-nfs
 │   ├── 21-tomcat
@@ -60,8 +60,7 @@ rpm -Uvh ./*rpm
 │   ├── 37-wireguard
 │   ├── 38-sqlite3
 │   ├── 39-git
-│   ├── 40-ffmpeg
-│   └── 41-sftpgo
+│   └── 40-ffmpeg
 ├── 02-elasticsearch-tools
 │   ├── 01-clean-single-es-index-by-date.sh
 │   └── 02-clean-date-format-es-index-by-date.sh
