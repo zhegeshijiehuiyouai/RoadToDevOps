@@ -27,7 +27,7 @@ rpm -Uvh ./*rpm
 │   ├── 04-Docker
 │   ├── 05-Jenkins
 │   ├── 06-Gitlab
-│   ├── 07-Nginx-tengine-openresty-kong
+│   ├── 07-Nginx-tengine
 │   ├── 08-Elasticsearch
 │   ├── 09-Redis
 │   ├── 10-GoAccess
