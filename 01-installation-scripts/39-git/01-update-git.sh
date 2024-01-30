@@ -119,33 +119,37 @@ function download_tar_gz(){
     fi
 }
 
-# 多核编译，升级openssl定制版
-function multi_core_compile(){
+function is_need_to_configure(){
     for i in $(ls /etc/ld.so.conf.d/);do
         lib_path=$(cat /etc/ld.so.conf.d/$i | grep "openssl" | grep "lib" | grep -v "^#")
         if [[ ! -z $lib_path ]];then
             break
         fi
     done
+    # 如果openssl有单独的目录，那么重新configure一下
     if [[ ! -z $lib_path ]];then
-        make_cmd="make LDFLAGS='-L$lib_path -lssl -lcrypto'"
-    else
-        make_cmd="make"
+        openssl_path=$(dirname $lib_path)
+        echo_info 重新configure
+        ./configure --with-openssl=$openssl_path
     fi
+}
+
+# 多核编译，git定制版
+function multi_core_compile(){
     echo_info 多核编译
     assumeused=$(w | grep 'load average' | awk -F': ' '{print $2}' | awk -F'.' '{print $1}')
     cpucores=$(cat /proc/cpuinfo | grep -c processor)
     compilecore=$(($cpucores - $assumeused - 1))
     if [ $compilecore -ge 1 ];then
-        $make_cmd -j $compilecore prefix=/usr/local/git all
-        $make_cmd -j $compilecore prefix=/usr/local/git install
+        make -j $compilecore prefix=/usr/local/git all
+        make -j $compilecore prefix=/usr/local/git install
         if [ $? -ne 0 ];then
             echo_error 编译安装出错，请检查脚本
             exit 1
         fi
     else
-        $make_cmd prefix=/usr/local/git all
-        $make_cmd prefix=/usr/local/git install
+        make prefix=/usr/local/git all
+        make prefix=/usr/local/git install
         if [ $? -ne 0 ];then
             echo_error 编译安装出错，请检查脚本
             exit 1
@@ -159,7 +163,7 @@ gcc --version &> /dev/null
 if [ $? -ne 0 ];then
     yum install -y gcc
 fi
-yum install -y perl-ExtUtils-MakeMaker curl-devel expat-devel gettext-devel openssl-devel zlib-devel asciidoc 
+yum install -y perl-ExtUtils-MakeMaker curl-devel expat-devel openssl-devel zlib-devel asciidoc 
 
 echo_info 移除旧版本git
 yum remove git -y
@@ -171,13 +175,17 @@ untar_tgz git-${git_version}.tar.xz
 cd git-${git_version}
 
 echo_info 安装新版本git
+is_need_to_configure
 multi_core_compile
 
 # 清理
 cd ${file_in_the_dir}
 rm -rf git-${git_version}
 
-echo "export PATH=$PATH:/usr/local/git/bin" >> /etc/profile
-source /etc/profile
+grep "/usr/local/git/bin" /etc/profile
+if [ $? -ne 0 ];then
+    echo "export PATH=\$PATH:/usr/local/git/bin" >> /etc/profile
+    source /etc/profile
+fi
 echo_info "git已更新：${git_old_version} --> ${git_version}"
 echo_warning 由于bash特性限制，在本终端执行git命令需要先手动执行 source /etc/profile 加载环境变量，或者重新打开一个终端
