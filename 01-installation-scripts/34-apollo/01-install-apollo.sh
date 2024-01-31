@@ -4,7 +4,7 @@
 src_dir=$(pwd)/00src00
 my_dir=$(pwd)
 ############# 二进制包部署配置 ###############
-apollo_version=1.9.1
+apollo_version=2.2.0
 port_portal=8070
 port_config=8080
 port_admin=8090
