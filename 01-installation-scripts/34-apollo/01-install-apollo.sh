@@ -463,6 +463,7 @@ function config_apollo() {
         echo_warning 步骤3：
         echo_warning "(旧版、新版都可以)修改ApolloPortal数据库-->serverconfig表-->apollo.portal.envs字段 添加新环境名称，用逗号分隔"
         echo_warning "(新版新增渠道)登录portal，点击右上角管理员工具-->系统参数(报Whitelabel Error Page的话，需要清除浏览器缓存)-->编辑[PortalDB配置管理]下的apollo.portal.envs-->添加新环境名称，用逗号分隔"
+        echo_warning 步骤4：重启apollo-portal
         echo
         echo "portal环境仅设置了dev，如需要多环境，请参照以下步骤" > ${my_dir}/${apollo_home}/apollo-portal/配置多环境.txt
         echo "步骤1：部署一套新的apollo-configservice、apollo-adminservice" >> ${my_dir}/${apollo_home}/apollo-portal/配置多环境.txt
@@ -470,6 +471,7 @@ function config_apollo() {
         echo "步骤3：" >> ${my_dir}/${apollo_home}/apollo-portal/配置多环境.txt
         echo "(旧版、新版都可以)修改ApolloPortal数据库-->serverconfig表-->apollo.portal.envs字段 添加新环境名称，用逗号分隔" >> ${my_dir}/${apollo_home}/apollo-portal/配置多环境.txt
         echo "(新版新增渠道)登录portal，点击右上角管理员工具-->系统参数(报Whitelabel Error Page的话，需要清除浏览器缓存)-->编辑[PortalDB配置管理]下的apollo.portal.envs-->添加新环境名称，用逗号分隔" >> ${my_dir}/${apollo_home}/apollo-portal/配置多环境.txt
+        echo "步骤4：重启apollo-portal" >> ${my_dir}/${apollo_home}/apollo-portal/配置多环境.txt
         echo_info 上述步骤已生成到 ${my_dir}/${apollo_home}/apollo-portal/配置多环境.txt
         echo
 
