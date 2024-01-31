@@ -238,7 +238,7 @@ function install_by_docker() {
         file_in_the_dir=${src_dir}
         cd ${file_in_the_dir}
     else
-        download_tar_gz ${src_dir} https://github.com/apolloconfig/apollo/archive/refs/heads/master.zip
+        download_tar_gz ${src_dir} https://cors.isteed.cc/https://github.com/apolloconfig/apollo/archive/refs/heads/master.zip
         if [ $? -ne 0 ];then
             echo_error 下载失败，可重试或手动下载压缩包放于当前目录，再运行本脚本
             echo https://github.com/apolloconfig/apollo/archive/refs/heads/master.zip
@@ -348,13 +348,13 @@ function preinstall() {
 function init_mysql() {
     # 用法：init_mysql [portal|config_admin]，根据参数初始化portal或者configservice和adminservice
     if [[ $1 == "portal" ]];then
-        download_tar_gz ${src_dir} https://raw.githubusercontent.com/apolloconfig/apollo/master/scripts/sql/apolloportaldb.sql
+        download_tar_gz ${src_dir} https://cors.isteed.cc/https://raw.githubusercontent.com/apolloconfig/apollo/master/scripts/sql/apolloportaldb.sql
         echo_info 初始化apolloportaldb
         sed -i "s@CREATE DATABASE IF NOT EXISTS .* DEFAULT CHARACTER SET = utf8mb4;@CREATE DATABASE IF NOT EXISTS ${portal_mysql_db} DEFAULT CHARACTER SET = utf8mb4;@g" ${file_in_the_dir}/apolloportaldb.sql
         sed -i "s@Use .*;@Use ${portal_mysql_db};@g" ${file_in_the_dir}/apolloportaldb.sql
         mysql -h${portal_mysql_url} -P${portal_mysql_port} -u${portal_mysql_user} -p${portal_mysql_pass} -e "source ${file_in_the_dir}/apolloportaldb.sql" &> /dev/null
     elif [[ $1 == "config_admin" ]];then
-        download_tar_gz ${src_dir} https://raw.githubusercontent.com/apolloconfig/apollo/master/scripts/sql/apolloconfigdb.sql
+        download_tar_gz ${src_dir} https://cors.isteed.cc/https://raw.githubusercontent.com/apolloconfig/apollo/master/scripts/sql/apolloconfigdb.sql
         echo_info 初始化apolloconfigdb
         sed -i "s@CREATE DATABASE IF NOT EXISTS .* DEFAULT CHARACTER SET = utf8mb4;@CREATE DATABASE IF NOT EXISTS ${config_admin_mysql_db} DEFAULT CHARACTER SET = utf8mb4;@g" ${file_in_the_dir}/apolloconfigdb.sql
         sed -i "s@Use .*;@Use ${config_admin_mysql_db};@g" ${file_in_the_dir}/apolloconfigdb.sql
@@ -401,14 +401,14 @@ function is_init_config_admin_mysql() {
 function download_binary_zip() {
     # 用法：download_binary_zip [portal|config_admin]，根据参数下载portal或者configservice和adminservice
     if [[ $1 == "portal" ]];then
-        download_tar_gz ${src_dir} https://github.com/apolloconfig/apollo/releases/download/v${apollo_version}/apollo-portal-${apollo_version}-github.zip
+        download_tar_gz ${src_dir} https://cors.isteed.cc/https://github.com/apolloconfig/apollo/releases/download/v${apollo_version}/apollo-portal-${apollo_version}-github.zip
         cd ${file_in_the_dir}
         echo_info 解压 apollo-portal-${apollo_version}-github.zip
         unzip apollo-portal-${apollo_version}-github.zip -d apollo-portal &> /dev/null
         mv apollo-portal ${my_dir}/${apollo_home}
     elif [[ $1 == "config_admin" ]];then
-        download_tar_gz ${src_dir} https://github.com/apolloconfig/apollo/releases/download/v${apollo_version}/apollo-configservice-${apollo_version}-github.zip
-        download_tar_gz ${src_dir} https://github.com/apolloconfig/apollo/releases/download/v${apollo_version}/apollo-adminservice-${apollo_version}-github.zip
+        download_tar_gz ${src_dir} https://cors.isteed.cc/https://github.com/apolloconfig/apollo/releases/download/v${apollo_version}/apollo-configservice-${apollo_version}-github.zip
+        download_tar_gz ${src_dir} https://cors.isteed.cc/https://github.com/apolloconfig/apollo/releases/download/v${apollo_version}/apollo-adminservice-${apollo_version}-github.zip
         cd ${file_in_the_dir}
         echo_info 解压 apollo-configservice-${apollo_version}-github.zip
         unzip apollo-configservice-${apollo_version}-github.zip -d apollo-configservice &> /dev/null
