@@ -264,6 +264,9 @@ multi_core_compile
 echo_info 优化redis.conf文件
 sed -i 's/^daemonize no/daemonize yes/' redis.conf
 
+# stop-write-on-bgsave-error，默认为yes，落盘失败时redis禁止写入。
+# 如果能容忍上述问题导致的数据不一致，为了提高可用性，并且做好了监控，可以将其设为no
+
 # 解决单引号里无法使用变量的问题
 cat > /tmp/_redis_file1 << EOF
 sed -i 's@^port.*@port ${PORT}@' redis.conf
