@@ -420,6 +420,13 @@ symbolic_links = 1
 
 EOF
 
+    if [[ $user_input_mysql_version -eq 2 ]];then
+        # 8.0版本，参数修改
+        sed -i '/^expire_logs_days/a binlog_expire_logs_seconds = 7 * 24 * 60 * 60' /etc/my.cnf
+        sed -i 's@^expire_logs_days.*$@# & # mysql 8.0已废弃该参数@' /etc/my.cnf
+        sed -i 's@^symbolic_links.*$@# & # mysql 8.0已废弃该参数@' /etc/my.cnf
+    fi
+
     # rpm或deb安装
     if [[ $user_input_install_type -eq 1 ]];then
         echo 'pid_file=/var/run/mysqld/mysqld.pid' >> ${my_cnf_file}
