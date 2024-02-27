@@ -203,7 +203,13 @@ function init_account(){
             mysql -uroot -p"${login_pass}" --connect-expired-password -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${my_root_passwd}';flush privileges;" &> /dev/null
         fi
     elif [[ $os == 'ubuntu' ]];then
-        mysql -uroot --connect-expired-password -e "SET PASSWORD = PASSWORD('${my_root_passwd}');flush privileges;" &> /dev/null
+        if [[ $user_input_mysql_version -eq 1 ]];then
+            # 5.7版本
+            mysql -uroot --connect-expired-password -e "SET PASSWORD = PASSWORD('${my_root_passwd}');flush privileges;" &> /dev/null
+        elif [[ $user_input_mysql_version -eq 2 ]];then
+            # 8.0版本
+            mysql -uroot --connect-expired-password -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${my_root_passwd}';flush privileges;" &> /dev/null
+        fi
     fi
     
     echo_info 重启mysql
@@ -213,7 +219,7 @@ function init_account(){
         mysql -uroot -p"${my_root_passwd}" -e "grant all on *.* to root@'%' identified by '${my_root_passwd}' WITH GRANT OPTION;flush privileges;" &> /dev/null
     elif [[ $user_input_mysql_version -eq 2 ]];then
         # mysql 8.0不再支持在 GRANT 语句中隐式地创建用户
-        mysql -uroot -p"${my_root_passwd}" -e "create user 'root'@'%' identified by 'icekredit';grant all on *.* to 'root'@'%' WITH GRANT OPTION;flush privileges;" &> /dev/null
+        mysql -uroot -p"${my_root_passwd}" -e "create user 'root'@'%' identified by '${my_root_passwd}';grant all on *.* to 'root'@'%' WITH GRANT OPTION;flush privileges;" &> /dev/null
     fi
 
     echo_info 重启mysql
