@@ -31,16 +31,11 @@ PORT=3306
 # mysql部署好后，root的默认密码
 # 注：该选项对ubuntu环境deb安装时无效，需要交互式的手动输入root密码
 my_root_passwd=123456
-# mysql版本
-mysql_version=5.7.38
-
 # 部署目录的父目录
 DIR=$(pwd)
-# 部署目录的名字，最终的部署目录为${DIR}/${mysql_dir_name}
-mysql_dir_name=mysql-${mysql_version}
-# mysql二进制包名字
-mysql_tgz=mysql-${mysql_version}-linux-glibc2.12-x86_64.tar.gz
-
+# mysql小版本号-根据用户选择，只安装其中一个
+mysql57_version=5.7.38
+mysql80_version=8.0.28
 
 # 脚本执行用户检测
 if [[ $(whoami) != 'root' ]];then
@@ -200,7 +195,13 @@ function init_account(){
 
     echo_info 设置密码
     if [[ $os == 'centos' ]];then
-        mysql -uroot -p"${login_pass}" --connect-expired-password -e "SET PASSWORD = PASSWORD('${my_root_passwd}');flush privileges;" &> /dev/null
+        if [[ $user_input_mysql_version -eq 1 ]];then
+            # 5.7版本
+            mysql -uroot -p"${login_pass}" --connect-expired-password -e "SET PASSWORD = PASSWORD('${my_root_passwd}');flush privileges;" &> /dev/null
+        elif [[ $user_input_mysql_version -eq 2 ]];then
+            # 8.0版本
+            mysql -uroot -p"${login_pass}" --connect-expired-password -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${my_root_passwd}';flush privileges;" &> /dev/null
+        fi
     elif [[ $os == 'ubuntu' ]];then
         mysql -uroot --connect-expired-password -e "SET PASSWORD = PASSWORD('${my_root_passwd}');flush privileges;" &> /dev/null
     fi
@@ -208,7 +209,12 @@ function init_account(){
     echo_info 重启mysql
     systemctl restart ${unit_file_name}
     echo_info 设置所有主机均可访问mysql
-    mysql -uroot -p"${my_root_passwd}" -e "grant all on *.* to root@'%' identified by '${my_root_passwd}' WITH GRANT OPTION;" &> /dev/null
+    if [[ $user_input_mysql_version -eq 1 ]];then
+        mysql -uroot -p"${my_root_passwd}" -e "grant all on *.* to root@'%' identified by '${my_root_passwd}' WITH GRANT OPTION;flush privileges;" &> /dev/null
+    elif [[ $user_input_mysql_version -eq 2 ]];then
+        # mysql 8.0不再支持在 GRANT 语句中隐式地创建用户
+        mysql -uroot -p"${my_root_passwd}" -e "create user 'root'@'%' identified by 'icekredit';grant all on *.* to 'root'@'%' WITH GRANT OPTION;flush privileges;" &> /dev/null
+    fi
 
     echo_info 重启mysql
     systemctl restart ${unit_file_name}
@@ -224,7 +230,82 @@ function init_account(){
     echo -e "\033[37m                  停止：systemctl stop ${unit_file_name}\033[0m"
 }
 
-function pre_install(){
+function is_run_mysql() {
+    ps -ef | grep "${DIR}/${mysql_dir_name}" | grep -v grep &> /dev/null
+    if [ $? -eq 0 ];then
+        echo 
+        echo_error 检测到mysql正在运行中，退出
+        exit 86
+    fi
+
+    if [ -d ${DIR}/${mysql_dir_name} ];then
+        echo_error 检测到目录${DIR}/${mysql_dir_name}，请检查是否重复安装，退出
+        exit 87
+    fi
+}
+
+function variable_preparation(){
+    if [[ $user_input_mysql_version -eq 1 ]];then
+        # 5.7版本
+        mysql_version=$mysql57_version
+    elif [[ $user_input_mysql_version -eq 2 ]];then
+        # 8.0版本
+        mysql_version=$mysql80_version       
+    fi
+    # 部署目录的名字，最终的部署目录为${DIR}/${mysql_dir_name}
+    mysql_dir_name=mysql-${mysql_version}
+
+    is_run_mysql
+
+    if [[ $user_input_mysql_version -eq 1 ]];then
+        # 5.7版本
+        if [[ $user_input_install_type -eq 1 ]];then
+            # 预制包安装
+            if [[ $os == 'centos' ]];then
+                mysql_tgz=mysql-${mysql_version}-1.el7.x86_64.rpm-bundle.tar
+                mysql_untgz=
+                download_url=https://mirrors.aliyun.com/mysql/MySQL-5.7/${mysql_tgz}
+            elif [[ $os == 'ubuntu' ]];then
+                mysql_tgz=mysql-server_${mysql_version}-1ubuntu18.04_amd64.deb-bundle.tar
+                mysql_untgz=
+                download_url=https://mirrors.aliyun.com/mysql/MySQL-5.7/${mysql_tgz}
+            fi
+        elif [[ $user_input_install_type -eq 2 ]];then
+            # 二进制安装
+            # mysql二进制包名字
+            mysql_tgz=mysql-${mysql_version}-linux-glibc2.12-x86_64.tar.gz
+            # tgz包解压出来后的目录名
+            mysql_untgz=mysql-${mysql_version}-linux-glibc2.12-x86_64
+            download_url=https://mirrors.aliyun.com/mysql/MySQL-5.7/${mysql_tgz}
+        fi
+    elif [[ $user_input_mysql_version -eq 2 ]];then
+        # 8.0版本
+        if [[ $user_input_install_type -eq 1 ]];then
+            # 预制包安装
+            echo_warning 预制包安装msyql8待完善
+            exit 100
+        elif [[ $user_input_install_type -eq 2 ]];then
+            # 二进制安装
+            if [[ $os == 'centos' ]];then
+                if [[ $os_version =~ ^7 ]];then
+                    mysql_tgz=mysql-${mysql_version}-el7-x86_64.tar.gz
+                    mysql_untgz=mysql-${mysql_version}-el7-x86_64
+                    download_url=https://mirrors.aliyun.com/mysql/MySQL-8.0/${mysql_tgz}
+                else
+                    echo_error CentOS系列，仅支持CentOS 7
+                    exit 33
+                fi
+            elif [[ $os == 'ubuntu' ]];then
+                mysql_tgz=mysql-${mysql_version}-linux-glibc2.12-x86_64.tar.xz
+                mysql_untgz=mysql-${mysql_version}-linux-glibc2.12-x86_64
+                download_url=https://mirrors.aliyun.com/mysql/MySQL-8.0/${mysql_tgz}
+            fi
+        fi
+    fi
+}
+
+function before_install(){
+    variable_preparation
     if [[ $os == 'centos' ]];then
         # 卸载mariadb
         mariadb_pkgs=$(rpm -qa | grep -i mariadb)
@@ -252,7 +333,7 @@ function pre_install(){
 }
 
 function gen_my_cnf() {
-    if [ $software -eq 1 ];then
+    if [ $user_input_install_type -eq 1 ];then
         # rpm或deb安装需要检测目录，二进制包部署的，在gen_my_cnf之间就检查过了，要跳过
         check_dir ${DIR}/${mysql_dir_name}
     fi
@@ -264,10 +345,10 @@ function gen_my_cnf() {
         my_cnf_file=/etc/my.cnf
     elif [[ $os == 'ubuntu' ]];then
         # deb安装
-        if [ $software -eq 1 ];then
+        if [ $user_input_install_type -eq 1 ];then
             my_cnf_file=/etc/mysql/mysql.conf.d/mysqld.cnf
         # 二进制包安装
-        elif [ $software -eq 2 ];then
+        elif [ $user_input_install_type -eq 2 ];then
             my_cnf_file=/etc/my.cnf
         fi
     fi
@@ -334,19 +415,18 @@ symbolic_links = 1
 EOF
 
     # rpm或deb安装
-    if [[ $software -eq 1 ]];then
+    if [[ $user_input_install_type -eq 1 ]];then
         echo 'pid_file=/var/run/mysqld/mysqld.pid' >> ${my_cnf_file}
     fi
 }
 
 ########## rpm安装mysql
 function install_by_rpm(){
+    before_install
     [ -f /var/log/mysqld.log ] && rm -f /var/log/mysqld.log
-    download_tar_gz ${src_dir} https://mirrors.aliyun.com/mysql/MySQL-5.7/mysql-${mysql_version}-1.el7.x86_64.rpm-bundle.tar
+    download_tar_gz ${src_dir} ${download_url}
     cd ${file_in_the_dir}
-    untar_tgz mysql-${mysql_version}-1.el7.x86_64.rpm-bundle.tar
-
-    pre_install
+    untar_tgz ${mysql_tgz}
 
     # 删除测试套件，不需要
     rm -f mysql-community-test-*rpm
@@ -365,8 +445,8 @@ function install_by_rpm(){
     gen_my_cnf
 
     systemctl start mysqld  # 这里启动是为了生成临时密码
-    temp_pass=$(grep 'temporary password' ${DIR}/${mysql_dir_name}/log/mysqld.log | awk '{print $NF}')
-    init_account ${temp_pass}
+    init_password=$(grep 'temporary password' ${DIR}/${mysql_dir_name}/log/mysqld.log | awk '{print $NF}')
+    init_account ${init_password}
 }
 
 function check_dir() {
@@ -377,14 +457,13 @@ function check_dir() {
 }
 
 function install_by_tgz(){
-    download_tar_gz ${src_dir} https://mirrors.aliyun.com/mysql/MySQL-5.7/${mysql_tgz}
+    before_install
+    download_tar_gz ${src_dir} ${download_url}
     cd ${file_in_the_dir}
     untar_tgz ${mysql_tgz}
 
-    pre_install
-
     check_dir ${DIR}/${mysql_dir_name}
-    mv mysql-${mysql_version}-linux-glibc2.12-x86_64 ${DIR}/${mysql_dir_name}
+    mv ${mysql_untgz} ${DIR}/${mysql_dir_name}
 
     add_user_and_group mysql
 
@@ -401,7 +480,7 @@ function install_by_tgz(){
         bin/mysqld --initialize-insecure --basedir=${DIR}/${mysql_dir_name} --datadir=${DIR}/${mysql_dir_name}/data  --pid-file=${DIR}/${mysql_dir_name}/data/mysql.pid &> /dev/null
     fi
     # 获取初始密码
-    init_password=$(awk '/password/ {print $11}' log/mysqld.log)
+    init_password=$(grep 'temporary password' log/mysqld.log | awk '{print $NF}')
 
     # 初始化完成后，data目录会生成文件，所以重新赋权
     chown -R mysql:mysql ${DIR}/${mysql_dir_name}/
@@ -426,6 +505,7 @@ Restart=always
 [Install]
 WantedBy=multi-user.target
 EOF
+    systemctl daemon-reload
 
     # 添加环境变量，这样就能在任意地方使用mysql全套命令
     echo_info 配置PATH环境变量
@@ -443,31 +523,16 @@ EOF
     # 进行账号、密码设置
     init_account ${init_password}
 
-    echo_warning 由于bash特性限制，在本终端连接mysql需要先手动执行 source /etc/profile 加载环境变量，或者新开一个终端连接mysql
-}
-
-function is_run_mysql() {
-    ps -ef | grep "${DIR}/${mysql_dir_name}" | grep -v grep &> /dev/null
-    if [ $? -eq 0 ];then
-        echo_error 检测到mysql正在运行中，退出
-        exit 86
-    fi
-
-    if [ -d ${DIR}/${mysql_dir_name} ];then
-        echo_error 检测到目录${DIR}/${mysql_dir_name}，请检查是否重复安装，退出
-        exit 87
-    fi
+    echo_warning 由于bash特性限制，在本终端连接mysql需要先手动执行 source /etc/profile 加载环境变量，或者新开一个终端连接mysql    
 }
 
 function install_by_deb() {
-    download_tar_gz ${src_dir} https://mirrors.aliyun.com/mysql/MySQL-5.7/mysql-server_${mysql_version}-1ubuntu18.04_amd64.deb-bundle.tar
+    before_install
+    download_tar_gz ${src_dir} ${download_url}
     cd ${file_in_the_dir}
-    ls
-    untar_tgz mysql-server_${mysql_version}-1ubuntu18.04_amd64.deb-bundle.tar
+    untar_tgz ${mysql_tgz}
     # 删除测试套件，不需要
     rm -f mysql-*test*deb
-
-    pre_install
 
     echo_info 使用deb包安装mysql
     dpkg -i mysql-*.deb
@@ -522,9 +587,9 @@ function install_by_deb() {
 
 
 function install_main_func(){
-    read -p "请输入数字选择安装类型（如需退出请输入q）：" -e software
+    read -p "请输入数字选择安装类型（如需退出请输入q）：" -e user_input_install_type
     if [[ $os == 'centos' ]];then
-        case $software in
+        case $user_input_install_type in
             1)
                 echo_info 即将使用 rpm包 安装mysql
                 # 等待1秒，给用户手动取消的时间
@@ -544,7 +609,7 @@ function install_main_func(){
                 ;;
         esac
     elif [[ $os == 'ubuntu' ]];then
-        case $software in
+        case $user_input_install_type in
             1)
                 echo_info 即将使用 deb包 安装mysql
                 # 等待1秒，给用户手动取消的时间
@@ -566,15 +631,34 @@ function install_main_func(){
     fi
 }
 
-is_run_mysql
+function choose_mysql_version(){
+    read -p "请输入数字选择要安装的MySQL版本（如需退出请输入q）：" -e user_input_mysql_version
+    case $user_input_mysql_version in
+        1)
+            echo_info 选择了 MySQL 5.7 版本
+            ;;
+        2)
+            echo_info 选择了 MySQL 8.0 版本
+            ;;
+        q|Q)
+            exit 0
+            ;;
+        *)
+            choose_mysql_version
+            ;;
+    esac
+}
 
+echo -e "\033[31m本脚本支持两种版本的MySQL：\033[0m"
+echo -e "\033[36m[1]\033[32m 5.7\033[0m"
+echo -e "\033[36m[2]\033[32m 8.0\033[0m"
+choose_mysql_version
+
+echo -e "\033[31m本脚本支持两种部署方式：\033[0m"
 if [[ $os == 'centos' ]];then
-    echo -e "\033[31m本脚本支持两种部署方式：\033[0m"
     echo -e "\033[36m[1]\033[32m rpm包部署mysql\033[0m"
-    echo -e "\033[36m[2]\033[32m 二进制包部署mysql\033[0m"
 elif [[ $os == 'ubuntu' ]];then
-    echo -e "\033[31m本脚本支持两种部署方式：\033[0m"
     echo -e "\033[36m[1]\033[32m deb包部署mysql\033[0m"
-    echo -e "\033[36m[2]\033[32m 二进制包部署mysql\033[0m"
 fi
+echo -e "\033[36m[2]\033[32m 二进制包部署mysql\033[0m"
 install_main_func
