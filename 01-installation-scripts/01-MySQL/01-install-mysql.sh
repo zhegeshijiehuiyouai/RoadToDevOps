@@ -380,7 +380,7 @@ default-character-set = utf8mb4
 socket = ${DIR}/${mysql_dir_name}/data/mysql.sock
 
 [mysqld]
-#skip_grant_tables
+# skip_grant_tables
 # 跳过dns解析，提升连接速度
 skip_name_resolve
 bind_address = 0.0.0.0
@@ -401,17 +401,17 @@ log_error = ${DIR}/${mysql_dir_name}/log/mysqld.log
 
 ### binlog日志设置
 binlog_format = ROW
-#设置日志路径，注意路经需要mysql用户有权限写,这里可以写绝对路径,也可以直接写mysql-bin(后者默认就是在/var/lib/mysql目录下)
+# 设置日志路径，注意路经需要mysql用户有权限写,这里可以写绝对路径,也可以直接写mysql-bin(后者默认就是在/var/lib/mysql目录下)
 log_bin = ${DIR}/${mysql_dir_name}/data/mysql-bin.log
-#设置binlog清理时间
+# 设置binlog清理时间
 expire_logs_days = 7
-#binlog每个日志文件大小
+# binlog每个日志文件大小
 max_binlog_size = 100m
-#binlog缓存大小
+# binlog缓存大小
 binlog_cache_size = 4m
-#最大binlog缓存大小
+# 最大binlog缓存大小
 max_binlog_cache_size = 512m
-#配置serverid
+# 配置serverid
 server_id = 1
 
 
@@ -422,7 +422,7 @@ EOF
 
     if [[ $user_input_mysql_version -eq 2 ]];then
         # 8.0版本，参数修改
-        sed -i '/^expire_logs_days/a binlog_expire_logs_seconds = 7 * 24 * 60 * 60' /etc/my.cnf
+        sed -i '/^expire_logs_days/a binlog_expire_logs_seconds = 604800' /etc/my.cnf
         sed -i 's@^expire_logs_days.*$@# & # mysql 8.0已废弃该参数@' /etc/my.cnf
         sed -i 's@^symbolic_links.*$@# & # mysql 8.0已废弃该参数@' /etc/my.cnf
     fi
