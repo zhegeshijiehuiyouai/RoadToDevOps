@@ -30,7 +30,7 @@ kill -QUIT newPID
 ```
 #### 1.5.2、确定新版本没有问题，直接杀死老 `master` 进程即可，新 `master` 进程的父进程会变成 `PID` 1
 ```shell
-kill -9 新进程ID
+kill -9 999
 ```
 # 2、手动日志切割
 清空日志重新写入。  
