@@ -68,18 +68,35 @@ if [[ $disk != ''  ]];then
    capacity=$(lsblk -l | grep disk | egrep $disk | awk '{print $4}')
 fi
 
+function how_to_deal_with_datadir(){
+    read -p "请输入：" -e user_input_how_to_deal_with_datadir
+    case $user_input_how_to_deal_with_datadir in
+        y|Y)
+            echo_info 选择了删除${partition}目录，继续执行初始化操作
+            ;;
+        n|N)
+            echo_warning 用户退出
+            exit 0
+            ;;
+        *)
+            how_to_deal_with_datadir
+            ;;
+    esac
+}
+
 # 格式化数据盘
 function format_disk(){
-    echo_info 格式化数据盘
-    if [ -d $partition ];then
-    	echo_error ${partition}目录已存在，退出
-    	exit 1
-    fi
-    
     if [[ $disk == ''  ]];then
         echo_warning 未发现数据盘，忽略创建分区和格式化
         return
     fi
+
+    echo_info 格式化数据盘
+    if [ -d $partition ];then
+        echo_warning ${partition}目录已存在，是否删除，并继续执行(y/n)
+        how_to_deal_with_datadir
+    fi
+    
     echo_info 请确认信息（5秒后自动执行）：
     echo "硬盘：$disk"
     echo "大小：$capacity"
