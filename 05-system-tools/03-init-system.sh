@@ -93,7 +93,7 @@ function format_disk(){
 
     echo_info 格式化数据盘
     if [ -d $partition ];then
-        echo_warning ${partition}目录已存在，是否删除，并继续执行(y/n)
+        echo_warning "${partition}目录已存在，是否删除，并继续执行(y/n)"
         how_to_deal_with_datadir
     fi
     
