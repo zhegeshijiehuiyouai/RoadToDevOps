@@ -398,7 +398,14 @@ X11Forwarding no
 PermitEmptyPasswords no
 
 _EOF_
-    systemctl restart sshd
+
+    if [[ "$os" == "ubuntu" && "$os_version" == "24.04" ]]; then
+        systemctl daemon-reload
+        systemctl restart ssh.socket
+    else
+        systemctl restart sshd
+    fi
+    
     cat >>/etc/motd<<"_EOF_"
 
 ###############################################################

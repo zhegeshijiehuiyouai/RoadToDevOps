@@ -2,7 +2,7 @@
 [![GitHub Forks](https://img.shields.io/github/forks/zhegeshijiehuiyouai/RoadToDevOps)](https://github.com/zhegeshijiehuiyouai/RoadToDevOps/fork)
 
 ***本项目在 CentOS 7.9 环境下开发***  
-***2023.07.25更新：部分脚本适配 ubuntu 20.04 / ubuntu 22.04***  
+***部分脚本适配 ubuntu 20.04 / ubuntu 22.04 / ubuntu 24.04***  
 
 ## 🔧 脚本用法
 - 本项目中的各脚本，请在 `/root/` 目录以外的任意普通目录执行，否则部分脚本无法执行成功，建议 `/data/` 目录（虽然大部分脚本在 `/root/` 目录也能执行成功）。  
