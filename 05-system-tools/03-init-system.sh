@@ -433,7 +433,10 @@ function create_users(){
     echo_info 创建系统账号
     for i in ${SUPER_USER_LIST}
     do
-        useradd -m ${i} -d /home/${i}/
+        id -u ${i} &> /dev/null
+        if [ $? -ne 0 ];then
+            useradd -m ${i} -d /home/${i}/
+        fi
         # vim
         cat >> /home/${i}/.vimrc <<"_EOF_"
 set paste
