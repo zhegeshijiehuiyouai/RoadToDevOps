@@ -63,7 +63,7 @@ touch /opt/._install.lock
 # 定义最终挂载的名称
 partition=/data
 # 默认只格式化第一块数据盘
-disk=$(lsblk -l | grep disk| egrep -v "*da|nvme0"|awk '{print $1}' | sort | head -1)
+disk=$(lsblk -l | grep disk| egrep -v ".da|nvme0"|awk '{print $1}' | sort | head -1)
 if [[ $disk != ''  ]];then
    capacity=$(lsblk -l | grep disk | egrep $disk | awk '{print $4}')
 fi
