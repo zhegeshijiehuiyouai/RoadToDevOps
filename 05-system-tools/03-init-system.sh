@@ -555,18 +555,23 @@ minlen = 16
 minclass = 4
 _EOF_
     elif [[ $os == 'ubuntu' ]];then
-        apt install libpam-cracklib -y
-        sed -i 's/password[[:space:]]\+[success=1[[:space:]]\+default=ignore][[:space:]]\+pam_unix.so.*/& remember=5/' /etc/pam.d/common-password
-        sed -i 's/password[[:space:]]\+requisite[[:space:]]\+pam_cracklib.so.*/password        requisite                       pam_cracklib.so retry=3 minlen=16 difok=14 dcredit=-1 lcredit=-1 ocredit=-1 ucredit=-1/' /etc/pam.d/common-password
-        sed -i 's/^PASS_MIN_LEN.*/PASS_MIN_LEN 16/' /etc/login.defs
-        sed -i 's/^PASS_MIN_DAYS.*/PASS_MIN_DAYS 7/' /etc/login.defs
-        sed -i 's/^PASS_WARN_AGE.*/PASS_WARN_AGE 30/' /etc/login.defs
-        cat >>/etc/security/pwquality.conf<<"_EOF_"
+        latest_ubuntu_version=$(echo -e "${os_version}\n22.04" | sort -V -r | head -1)
+        # 22.04及之前的版本使用下面的方法
+        if [[ $latest_ubuntu_version == 22.04 ]];then
+            apt install libpam-cracklib -y
+            sed -i 's/password[[:space:]]\+[success=1[[:space:]]\+default=ignore][[:space:]]\+pam_unix.so.*/& remember=5/' /etc/pam.d/common-password
+            sed -i 's/password[[:space:]]\+requisite[[:space:]]\+pam_cracklib.so.*/password        requisite                       pam_cracklib.so retry=3 minlen=16 difok=14 dcredit=-1 lcredit=-1 ocredit=-1 ucredit=-1/' /etc/pam.d/common-password
+            sed -i 's/^PASS_MIN_LEN.*/PASS_MIN_LEN 16/' /etc/login.defs
+            sed -i 's/^PASS_MIN_DAYS.*/PASS_MIN_DAYS 7/' /etc/login.defs
+            sed -i 's/^PASS_WARN_AGE.*/PASS_WARN_AGE 30/' /etc/login.defs
+            cat >>/etc/security/pwquality.conf<<"_EOF_"
 minlen = 16
 minclass = 4
 _EOF_
+        fi
     fi
 }
+
 
 ######################## 初始化操作 ###########################
 yum_install_basic_packages
