@@ -540,36 +540,37 @@ function config_hardening(){
     echo_info 安全加固
     if [[ $os == 'centos' ]];then
         sed -i 's/account[[:space:]]\+required[[:space:]]\+pam_unix.so.*/&  no_pass_expiry/' /etc/pam.d/system-auth
-        sed -i 's/password[[:space:]]\+sufficient[[:space:]]\+pam_unix.so.*/&  remember=5  no_pass_expiry/' /etc/pam.d/system-auth
-        sed -i 's/password[[:space:]]\+sufficient[[:space:]]\+pam_unix.so.*/&  remember=5  no_pass_expiry/' /etc/pam.d/password-auth
+        sed -i 's/password[[:space:]]\+sufficient[[:space:]]\+pam_unix.so.*/&  remember=3  no_pass_expiry/' /etc/pam.d/system-auth
+        sed -i 's/password[[:space:]]\+sufficient[[:space:]]\+pam_unix.so.*/&  remember=3  no_pass_expiry/' /etc/pam.d/password-auth
         sed -i 's/account[[:space:]]\+required[[:space:]]\+pam_unix.so.*/&  no_pass_expiry/' /etc/pam.d/password-auth
 
-        sed -i 's/^PASS_MIN_LEN.*/PASS_MIN_LEN 16/' /etc/login.defs
-        sed -i 's/^PASS_MIN_DAYS.*/PASS_MIN_DAYS 7/' /etc/login.defs
-        sed -i 's/^PASS_WARN_AGE.*/PASS_WARN_AGE 30/' /etc/login.defs
-
-        sed -i 's/^minclass.*/minclass = 4/' /etc/security/pwquality.conf
-        sed -i 's/^minlen.*/minlen = 16/' /etc/security/pwquality.conf
-        cat >>/etc/security/pwquality.conf<<"_EOF_"
-minlen = 16
-minclass = 4
-_EOF_
+        sed -i 's/^minclass.*/# &/' /etc/security/pwquality.conf
+        sed -i 's/^minlen.*/# &/' /etc/security/pwquality.conf
     elif [[ $os == 'ubuntu' ]];then
         latest_ubuntu_version=$(echo -e "${os_version}\n22.04" | sort -V -r | head -1)
         # 22.04及之前的版本使用下面的方法
         if [[ $latest_ubuntu_version == 22.04 ]];then
-            apt install libpam-cracklib -y
-            sed -i 's/password[[:space:]]\+[success=1[[:space:]]\+default=ignore][[:space:]]\+pam_unix.so.*/& remember=5/' /etc/pam.d/common-password
-            sed -i 's/password[[:space:]]\+requisite[[:space:]]\+pam_cracklib.so.*/password        requisite                       pam_cracklib.so retry=3 minlen=16 difok=14 dcredit=-1 lcredit=-1 ocredit=-1 ucredit=-1/' /etc/pam.d/common-password
-            sed -i 's/^PASS_MIN_LEN.*/PASS_MIN_LEN 16/' /etc/login.defs
-            sed -i 's/^PASS_MIN_DAYS.*/PASS_MIN_DAYS 7/' /etc/login.defs
-            sed -i 's/^PASS_WARN_AGE.*/PASS_WARN_AGE 30/' /etc/login.defs
-            cat >>/etc/security/pwquality.conf<<"_EOF_"
-minlen = 16
-minclass = 4
-_EOF_
+            apt -y install libpam-cracklib
+            sed -i 's/password[[:space:]]\+requisite[[:space:]]\+pam_cracklib.so.*/password        requisite                       pam_cracklib.so retry=3 minlen=9 difok=3 dcredit=-1 lcredit=-1 ocredit=-1 ucredit=-1/' /etc/pam.d/common-password
+        # 24.04
+        else
+            apt -y install libpam-pwquality
+            sed -i 's/password[[:space:]]\+requisite[[:space:]]\+pam_pwquality.so.*/password        requisite                       pam_pwquality.so retry=3 minlen=9 difok=3 dcredit=-1 lcredit=-1 ocredit=-1 ucredit=-1/' /etc/pam.d/common-password
         fi
+        # 不能和最近使用过的3个密码一样
+        sed -i 's/password[[:space:]]\+[success=1[[:space:]]\+default=ignore][[:space:]]\+pam_unix.so.*/& remember=3/' /etc/pam.d/common-password
     fi
+    sed -i 's/^PASS_MIN_LEN.*/PASS_MIN_LEN 9/' /etc/login.defs
+    sed -i 's/^PASS_MIN_DAYS.*/PASS_MIN_DAYS 7/' /etc/login.defs
+    sed -i 's/^PASS_WARN_AGE.*/PASS_WARN_AGE 30/' /etc/login.defs
+    cat >>/etc/security/pwquality.conf<<"_EOF_"
+minlen = 9
+difok = 3
+dcredit = -1
+lcredit = -1
+ocredit = -1
+ucredit = -1
+_EOF_
 }
 
 
