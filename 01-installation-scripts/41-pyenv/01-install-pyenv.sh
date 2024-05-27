@@ -105,7 +105,7 @@ checkout "${GITHUB}pyenv/pyenv.git"            "${pyenv_root}"                  
 checkout "${GITHUB}pyenv/pyenv-doctor.git"     "${pyenv_root}/plugins/pyenv-doctor"      "master"
 checkout "${GITHUB}pyenv/pyenv-update.git"     "${pyenv_root}/plugins/pyenv-update"      "master"
 checkout "${GITHUB}pyenv/pyenv-virtualenv.git" "${pyenv_root}/plugins/pyenv-virtualenv"  "master"
-mkdir -p ${pyenv_root}/{cache,shims}
+mkdir -p ${pyenv_root}/{cache,shims,versions}
 chmod o+w ${pyenv_root}/shims
 
 echo_info 生成更新脚本
