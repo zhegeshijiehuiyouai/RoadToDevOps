@@ -174,7 +174,7 @@ function jdk_install_ubuntu() {
     download_tar_gz $src_dir https://gh.con.sh/https://github.com/frekele/oracle-java/releases/download/8u202-b08/jdk-8u202-linux-x64.tar.gz
     cd ${file_in_the_dir}
     untar_tgz jdk-8u202-linux-x64.tar.gz
-    [ -d /usr/java/jdk1.8.0_202 ] || rm -rf /usr/java/jdk1.8.0_202
+    [ -d /usr/java/jdk1.8.0_202 ] && rm -rf /usr/java/jdk1.8.0_202
     mkdir -p /usr/java
     mv jdk1.8.0_202 /usr/java/
     set_env /usr/java/jdk1.8.0_202
@@ -185,7 +185,16 @@ function jdk_install_ubuntu() {
     update-alternatives --install /usr/bin/jar jar /usr/java/jdk1.8.0_202/bin/jar 300   
     update-alternatives --install /usr/bin/javah javah /usr/java/jdk1.8.0_202/bin/javah 300   
     update-alternatives --install /usr/bin/javap javap /usr/java/jdk1.8.0_202/bin/javap 300
-    update-alternatives --config java
+    latest_ubuntu_version=$(echo -e "${os_version}\n22.04" | sort -V -r | head -1)
+    # 22.04及之前的版本使用下面的方法
+    if [[ $latest_ubuntu_version == 22.04 ]];then
+        update-alternatives --config java
+    # 24.04及之后
+    else
+        echo 1 | update-alternatives --config java
+        echo
+        echo_info 选择1，手动模式
+    fi
 }
 
 

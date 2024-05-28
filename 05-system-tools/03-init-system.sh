@@ -552,7 +552,7 @@ function config_hardening(){
         if [[ $latest_ubuntu_version == 22.04 ]];then
             apt -y install libpam-cracklib
             sed -i 's/password[[:space:]]\+requisite[[:space:]]\+pam_cracklib.so.*/password        requisite                       pam_cracklib.so retry=3 minlen=9 difok=3 dcredit=-1 lcredit=-1 ocredit=-1 ucredit=-1/' /etc/pam.d/common-password
-        # 24.04
+        # 24.04及之后
         else
             apt -y install libpam-pwquality
             sed -i 's/password[[:space:]]\+requisite[[:space:]]\+pam_pwquality.so.*/password        requisite                       pam_pwquality.so retry=3 minlen=9 difok=3 dcredit=-1 lcredit=-1 ocredit=-1 ucredit=-1/' /etc/pam.d/common-password
