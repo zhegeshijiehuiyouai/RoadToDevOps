@@ -31,8 +31,12 @@ if grep -qs "ubuntu" /etc/os-release; then
 	# os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2 | tr -d '.')
     os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
 elif [[ -e /etc/centos-release ]]; then
-	os="centos"
-	os_version=$(grep -oE '[0-9]+\.?.*\s' /etc/centos-release)
+    os="centos"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/centos-release)
+elif [[ -e /etc/rocky-release ]]; then
+    os="rocky"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+
 else
 	echo_error 不支持的操作系统
 	exit 99
@@ -139,6 +143,8 @@ _EOF_
    	mkdir -p $partition
    	echo_info 更新/etc/fstab
    	echo "UUID=$PART_UUID  $partition  ext4     defaults,nofail        0 0" >> /etc/fstab
+    # 更新读取/etc/fstab的systemd文件配置
+    systemctl daemon-reload
    	mount -a
    	df -h
    else
@@ -175,10 +181,15 @@ function yum_install_basic_packages() {
     #         for i in `ls CentOS*`;do mv $i{,.bak};done
     #         wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
     #         wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
-    #         yum makecache fast
+    #         yum makecache
     #         install_chrony
     #     elif [[ $os == 'ubuntu' ]];then
     #         sed -i 's|http.*ubuntu|http://mirrors.aliyun.com/ubuntu|g' /etc/apt/sources.list
+    #     elif [[ $os == 'rocky' ]];then
+    #         # 替换为阿里源
+    #         cd /etc/yum.repos.d
+    #         sed -i -e 's|^mirrorlist=|#mirrorlist=|g' -e 's|^#baseurl=http://dl.rockylinux.org/$contentdir|baseurl=https://mirrors.aliyun.com/rockylinux|g' *.repo
+    #         dnf makecache
     #     fi
     # fi
 
@@ -193,6 +204,9 @@ function yum_install_basic_packages() {
         apt update -y
         apt upgrade -y
         apt install -y net-tools
+    elif [[ $os == 'rocky' ]];then
+        dnf update -y
+        dnf install -y vim wget net-tools telnet bash-completion lsof cloud-utils-growpart tar
     fi
 }
 
@@ -346,8 +360,8 @@ _EOF_
     sysctl -p &> /dev/null
 }
 
-function config_firwalld(){
-    if [[ $os == 'centos' ]];then
+function config_firewalld(){
+    if [[ $os == 'centos' || $os == 'rocky' ]];then
         echo_info 关闭SELINUX
         sed -i 's/^SELINUX=.*/SELINUX=disabled/' /etc/selinux/config
         setenforce 0
@@ -538,7 +552,7 @@ _EOF_
 
 function config_hardening(){
     echo_info 安全加固
-    if [[ $os == 'centos' ]];then
+    if [[ $os == 'centos' || $os == 'rocky' ]];then
         sed -i 's/account[[:space:]]\+required[[:space:]]\+pam_unix.so.*/&  no_pass_expiry/' /etc/pam.d/system-auth
         sed -i 's/password[[:space:]]\+sufficient[[:space:]]\+pam_unix.so.*/&  remember=3  no_pass_expiry/' /etc/pam.d/system-auth
         sed -i 's/password[[:space:]]\+sufficient[[:space:]]\+pam_unix.so.*/&  remember=3  no_pass_expiry/' /etc/pam.d/password-auth
@@ -580,7 +594,7 @@ create_swapfile
 format_disk
 config_profile
 config_system_parameter
-config_firwalld
+config_firewalld
 
 config_vi
 create_users
