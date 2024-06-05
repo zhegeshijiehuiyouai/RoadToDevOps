@@ -44,23 +44,25 @@ if [[ $(whoami) != 'root' ]];then
 fi
 
 # 检测操作系统
+# $os_version变量并不总是存在，但为了方便，仍然保留这个变量
 if grep -qs "ubuntu" /etc/os-release; then
 	os="ubuntu"
+	# os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2 | tr -d '.')
     os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
-    # 阻止配置更新弹窗
-    export UCF_FORCE_CONFFOLD=1
-    # 阻止应用重启弹窗
-    export NEEDRESTART_SUSPEND=1
 elif [[ -e /etc/centos-release ]]; then
-	os="centos"
-	os_version=$(grep -oE '[0-9]+\.?.*\s' /etc/centos-release)
+    os="centos"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/centos-release)
+elif [[ -e /etc/rocky-release ]]; then
+    os="rocky"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+
 else
 	echo_error 不支持的操作系统
 	exit 99
 fi
 
 
-if [[ $os == 'centos' ]];then
+if [[ $os == 'centos' || $os == 'rocky' ]];then
     unit_file_name=mysqld.service
 elif [[ $os == 'ubuntu' ]];then
     unit_file_name=mysql.service
@@ -117,6 +119,8 @@ function download_tar_gz(){
                     yum install -y wget
                 elif [[ $os == "ubuntu" ]];then
                     apt install -y wget
+                elif [[ $os == "rocky" ]];then
+                    dnf install -y wget
                 fi
             fi
             wget $2
@@ -141,6 +145,8 @@ function download_tar_gz(){
                         yum install -y wget
                     elif [[ $os == "ubuntu" ]];then
                         apt install -y wget
+                    elif [[ $os == "rocky" ]];then
+                        dnf install -y wget
                     fi
                 fi
                 wget $2
@@ -194,7 +200,7 @@ function init_account(){
     source /etc/profile
 
     echo_info 设置密码
-    if [[ $os == 'centos' ]];then
+    if [[ $os == 'centos' || $os == 'rocky' ]];then
         if [[ $user_input_mysql_version -eq 1 ]];then
             # 5.7版本
             mysql -uroot -p"${login_pass}" --connect-expired-password -e "SET PASSWORD = PASSWORD('${my_root_passwd}');flush privileges;" &> /dev/null
@@ -267,7 +273,7 @@ function variable_preparation(){
         # 5.7版本
         if [[ $user_input_install_type -eq 1 ]];then
             # 预制包安装
-            if [[ $os == 'centos' ]];then
+            if [[ $os == 'centos' || $os == 'rocky' ]];then
                 mysql_tgz=mysql-${mysql_version}-1.el7.x86_64.rpm-bundle.tar
                 mysql_untgz=
                 download_url=https://mirrors.aliyun.com/mysql/MySQL-5.7/${mysql_tgz}
@@ -292,7 +298,7 @@ function variable_preparation(){
             exit 100
         elif [[ $user_input_install_type -eq 2 ]];then
             # 二进制安装
-            if [[ $os == 'centos' ]];then
+            if [[ $os == 'centos' || $os == 'rocky' ]];then
                 if [[ $os_version =~ ^7 ]];then
                     mysql_tgz=mysql-${mysql_version}-el7-x86_64.tar.gz
                     mysql_untgz=mysql-${mysql_version}-el7-x86_64
@@ -312,7 +318,7 @@ function variable_preparation(){
 
 function before_install(){
     variable_preparation
-    if [[ $os == 'centos' ]];then
+    if [[ $os == 'centos' || $os == 'rocky' ]];then
         # 卸载mariadb
         mariadb_pkgs=$(rpm -qa | grep -i mariadb)
         mariadb_pkgs_num=$(echo $mariadb_pkgs | wc -l)
@@ -326,6 +332,11 @@ function before_install(){
 
         echo_info 安装依赖
         yum install -y perl-Data-Dumper perl-JSON libaio libaio-devel
+        if [[ $os == 'rocky' ]];then
+            # rocky linux中没有低版本的库
+            ln -s /usr/lib64/libncurses.so.6 /usr/lib64/libncurses.so.5
+            ln -s /usr/lib64/libtinfo.so.6 /usr/lib64/libtinfo.so.5
+        fi
     elif [[ $os == 'ubuntu' ]];then
         mysql_pkgs_num=$(dpkg -l | grep mysql- | wc -l)
         if [ $mysql_pkgs_num -ne 0 ];then
@@ -347,7 +358,7 @@ function gen_my_cnf() {
     mkdir -p ${DIR}/${mysql_dir_name}/{data,log}
     chown -R mysql:mysql ${DIR}/${mysql_dir_name}
 
-    if [[ $os == 'centos' ]];then
+    if [[ $os == 'centos' || $os == 'rocky' ]];then
         my_cnf_file=/etc/my.cnf
     elif [[ $os == 'ubuntu' ]];then
         # deb安装
@@ -486,7 +497,7 @@ function install_by_tgz(){
     cd ${DIR}/${mysql_dir_name}
     mkdir -p log
     touch log/mysqld.log
-    if [[ $os == 'centos' ]];then
+    if [[ $os == 'centos' || $os == 'rocky' ]];then
         bin/mysqld --initialize --basedir=${DIR}/${mysql_dir_name} --datadir=${DIR}/${mysql_dir_name}/data  --pid-file=${DIR}/${mysql_dir_name}/data/mysql.pid &> /dev/null
     elif [[ $os == 'ubuntu' ]];then
         # ubuntu不会有初始密码，所以直接不设置密码
@@ -601,7 +612,7 @@ function install_by_deb() {
 
 function install_main_func(){
     read -p "请输入数字选择安装类型（如需退出请输入q）：" -e user_input_install_type
-    if [[ $os == 'centos' ]];then
+    if [[ $os == 'centos' || $os == 'rocky' ]];then
         case $user_input_install_type in
             1)
                 echo_info 即将使用 rpm包 安装mysql
@@ -668,7 +679,7 @@ echo -e "\033[36m[2]\033[32m 8.0\033[0m"
 choose_mysql_version
 
 echo -e "\033[31m本脚本支持两种部署方式：\033[0m"
-if [[ $os == 'centos' ]];then
+if [[ $os == 'centos' || $os == 'rocky' ]];then
     echo -e "\033[36m[1]\033[32m rpm包部署mysql\033[0m"
 elif [[ $os == 'ubuntu' ]];then
     echo -e "\033[36m[1]\033[32m deb包部署mysql\033[0m"
