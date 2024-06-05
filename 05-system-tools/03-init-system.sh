@@ -459,10 +459,10 @@ _EOF_
         chmod 600 /home/${i}/.vimrc
         # alias
         cat >>/home/${i}/.bashrc<<"_EOF_"
- alias rm='rm -i'
- alias cp='cp -i'
- alias mv='mv -i'
- alias systemctl='sudo systemctl'
+alias rm='rm -i'
+alias cp='cp -i'
+alias mv='mv -i'
+alias systemctl='sudo systemctl'
 _EOF_
         if [[ $os == 'ubuntu' ]];then
             cat >>/home/${i}/.bashrc<<"_EOF_"
@@ -482,9 +482,9 @@ _EOF_
         chmod 600 /home/${i}/.vimrc
         # alias
         cat >>/home/${i}/.bashrc<<"_EOF_"
- alias rm='rm -i'
- alias cp='cp -i'
- alias mv='mv -i'
+alias rm='rm -i'
+alias cp='cp -i'
+alias mv='mv -i'
 _EOF_
         if [[ $os == 'ubuntu' ]];then
             cat >>/home/${i}/.bashrc<<"_EOF_"
@@ -498,19 +498,18 @@ _EOF_
         cat >>/root/.bashrc<<"_EOF_"
 PS1='\[\e]0;\u@\h: \w\a\]\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]# '
 _EOF_
-        # vim
-        cat >> /root/.vimrc <<"_EOF_"
-set paste
-_EOF_
-        chmod 600 /root/.vimrc
-
         rm -f /usr/bin/sh
         ln -s /usr/bin/bash /usr/bin/sh
 
         cd /etc/update-motd.d/
         ls | grep -v 50-landscape-sysinfo | xargs rm -f
     fi
-
+    
+    # root vim配置
+    cat >> /root/.vimrc <<"_EOF_"
+set paste
+_EOF_
+    chmod 600 /root/.vimrc
 	mkdir -p /home/devops/.ssh && chown -R devops:devops /home/devops/.ssh && chmod 700 /home/devops/.ssh
 }
 

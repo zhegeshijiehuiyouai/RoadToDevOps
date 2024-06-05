@@ -18,16 +18,18 @@ if [[ $(whoami) != 'root' ]];then
 fi
 
 # 检测操作系统
+# $os_version变量并不总是存在，但为了方便，仍然保留这个变量
 if grep -qs "ubuntu" /etc/os-release; then
 	os="ubuntu"
+	# os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2 | tr -d '.')
     os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
-    # 阻止配置更新弹窗
-    export UCF_FORCE_CONFFOLD=1
-    # 阻止应用重启弹窗
-    export NEEDRESTART_SUSPEND=1
 elif [[ -e /etc/centos-release ]]; then
-	os="centos"
-	os_version=$(grep -oE '[0-9]+\.?.*\s' /etc/centos-release)
+    os="centos"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/centos-release)
+elif [[ -e /etc/rocky-release ]]; then
+    os="rocky"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+
 else
 	echo_error 不支持的操作系统
 	exit 99
@@ -54,7 +56,7 @@ EOF
 }
 
 function install_docker() {
-    if [[ $os == 'centos' ]];then
+    if [[ $os == 'centos' || $os == 'rocky' ]];then
         echo_info 清理之前安装的docker（如果有）
         yum remove docker \
             docker-client \
@@ -81,14 +83,16 @@ function install_docker() {
         yum makecache
 
         # 根据CentOS版本（7还是8）来进行安装
-        osv=$(cat /etc/redhat-release | awk '{print $4}' | awk -F'.' '{print $1}')
-        if [ $osv -eq 7 ]; then
-            yum install docker-ce -y
-        elif [ $osv -eq 8 ];then
-            dnf install docker-ce --nobest -y
-        else
-            echo_error 当前版本不支持
-            exit 1
+        if [[ $os == 'centos' ]];then
+            osv=$(cat /etc/redhat-release | awk '{print $4}' | awk -F'.' '{print $1}')
+            if [ $osv -eq 7 ]; then
+                yum install docker-ce -y
+            elif [ $osv -eq 8 ];then
+                dnf install docker-ce --nobest -y
+            else
+                echo_error 当前版本不支持
+                exit 1
+            fi
         fi
 
         adjust_docker_configuration
