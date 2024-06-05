@@ -31,8 +31,12 @@ if grep -qs "ubuntu" /etc/os-release; then
 	# os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2 | tr -d '.')
     os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
 elif [[ -e /etc/centos-release ]]; then
-	os="centos"
-	os_version=$(grep -oE '[0-9]+\.?.*\s' /etc/centos-release)
+    os="centos"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/centos-release)
+elif [[ -e /etc/rocky-release ]]; then
+    os="rocky"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+
 else
 	echo_error 不支持的操作系统
 	exit 99
@@ -78,6 +82,8 @@ function download_tar_gz(){
                     yum install -y wget
                 elif [[ $os == "ubuntu" ]];then
                     apt install -y wget
+                elif [[ $os == 'rocky' ]];then
+                    dnf install -y wget
                 fi
             fi
             wget $2
@@ -102,6 +108,8 @@ function download_tar_gz(){
                         yum install -y wget
                     elif [[ $os == "ubuntu" ]];then
                         apt install -y wget
+                    elif [[ $os == 'rocky' ]];then
+                        dnf install -y wget
                     fi
                 fi
                 wget $2
@@ -201,7 +209,7 @@ function jdk_install_ubuntu() {
 
 ######################################
 pre_install_check
-if [[ $os == 'centos' ]];then
+if [[ $os == 'centos' || $os == 'rocky' ]];then
     jdk_install_centos
 elif [[ $os == 'ubuntu' ]];then
     jdk_install_ubuntu
