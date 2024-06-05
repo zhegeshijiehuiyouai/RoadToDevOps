@@ -298,15 +298,23 @@ function variable_preparation(){
             exit 100
         elif [[ $user_input_install_type -eq 2 ]];then
             # 二进制安装
-            if [[ $os == 'centos' || $os == 'rocky' ]];then
+            if [[ $os == 'centos' ]];then
                 if [[ $os_version =~ ^7 ]];then
                     mysql_tgz=mysql-${mysql_version}-el7-x86_64.tar.gz
                     mysql_untgz=mysql-${mysql_version}-el7-x86_64
                     download_url=https://mirrors.aliyun.com/mysql/MySQL-8.0/${mysql_tgz}
                 else
-                    echo_error CentOS系列，仅支持CentOS 7
-                    exit 33
+                    mysql_tgz=mysql-${mysql_version}-linux-glibc2.12-x86_64.tar.gz
+                    mysql_untgz=mysql-${mysql_version}-linux-glibc2.12-x86_64
+                    download_url=https://mirrors.aliyun.com/mysql/MySQL-5.7/${mysql_tgz}
                 fi
+            elif [[ $os == 'rocky' ]];then
+                # 二进制安装
+                # mysql二进制包名字
+                mysql_tgz=mysql-${mysql_version}-linux-glibc2.12-x86_64.tar.xz
+                # tgz包解压出来后的目录名
+                mysql_untgz=mysql-${mysql_version}-linux-glibc2.12-x86_64
+                download_url=https://mirrors.aliyun.com/mysql/MySQL-8.0/${mysql_tgz}
             elif [[ $os == 'ubuntu' ]];then
                 mysql_tgz=mysql-${mysql_version}-linux-glibc2.12-x86_64.tar.xz
                 mysql_untgz=mysql-${mysql_version}-linux-glibc2.12-x86_64
