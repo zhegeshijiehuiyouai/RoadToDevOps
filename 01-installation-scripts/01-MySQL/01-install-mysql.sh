@@ -334,8 +334,8 @@ function before_install(){
         yum install -y perl-Data-Dumper perl-JSON libaio libaio-devel
         if [[ $os == 'rocky' ]];then
             # rocky linux中没有低版本的库
-            ln -s /usr/lib64/libncurses.so.6 /usr/lib64/libncurses.so.5
-            ln -s /usr/lib64/libtinfo.so.6 /usr/lib64/libtinfo.so.5
+            [ -f /usr/lib64/libncurses.so.5 ] || ln -s /usr/lib64/libncurses.so.6 /usr/lib64/libncurses.so.5
+            [ -f /usr/lib64/libtinfo.so.5 ] || ln -s /usr/lib64/libtinfo.so.6 /usr/lib64/libtinfo.so.5
         fi
     elif [[ $os == 'ubuntu' ]];then
         mysql_pkgs_num=$(dpkg -l | grep mysql- | wc -l)
