@@ -93,6 +93,8 @@ function install_docker() {
                 echo_error 当前版本不支持
                 exit 1
             fi
+        elif [[ $os == 'rocky' ]];then
+            dnf install -y docker-ce
         fi
 
         adjust_docker_configuration
