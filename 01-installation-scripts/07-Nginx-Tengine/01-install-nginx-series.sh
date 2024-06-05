@@ -2,8 +2,8 @@
 # 可根据需要选择部署nginx、tengine
 
 # 默认版本
-nginx_default_version=1.22.1
-tengine_default_version=2.4.1
+nginx_default_version=1.26.1
+tengine_default_version=3.1.0
 # 所有需要下载的文件都下载到当前目录下的${src_dir}目录中
 src_dir=00src00
 mydir=$(pwd)
@@ -20,16 +20,18 @@ function echo_error() {
 }
 
 # 检测操作系统
+# $os_version变量并不总是存在，但为了方便，仍然保留这个变量
 if grep -qs "ubuntu" /etc/os-release; then
 	os="ubuntu"
+	# os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2 | tr -d '.')
     os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
-    # 阻止配置更新弹窗
-    export UCF_FORCE_CONFFOLD=1
-    # 阻止应用重启弹窗
-    export NEEDRESTART_SUSPEND=1
 elif [[ -e /etc/centos-release ]]; then
-	os="centos"
-	os_version=$(grep -oE '[0-9]+\.?.*\s' /etc/centos-release)
+    os="centos"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/centos-release)
+elif [[ -e /etc/rocky-release ]]; then
+    os="rocky"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+
 else
 	echo_error 不支持的操作系统
 	exit 99
@@ -103,6 +105,8 @@ function download_tar_gz(){
                     yum install -y wget
                 elif [[ $os == "ubuntu" ]];then
                     apt install -y wget
+                elif [[ $os == "rocky" ]];then
+                    dnf install -y wget
                 fi
             fi
             wget $2
@@ -127,6 +131,8 @@ function download_tar_gz(){
                         yum install -y wget
                     elif [[ $os == "ubuntu" ]];then
                         apt install -y wget
+                    elif [[ $os == "rocky" ]];then
+                        dnf install -y wget
                     fi
                 fi
                 wget $2
@@ -186,6 +192,8 @@ function multi_core_compile(){
             yum install -y make
         elif [[ $os == "ubuntu" ]];then
             apt install -y make
+        elif [[ $os == "rocky" ]];then
+            dnf install -y make
         fi
     fi
     assumeused=$(w | grep 'load average' | awk -F': ' '{print $2}' | awk -F'.' '{print $1}')
@@ -270,6 +278,8 @@ function install_nginx(){
         yum install -y gcc zlib zlib-devel openssl openssl-devel pcre pcre-devel
     elif [[ $os == "ubuntu" ]];then
         apt install -y gcc zlib1g zlib1g-dev openssl libssl-dev libpcre3 libpcre3-dev
+    elif [[ $os == "rocky" ]];then
+        dnf install -y gcc zlib zlib-devel openssl openssl-devel pcre pcre-devel
     fi
 
 
@@ -592,6 +602,8 @@ function install_tengine(){
         yum install -y gcc zlib zlib-devel openssl openssl-devel pcre pcre-devel
     elif [[ $os == "ubuntu" ]];then
         apt install -y gcc zlib1g zlib1g-dev openssl libssl-dev libpcre3 libpcre3-dev
+    elif [[ $os == "rocky" ]];then
+        dnf install -y gcc zlib zlib-devel openssl openssl-devel pcre pcre-devel
     fi
 
     add_user_and_group ${tag}
