@@ -2,7 +2,7 @@
 
 # 包下载目录
 src_dir=$(pwd)/00src00
-version=3.9.4
+version=3.9.7
 
 # 带格式的echo函数
 function echo_info() {
@@ -14,6 +14,30 @@ function echo_warning() {
 function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
+
+# 脚本执行用户检测
+if [[ $(whoami) != 'root' ]];then
+    echo_error 请使用root用户执行
+    exit 99
+fi
+
+# 检测操作系统
+# $os_version变量并不总是存在，但为了方便，仍然保留这个变量
+if grep -qs "ubuntu" /etc/os-release; then
+	os="ubuntu"
+	# os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2 | tr -d '.')
+    os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
+elif [[ -e /etc/centos-release ]]; then
+    os="centos"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/centos-release)
+elif [[ -e /etc/rocky-release ]]; then
+    os="rocky"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+
+else
+	echo_error 不支持的操作系统
+	exit 99
+fi
 
 # 首先判断当前目录是否有压缩包：
 #   I. 如果有压缩包，那么就在当前目录解压；
@@ -28,6 +52,14 @@ function echo_error() {
 # 语法： download_tar_gz 保存的目录 下载链接
 # 使用示例： download_tar_gz /data/openssh-update https://mirrors.cloud.tencent.com/openssl/source/openssl-1.1.1h.tar.gz
 function download_tar_gz(){
+    # 检测下载文件在服务器上是否存在
+    http_code=$(curl -IsS $2 | head -1 | awk '{print $2}')
+    if [ $http_code -eq 404 ];then
+        echo_error $2
+        echo_error 服务端文件不存在，退出
+        exit 98
+    fi
+
     download_file_name=$(echo $2 |  awk -F"/" '{print $NF}')
     back_dir=$(pwd)
     file_in_the_dir=''  # 这个目录是后面编译目录的父目录
@@ -43,12 +75,18 @@ function download_tar_gz(){
             # 检测是否有wget工具
             if [ ! -f /usr/bin/wget ];then
                 echo_info 安装wget工具
-                yum install -y wget
+                if [[ $os == "centos" ]];then
+                    yum install -y wget
+                elif [[ $os == "ubuntu" ]];then
+                    apt install -y wget
+                elif [[ $os == "rocky" ]];then
+                    dnf install -y wget
+                fi
             fi
-            wget --no-check-certificate $2
+            wget $2
             if [ $? -ne 0 ];then
                 echo_error 下载 $2 失败！
-                exit 1
+                exit 80
             fi
             file_in_the_dir=$(pwd)
             # 返回脚本所在目录，这样这个函数才可以多次使用
@@ -63,12 +101,18 @@ function download_tar_gz(){
                 # 检测是否有wget工具
                 if [ ! -f /usr/bin/wget ];then
                     echo_info 安装wget工具
-                    yum install -y wget
+                    if [[ $os == "centos" ]];then
+                        yum install -y wget
+                    elif [[ $os == "ubuntu" ]];then
+                        apt install -y wget
+                    elif [[ $os == "rocky" ]];then
+                        dnf install -y wget
+                    fi
                 fi
-                wget --no-check-certificate $2
+                wget $2
                 if [ $? -ne 0 ];then
                     echo_error 下载 $2 失败！
-                    exit 1
+                    exit 80
                 fi
                 file_in_the_dir=$(pwd)
                 cd ${back_dir}
