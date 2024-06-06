@@ -542,7 +542,7 @@ EOF
     rm -rf ${file_in_the_dir}/${tag}-${nginx_version}
 
     echo_info 生成nginx.service文件用于systemd控制
-cat > /usr/lib/systemd/system/nginx.service <<EOF
+cat > /etc/systemd/system/nginx.service <<EOF
 [Unit]
 Description=The nginx HTTP and reverse proxy server
 After=network-online.target remote-fs.target nss-lookup.target
@@ -627,7 +627,7 @@ function install_tengine(){
     rm -rf ${file_in_the_dir}/${tag}-${nginx_version}
 
     echo_info 生成tengine.service文件用于systemd控制
-cat > /usr/lib/systemd/system/tengine.service <<EOF
+cat > /etc/systemd/system/tengine.service <<EOF
 [Unit]
 Description=The Tengine HTTP and reverse proxy server
 After=network.target remote-fs.target nss-lookup.target
