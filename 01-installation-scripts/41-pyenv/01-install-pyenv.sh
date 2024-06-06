@@ -79,9 +79,9 @@ echo_info 安装依赖
 if [[ $os == 'centos' ]];then
     pip --version &> /dev/null
     if [ $? -eq 0 ];then
-        yum install -y gcc gcc-c++ zlib-devel bzip2-devel openssl-devel sqlite-devel readline-devel patch
+        yum install -y gcc gcc-c++ zlib-devel bzip2-devel openssl-devel sqlite-devel readline-devel patch libffi-devel xz-devel
     else
-        yum install -y python2-pip gcc gcc-c++ zlib-devel bzip2-devel openssl-devel sqlite-devel readline-devel patch
+        yum install -y python2-pip gcc gcc-c++ zlib-devel bzip2-devel openssl-devel sqlite-devel readline-devel patch libffi-devel xz-devel
     fi
     pip_version=$(pip --version | awk '{print $2}')
     latest_pip_version=$(echo -e "$pip_version\n20.2.4" |sort -V -r | head -1)
@@ -97,14 +97,14 @@ if [[ $os == 'centos' ]];then
     fi
 elif [[ $os == 'ubuntu' ]];then
     apt update
-    apt install -y python3-pip gcc g++ zlib1g-dev libbz2-dev libssl-dev libsqlite3-dev libreadline-dev
+    apt install -y python3-pip gcc g++ zlib1g-dev libbz2-dev libssl-dev libsqlite3-dev libreadline-dev libffi-dev liblzma-dev
     pip install --upgrade pip
 elif [[ $os == 'rocky' ]];then
     pip --version &> /dev/null
     if [ $? -eq 0 ];then
-        yum install -y gcc gcc-c++ zlib-devel bzip2-devel openssl-devel sqlite-devel readline-devel patch
+        yum install -y gcc gcc-c++ zlib-devel bzip2-devel openssl-devel sqlite-devel readline-devel patch libffi-devel xz-devel
     else
-        yum install -y python3-pip gcc gcc-c++ zlib-devel bzip2-devel openssl-devel sqlite-devel readline-devel patch
+        yum install -y python3-pip gcc gcc-c++ zlib-devel bzip2-devel openssl-devel sqlite-devel readline-devel patch libffi-devel xz-devel
     fi
     pip install --upgrade pip
 fi
