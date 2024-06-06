@@ -36,16 +36,18 @@ if [ -d $pyenv_root ];then
 fi
 
 # 检测操作系统
+# $os_version变量并不总是存在，但为了方便，仍然保留这个变量
 if grep -qs "ubuntu" /etc/os-release; then
 	os="ubuntu"
+	# os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2 | tr -d '.')
     os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
-    # 阻止配置更新弹窗
-    export UCF_FORCE_CONFFOLD=1
-    # 阻止应用重启弹窗
-    export NEEDRESTART_SUSPEND=1
 elif [[ -e /etc/centos-release ]]; then
-	os="centos"
-	os_version=$(grep -oE '[0-9]+\.?.*\s' /etc/centos-release)
+    os="centos"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/centos-release)
+elif [[ -e /etc/rocky-release ]]; then
+    os="rocky"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+
 else
 	echo_error 不支持的操作系统
 	exit 99
@@ -96,6 +98,14 @@ if [[ $os == 'centos' ]];then
 elif [[ $os == 'ubuntu' ]];then
     apt update
     apt install -y python3-pip gcc g++ zlib1g-dev libbz2-dev libssl-dev libsqlite3-dev libreadline-dev
+    pip install --upgrade pip
+elif [[ $os == 'rocky' ]];then
+    pip --version &> /dev/null
+    if [ $? -eq 0 ];then
+        yum install -y gcc gcc-c++ zlib-devel bzip2-devel openssl-devel sqlite-devel readline-devel patch
+    else
+        yum install -y python3-pip gcc gcc-c++ zlib-devel bzip2-devel openssl-devel sqlite-devel readline-devel patch
+    fi
     pip install --upgrade pip
 fi
 
