@@ -15,17 +15,25 @@ function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
 
+# 脚本执行用户检测
+if [[ $(whoami) != 'root' ]];then
+    echo_error 请使用root用户执行
+    exit 99
+fi
+
 # 检测操作系统
+# $os_version变量并不总是存在，但为了方便，仍然保留这个变量
 if grep -qs "ubuntu" /etc/os-release; then
 	os="ubuntu"
+	# os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2 | tr -d '.')
     os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
-    # 阻止配置更新弹窗
-    export UCF_FORCE_CONFFOLD=1
-    # 阻止应用重启弹窗
-    export NEEDRESTART_SUSPEND=1
 elif [[ -e /etc/centos-release ]]; then
-	os="centos"
-	os_version=$(grep -oE '[0-9]+\.?.*\s' /etc/centos-release)
+    os="centos"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/centos-release)
+elif [[ -e /etc/rocky-release ]]; then
+    os="rocky"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+
 else
 	echo_error 不支持的操作系统
 	exit 99
@@ -39,6 +47,8 @@ function check_rsync_server() {
             yum install -y rsync
         elif [[ $os == "ubuntu" ]];then
             apt install -y rsync
+        elif [[ $os == "rocky" ]];then
+            dnf install -y rsync
         fi
     fi
     
@@ -188,10 +198,10 @@ dont compress   = *.gz *.tgz *.zip *.z *.Z *.rpm *.deb *.bz2
 
 EOF
     cat > /etc/rsync.d/rsyncd.motd << EOF
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-Welcome to use the mike.org.cn rsync services!
-Script file from https://github.com/zhegeshijiehuiyouai/RoadToDevOps
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+############################################################################
+    Welcome to use the mike.org.cn rsync services!
+    Script file from https://github.com/zhegeshijiehuiyouai/RoadToDevOps
+############################################################################
 EOF
     echo "${rsyncd_user}:${rsyncd_password}" > /etc/rsync.d/rsyncd.secrets
     chmod 600 /etc/rsync.d/rsyncd.secrets
@@ -218,6 +228,7 @@ function main() {
     check_rsync_server
     input_share_dir
     generate_rsyncd_conf
+    # 启动服务
     if [[ $os == "centos" ]];then
         systemctl start rsyncd
         if [ $? -eq 0 ];then
@@ -231,6 +242,32 @@ function main() {
         systemctl start rsync
         if [ $? -eq 0 ];then
             echo_info 启动 rsyncd 服务：systemctl start rsync
+            echo_summary
+        else
+            echo_error rsyncd 启动失败，请检查！
+            exit 5
+        fi
+    elif [[ $os == "rocky" ]];then
+        # rocky linux中没有rsyncd服务了，要自己创建
+        cat > /etc/sysconfig/rsyncd << _EOF_
+OPTIONS=""
+_EOF_
+        cat > /etc/systemd/system/rsyncd.service << _EOF_
+[Unit]
+Description=fast remote file copy program daemon
+ConditionPathExists=/etc/rsyncd.conf
+
+[Service]
+EnvironmentFile=/etc/sysconfig/rsyncd
+ExecStart=/usr/bin/rsync --daemon --no-detach "\$OPTIONS"
+
+[Install]
+WantedBy=multi-user.target
+_EOF_
+        systemctl daemon-reload
+        systemctl start rsyncd
+        if [ $? -eq 0 ];then
+            echo_info 启动 rysncd 服务：systemctl start rsyncd
             echo_summary
         else
             echo_error rsyncd 启动失败，请检查！
