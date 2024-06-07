@@ -296,13 +296,13 @@ _EOF_
         sed -i 's|^\*          soft    nproc     4096|#*          soft    nproc     4096|' /etc/security/limits.d/20-nproc.conf
     fi
 
-    # ubuntu & centos
     cat >>/etc/security/limits.d/20-nproc.conf<<"_EOF_"
 ### Max open file limit
 *          soft    nproc     unlimited
 _EOF_
 
-cat >>'/etc/systemd/system.conf' <<"_EOF_"
+    if [[ $os == 'centos' || $os == 'ubuntu' ]];then
+        cat >>'/etc/systemd/system.conf' <<"_EOF_"
 DefaultTimeoutStartSec=30s
 DefaultTimeoutStopSec=30s
 DefaultRestartSec=5s
@@ -310,6 +310,15 @@ DefaultLimitCORE=infinity
 DefaultLimitNOFILE=infinity
 DefaultLimitNPROC=infinity
 _EOF_
+    elif [[ $os == 'rocky' ]];then
+        cat >>'/etc/systemd/system.conf' <<"_EOF_"
+DefaultTimeoutStartSec=30s
+DefaultTimeoutStopSec=30s
+DefaultRestartSec=5s
+DefaultLimitNOFILE=18446744073709551615
+DefaultLimitNPROC=18446744073709551615
+_EOF_
+    fi
 
     systemctl daemon-reload
 
