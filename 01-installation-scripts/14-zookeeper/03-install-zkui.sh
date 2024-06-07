@@ -11,6 +11,30 @@ function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
 
+# 脚本执行用户检测
+if [[ $(whoami) != 'root' ]];then
+    echo_error 请使用root用户执行
+    exit 99
+fi
+
+# 检测操作系统
+# $os_version变量并不总是存在，但为了方便，仍然保留这个变量
+if grep -qs "ubuntu" /etc/os-release; then
+	os="ubuntu"
+	# os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2 | tr -d '.')
+    os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
+elif [[ -e /etc/centos-release ]]; then
+    os="centos"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/centos-release)
+elif [[ -e /etc/rocky-release ]]; then
+    os="rocky"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+
+else
+	echo_error 不支持的操作系统
+	exit 99
+fi
+
 function show_summary() {
     echo_info 配置文件 ：zkui/config.cfg
     echo -e "\033[37m                  主要配置项：\033[0m"
@@ -39,12 +63,18 @@ fi
 git --version &> /dev/null
 if [ $? -ne 0 ];then
     echo_info 安装git中
-    yum install -y git
+    if [[ $os == 'centos' ]];then
+        yum install -y git
+    elif [[ $os == 'ubuntu' ]];then
+        apt install -y git
+    elif [[ $os == 'rocky' ]];then
+        dnf install -y git
+    fi
 fi
 
 if [ ! -d zkui ];then
     echo_info 从github下载zkui，项目地址：https://github.com/DeemOpen/zkui.git
-    git clone https://github.com/DeemOpen/zkui.git
+    git clone https://gh.con.sh/https://github.com/DeemOpen/zkui.git
 else
     echo_info 发现zkui目录
 fi
