@@ -51,16 +51,6 @@ function untar_tgz(){
     fi
 }
 
-# 解压
-function untar_tgz(){
-    echo_info 解压 $1 中
-    tar xf $1
-    if [ $? -ne 0 ];then
-        echo_error 解压出错，请检查！
-        exit 80
-    fi
-}
-
 # 首先判断当前目录是否有压缩包：
 #   I. 如果有压缩包，那么就在当前目录解压；
 #   II.如果没有压缩包，那么就检查有没有 ${src_dir} 表示的目录;
