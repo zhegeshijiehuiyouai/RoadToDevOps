@@ -18,16 +18,18 @@ if [[ $(whoami) != 'root' ]];then
 fi
 
 # 检测操作系统
+# $os_version变量并不总是存在，但为了方便，仍然保留这个变量
 if grep -qs "ubuntu" /etc/os-release; then
 	os="ubuntu"
+	# os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2 | tr -d '.')
     os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
-    # 阻止配置更新弹窗
-    export UCF_FORCE_CONFFOLD=1
-    # 阻止应用重启弹窗
-    export NEEDRESTART_SUSPEND=1
 elif [[ -e /etc/centos-release ]]; then
-	os="centos"
-	os_version=$(grep -oE '[0-9]+\.?.*\s' /etc/centos-release)
+    os="centos"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/centos-release)
+elif [[ -e /etc/rocky-release ]]; then
+    os="rocky"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+
 else
 	echo_error 不支持的操作系统
 	exit 99
@@ -48,6 +50,8 @@ function start_nfs() {
             yum install -y nfs-utils
         elif [[ $os == "ubuntu" ]];then
             apt install -y nfs-common nfs-kernel-server
+        elif [[ $os == "rocky" ]];then
+            dnf install -y nfs-utils
         fi
     fi
 
@@ -56,6 +60,9 @@ function start_nfs() {
         systemctl start nfs
     elif [[ $os == "ubuntu" ]];then
         systemctl start nfs-kernel-server
+    elif [[ $os == "rocky" ]];then
+        systemctl start rpcbind
+        systemctl start nfs-server
     fi
 }
 
@@ -184,6 +191,8 @@ function echo_summary() {
         echo -e "\033[45msystemctl stop nfs\033[0m"
     elif [[ $os == "ubuntu" ]];then
         echo -e "\033[45msystemctl stop nfs-kernel-server\033[0m"
+    elif [[ $os == "rocky" ]];then
+        echo -e "\033[45msystemctl stop nfs-server\033[0m"
     fi
     echo -e "\033[45msystemctl stop rpcbind\033[0m"
 }
