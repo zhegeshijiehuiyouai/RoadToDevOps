@@ -227,7 +227,7 @@ function install_single_zk(){
 
     echo_info 生成zookeeper.service文件用于systemd控制
 
-cat >/usr/lib/systemd/system/zookeeper.service <<EOF
+cat >/etc/systemd/system/zookeeper.service <<EOF
 [Unit]
 Description=Zookeeper server manager
 

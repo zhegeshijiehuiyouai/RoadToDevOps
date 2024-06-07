@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# 腾讯镜像只有最新两个版本，找老版本的话，要去官网：https://kafka.apache.org/downloads
-download_url=https://mirrors.cloud.tencent.com/apache/kafka/2.7.0/kafka_2.13-2.7.0.tgz
+# 腾讯镜像只有最新2-3个版本，找老版本的话，要去官网：https://kafka.apache.org/downloads
+download_url=https://mirrors.cloud.tencent.com/apache/kafka/3.7.0/kafka_2.13-3.7.0.tgz
 src_dir=$(pwd)/00src00
 kafka_port=9092
 kafka_jmx_port=9988
@@ -17,6 +17,30 @@ function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
 
+# 脚本执行用户检测
+if [[ $(whoami) != 'root' ]];then
+    echo_error 请使用root用户执行
+    exit 99
+fi
+
+# 检测操作系统
+# $os_version变量并不总是存在，但为了方便，仍然保留这个变量
+if grep -qs "ubuntu" /etc/os-release; then
+	os="ubuntu"
+	# os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2 | tr -d '.')
+    os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
+elif [[ -e /etc/centos-release ]]; then
+    os="centos"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/centos-release)
+elif [[ -e /etc/rocky-release ]]; then
+    os="rocky"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+
+else
+	echo_error 不支持的操作系统
+	exit 99
+fi
+
 # 解压
 function untar_tgz(){
     echo_info 解压 $1 中
@@ -24,6 +48,16 @@ function untar_tgz(){
     if [ $? -ne 0 ];then
         echo_error 解压出错，请检查！
         exit 2
+    fi
+}
+
+# 解压
+function untar_tgz(){
+    echo_info 解压 $1 中
+    tar xf $1
+    if [ $? -ne 0 ];then
+        echo_error 解压出错，请检查！
+        exit 80
     fi
 }
 
@@ -47,7 +81,7 @@ function download_tar_gz(){
         echo_error 服务端文件不存在，退出
         exit 98
     fi
-    
+
     download_file_name=$(echo $2 |  awk -F"/" '{print $NF}')
     back_dir=$(pwd)
     file_in_the_dir=''  # 这个目录是后面编译目录的父目录
@@ -63,12 +97,18 @@ function download_tar_gz(){
             # 检测是否有wget工具
             if [ ! -f /usr/bin/wget ];then
                 echo_info 安装wget工具
-                yum install -y wget
+                if [[ $os == "centos" ]];then
+                    yum install -y wget
+                elif [[ $os == "ubuntu" ]];then
+                    apt install -y wget
+                elif [[ $os == "rocky" ]];then
+                    dnf install -y wget
+                fi
             fi
             wget $2
             if [ $? -ne 0 ];then
                 echo_error 下载 $2 失败！
-                exit 1
+                exit 80
             fi
             file_in_the_dir=$(pwd)
             # 返回脚本所在目录，这样这个函数才可以多次使用
@@ -83,12 +123,18 @@ function download_tar_gz(){
                 # 检测是否有wget工具
                 if [ ! -f /usr/bin/wget ];then
                     echo_info 安装wget工具
-                    yum install -y wget
+                    if [[ $os == "centos" ]];then
+                        yum install -y wget
+                    elif [[ $os == "ubuntu" ]];then
+                        apt install -y wget
+                    elif [[ $os == "rocky" ]];then
+                        dnf install -y wget
+                    fi
                 fi
                 wget $2
                 if [ $? -ne 0 ];then
                     echo_error 下载 $2 失败！
-                    exit 1
+                    exit 80
                 fi
                 file_in_the_dir=$(pwd)
                 cd ${back_dir}
@@ -137,7 +183,7 @@ function check_port_2181() {
 }
 function generate_kafka_service() {
     echo_info 生成kafka.service文件用于systemd控制
-    cat >/usr/lib/systemd/system/kafka.service <<EOF
+    cat >/etc/systemd/system/kafka.service <<EOF
 [Unit]
 Description=Kafka, install script from https://github.com/zhegeshijiehuiyouai/RoadToDevOps
 
@@ -207,7 +253,7 @@ function config_kafka_with_internal_zk() {
     cd ${back_dir}/${bare_name}/config/
     sed -i 's#^dataDir=.*#dataDir=${back_dir}/'${bare_name}'/'${zookeeper_data_dir}'#g' zookeeper.properties
 
-    cat >/usr/lib/systemd/system/kakfa-zookeeper.service <<EOF
+    cat >/etc/systemd/system/kakfa-zookeeper.service <<EOF
 [Unit]
 Description=Apache Zookeeper server (Kafka)
 Documentation=http://zookeeper.apache.org
