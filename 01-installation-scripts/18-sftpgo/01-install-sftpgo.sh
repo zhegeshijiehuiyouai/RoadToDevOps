@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sftpgo_version=2.5.6
+sftpgo_version=2.6.0
 src_dir=$(pwd)/00src00      # 安装包下载地址
 sftp_home=$(pwd)/sftpgo
 data_dir=${sftp_home}/data  # 数据目录
@@ -22,17 +22,25 @@ function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
 
+# 脚本执行用户检测
+if [[ $(whoami) != 'root' ]];then
+    echo_error 请使用root用户执行
+    exit 99
+fi
+
 # 检测操作系统
+# $os_version变量并不总是存在，但为了方便，仍然保留这个变量
 if grep -qs "ubuntu" /etc/os-release; then
 	os="ubuntu"
+	# os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2 | tr -d '.')
     os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
-    # 阻止配置更新弹窗
-    export UCF_FORCE_CONFFOLD=1
-    # 阻止应用重启弹窗
-    export NEEDRESTART_SUSPEND=1
 elif [[ -e /etc/centos-release ]]; then
-	os="centos"
-	os_version=$(grep -oE '[0-9]+\.?.*\s' /etc/centos-release)
+    os="centos"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/centos-release)
+elif [[ -e /etc/rocky-release ]]; then
+    os="rocky"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+
 else
 	echo_error 不支持的操作系统
 	exit 99
@@ -68,7 +76,7 @@ function download_tar_gz(){
         echo_error 服务端文件不存在，退出
         exit 98
     fi
-    
+
     download_file_name=$(echo $2 |  awk -F"/" '{print $NF}')
     back_dir=$(pwd)
     file_in_the_dir=''  # 这个目录是后面编译目录的父目录
@@ -88,12 +96,14 @@ function download_tar_gz(){
                     yum install -y wget
                 elif [[ $os == "ubuntu" ]];then
                     apt install -y wget
+                elif [[ $os == "rocky" ]];then
+                    dnf install -y wget
                 fi
             fi
             wget $2
             if [ $? -ne 0 ];then
                 echo_error 下载 $2 失败！
-                exit 1
+                exit 80
             fi
             file_in_the_dir=$(pwd)
             # 返回脚本所在目录，这样这个函数才可以多次使用
@@ -112,12 +122,14 @@ function download_tar_gz(){
                         yum install -y wget
                     elif [[ $os == "ubuntu" ]];then
                         apt install -y wget
+                    elif [[ $os == "rocky" ]];then
+                        dnf install -y wget
                     fi
                 fi
                 wget $2
                 if [ $? -ne 0 ];then
                     echo_error 下载 $2 失败！
-                    exit 1
+                    exit 80
                 fi
                 file_in_the_dir=$(pwd)
                 cd ${back_dir}
@@ -168,6 +180,8 @@ if [[ $os == "centos" ]];then
     yum install -y jq net-tools
 elif [[ $os == "ubuntu" ]];then
     apt install -y jq net-tools
+elif [[ $os == 'rocky' ]];then
+    dnf install -y jq net-tools
 fi
 
 # 如果同端口已被占用，则直接退出
@@ -182,12 +196,16 @@ if [ $? -eq 0 ];then
     exit 21
 fi
 
-if [[ $os == "centos" ]];then
+if [[ $os == "centos" || $os == 'rocky' ]];then
     # 使用github加速节点下载
     download_tar_gz $src_dir https://gh.con.sh/https://github.com/drakkan/sftpgo/releases/download/v${sftpgo_version}/sftpgo-${sftpgo_version}-1.x86_64.rpm
     cd $file_in_the_dir
     echo_info 安装sftpgo
-    yum localinstall -y sftpgo-${sftpgo_version}-1.x86_64.rpm
+    if [[ $os == 'centos' ]];then
+        yum localinstall -y sftpgo-${sftpgo_version}-1.x86_64.rpm
+    elif [[ $os == 'rocky' ]];then
+        dnf localinstall -y sftpgo-${sftpgo_version}-1.x86_64.rpm
+    fi
 elif [[ $os=="ubuntu" ]];then 
     download_tar_gz $src_dir https://gh.con.sh/https://github.com/drakkan/sftpgo/releases/download/v${sftpgo_version}/sftpgo_${sftpgo_version}-1_amd64.deb
     cd $file_in_the_dir
