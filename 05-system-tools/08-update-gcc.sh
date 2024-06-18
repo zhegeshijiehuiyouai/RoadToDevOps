@@ -1,4 +1,5 @@
 #!/bin/bash
+# 适用于CentOS 7，测试了8.2.0版本和11.4.0版本，理论上这两个版本中间的版本也可以升级
 
 gcc_new_version=8.2.0
 src_dir=$(pwd)/00src00
