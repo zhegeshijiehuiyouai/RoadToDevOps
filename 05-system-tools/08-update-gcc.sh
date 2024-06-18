@@ -148,6 +148,24 @@ if [[ ${latest_version} == ${gcc_old_version} ]];then
     exit 1
 fi
 
+function install_confirm() {
+    read -e user_input
+    case $user_input in
+    y|Y)
+        true
+        ;;
+    n|N)
+        exit 0
+        ;;
+    *)
+        echo_warning 请输入y或n
+        install_confirm
+        ;;
+    esac
+}
+echo_warning "gcc版本将从 ${gcc_old_version} 升级到 ${gcc_new_version} ，是否继续[y/n]"
+install_confirm
+
 echo_info 安装依赖
 yum -y install bison bzip2 gcc-c++
 
