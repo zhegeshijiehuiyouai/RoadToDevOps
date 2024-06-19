@@ -136,8 +136,8 @@ if [[ ${latest_version} == ${glibc_old_version} ]];then
 fi
 
 function user_confirm() {
-    read -p '是否继续[y/n]' is_install
-    case $is_install in
+    read -e user_confirm_input
+    case $user_confirm_input in
     y|Y)
         true
         ;;
@@ -153,8 +153,26 @@ function user_confirm() {
 
 ##################################### 主程序
 
-echo_warning "请确保您知道升级glibc的风险，并已备份系统，否则请退出脚本！！！"
+echo_warning "请确保您知道升级glibc的风险，并已备份系统，否则请退出脚本！！！是否继续[y/n]"
 user_confirm
+
+function install_confirm() {
+    read -e install_confirm_input
+    case $install_confirm_input in
+    y|Y)
+        true
+        ;;
+    n|N)
+        exit 0
+        ;;
+    *)
+        echo_warning 请输入y或n
+        install_confirm
+        ;;
+    esac
+}
+echo_warning "glibc版本将从 ${glibc_old_version} 升级到 ${glibc_new_version} ，是否继续[y/n]"
+install_confirm
 
 # 版本检测，升级glibc，对于版本的要求有点严格，不匹配的话很可能升级失败。
 gcc_version=$(gcc --version | head -1 | awk '{print $3}')
