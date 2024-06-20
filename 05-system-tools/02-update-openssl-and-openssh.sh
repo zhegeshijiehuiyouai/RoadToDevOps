@@ -170,11 +170,10 @@ cd ..
 ######################################################################
 
 
-echo_info 备份 /etc/ssh目录 为 /etc/ssh_old目录
 [ -d /etc/ssh_old ] && rm -rf /etc/ssh_old
 mkdir /etc/ssh_old
 mv /etc/ssh/* /etc/ssh_old/
-
+echo_info 已将原 /etc/ssh 目录 备份到 /etc/ssh_old 目录
 
 # 升级openssh
 echo_info 准备升级 openssh

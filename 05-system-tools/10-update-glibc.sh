@@ -188,7 +188,6 @@ if [[ $glibc_new_version == "2.28" ]];then
         echo_warning 推荐版本：8.2.0
         echo_warning 当前版本：$gcc_version
         echo_warning "是否继续[y/n]"
-        echo_warning "是否继续[y/n]"
         user_confirm
     fi
     if [[ $make_version != "4.2.1" ]];then
@@ -226,7 +225,10 @@ fi
 
 mkdir glibc-build
 cd glibc-build
-../configure --prefix=/usr --enable-add-ons --disable-profile --disable-multi-arch --enable-obsolete-nsl
+../configure --prefix=/usr --enable-add-ons --disable-profile --disable-multi-arch --enable-obsolete-nsl --disable-werror --with-headers=/usr/include --with-binutils=/usr/bin
+# --disable-werror 如果不加，所有的编译警告都会被视为错误，导致编译失败，添加参数使得编译警告不会中断编译过程。在使用较新版本的gcc时很有用
+# --with-headers=/usr/include 指示 glibc 按照这个目录中的内核头文件编译自己，从而精确的知道内核的特性以根据这些特性对自己进行最佳化编译；
+# --with-binutils=/usr/bin 保证在编译 glibc 时不会用错 Binutils；
 multi_core_compile
 
 

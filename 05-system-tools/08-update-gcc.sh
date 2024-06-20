@@ -141,13 +141,13 @@ function multi_core_compile(){
     fi
 }
 
+# 注释掉，允许安装低版本的，回退用
 # 比较版本号
-latest_version=$(printf '%s\n%s\n' "$gcc_old_version" "$gcc_new_version" | sort -V | tail -n1)
-
-if [[ ${latest_version} == ${gcc_old_version} ]];then
-    echo_error "升级版本（${gcc_new_version}）小于等于已安装版本（${gcc_old_version}），请查看网址http://mirrors.cloud.tencent.com/gnu/gcc/ 获取最新版本，并修改脚本中的最新版本号"
-    exit 1
-fi
+# latest_version=$(printf '%s\n%s\n' "$gcc_old_version" "$gcc_new_version" | sort -V | tail -n1)
+# if [[ ${latest_version} == ${gcc_old_version} ]];then
+#     echo_error "升级版本（${gcc_new_version}）小于等于已安装版本（${gcc_old_version}），请查看网址http://mirrors.cloud.tencent.com/gnu/gcc/ 获取最新版本，并修改脚本中的最新版本号"
+#     exit 1
+# fi
 
 function install_confirm() {
     read -e user_input
@@ -238,6 +238,7 @@ cd gcc-build/
 # –disable-checking生成的编译器在编译过程中不做额外检查，
 # 也可以使用*–enable-checking=xxx*来增加一些检查
 ../configure --prefix=/usr --mandir=/usr/share/man --infodir=/usr/share/info -enable-checking=release --enable-bootstrap --enable-shared --enable-threads=posix --with-system-zlib --enable-__cxa_atexit --disable-libunwind-exceptions --enable-gnu-unique-object --enable-linker-build-id --with-linker-hash-style=gnu --enable-languages=c,c++,objc,obj-c++,fortran,go,lto -disable-multilib --enable-plugin --enable-initfini-array --disable-libgcj --enable-gnu-indirect-function --with-tune=generic --with-arch_32=x86-64 --build=x86_64-redhat-linux
+
 if [ $? -ne 0 ];then
     echo_error 编译失败，退出
     exit 1

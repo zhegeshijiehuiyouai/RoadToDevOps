@@ -1,6 +1,6 @@
 #!/bin/bash
 
-make_new_version=4.2.1
+make_new_version=4.4.1
 src_dir=$(pwd)/00src00
 mydir=$(pwd)
 
@@ -151,7 +151,11 @@ if [[ ${latest_version} == ${make_old_version} ]];then
 fi
 
 echo_info 安装编译工具
-yum install -y gcc gcc-c++ bison
+if ! command -v gcc &> /dev/null;then
+    yum install -y gcc gcc-c++ bison
+else
+    yum install -y gcc-c++ bison
+fi
 
 download_tar_gz ${src_dir} http://mirrors.cloud.tencent.com/gnu/make/make-${make_new_version}.tar.gz
 cd ${file_in_the_dir}
@@ -163,8 +167,10 @@ cd make-build
 ../configure --prefix=/usr/local/make
 sh build.sh
 multi_core_compile
+echo_info make 构建目录：/usr/local/make
 
 mv /usr/bin/make /usr/bin/make.bak
+echo_info 已将原 make 命令备份到 /usr/bin/make.bak
 ln -s /usr/local/make/bin/make /usr/bin/make
 
 echo_info make安装完毕，版本：${make_new_version}
