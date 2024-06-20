@@ -1,5 +1,5 @@
 #!/bin/bash
-# centos7.6下进行的测试
+# centos7.9下进行的测试
 # 本脚本中为了加速下载，使用的是腾讯云镜像站下载，如果想访问官网下载：
 # openssl官网下载：wget https://ftp.openssl.org/source/openssl-${openssl_version}.tar.gz
 # openssl官网只有最新版，需要老版本的话，从这个下载：https://www.openssl.org/source/old/
@@ -178,7 +178,7 @@ mv /etc/ssh/* /etc/ssh_old/
 
 # 升级openssh
 echo_info 准备升级 openssh
-yum install openssl-devel pam-devel -y # zlib-devel
+yum install openssl-devel pam-devel zlib-devel -y
 download_tar_gz ${openssh_source_dir} https://mirrors.cloud.tencent.com/OpenBSD/OpenSSH/portable/openssh-${openssh_version}.tar.gz
 cd ${file_in_the_dir}
 untar_tgz openssh-${openssh_version}.tar.gz
