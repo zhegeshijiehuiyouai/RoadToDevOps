@@ -463,6 +463,9 @@ function create_users(){
         # vim
         cat >> /home/${i}/.vimrc <<"_EOF_"
 set paste
+set fileencoding=utf-8
+set termencoding=utf-8
+set encoding=utf-8
 _EOF_
         chown ${i}:${i} /home/${i}/.vimrc
         chmod 600 /home/${i}/.vimrc
@@ -486,6 +489,9 @@ _EOF_
         # vim
         cat >> /home/${i}/.vimrc <<"_EOF_"
 set paste
+set fileencoding=utf-8
+set termencoding=utf-8
+set encoding=utf-8
 _EOF_
         chown ${i}:${i} /home/${i}/.vimrc
         chmod 600 /home/${i}/.vimrc
@@ -517,6 +523,9 @@ _EOF_
     # root vim配置
     cat >> /root/.vimrc <<"_EOF_"
 set paste
+set fileencoding=utf-8
+set termencoding=utf-8
+set encoding=utf-8
 _EOF_
     chmod 600 /root/.vimrc
 	mkdir -p /home/devops/.ssh && chown -R devops:devops /home/devops/.ssh && chmod 700 /home/devops/.ssh
