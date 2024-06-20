@@ -5,6 +5,17 @@ gcc_new_version=8.2.0
 src_dir=$(pwd)/00src00
 mydir=$(pwd)
 
+# 带格式的echo函数
+function echo_info() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m$@\033[0m"
+}
+function echo_warning() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m$@\033[0m"
+}
+function echo_error() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
+}
+
 # 获取gcc老版本
 gcc --help &> /dev/null
 if [ $? -eq 0 ];then
@@ -19,17 +30,6 @@ else
     fi
     gcc_old_version=$(gcc --version | head -1 | awk '{print $3}')
 fi
-
-# 带格式的echo函数
-function echo_info() {
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m$@\033[0m"
-}
-function echo_warning() {
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m$@\033[0m"
-}
-function echo_error() {
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
-}
 
 # 解压
 function untar_tgz(){
