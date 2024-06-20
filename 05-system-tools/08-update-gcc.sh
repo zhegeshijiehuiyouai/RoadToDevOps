@@ -226,8 +226,8 @@ ldconfig
 
 
 cd ${file_in_the_dir}/gcc-${gcc_new_version}
-mkdir build
-cd build/
+mkdir gcc-build
+cd gcc-build/
 # --prefix=/usr/local 配置安装目录
 # –enable-languages表示你要让你的gcc支持那些语言，
 # –disable-multilib不生成编译为其他平台可执行代码的交叉编译器。

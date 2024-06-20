@@ -157,8 +157,8 @@ download_tar_gz ${src_dir} http://mirrors.cloud.tencent.com/gnu/make/make-${make
 cd ${file_in_the_dir}
 untar_tgz make-${make_new_version}.tar.gz
 cd make-${make_new_version}
-mkdir build
-cd build
+mkdir make-build
+cd make-build
 ../configure --prefix=/usr/local/make
 sh build.sh
 multi_core_compile

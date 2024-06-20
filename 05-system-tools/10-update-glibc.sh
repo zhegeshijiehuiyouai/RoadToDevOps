@@ -219,8 +219,8 @@ else
     fi
 fi
 
-mkdir build
-cd build
+mkdir glibc-build
+cd glibc-build
 ../configure --prefix=/usr --enable-add-ons --disable-profile --disable-multi-arch --enable-obsolete-nsl
 multi_core_compile
 
