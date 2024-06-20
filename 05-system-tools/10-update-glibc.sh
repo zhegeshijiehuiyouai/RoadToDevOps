@@ -181,18 +181,21 @@ make_version=$(make --version | head -1 | awk '{print $3}')
 if [[ $glibc_new_version == "2.28" ]];then
     gcc_main_version=$(echo $gcc_version | awk -F'.' '{print $1}')
     if [ $gcc_main_version -ge 11 ];then
-        echo_warning "当前gcc版本为${gcc_version}，使用该版本的gcc升级glibc到${glibc_new_version}版本大概率会出错"
+        echo_warning "当前gcc版本为${gcc_version}，使用该版本的gcc升级glibc到${glibc_new_version}版本大概率会出错，是否继续[y/n]"
         user_confirm
     elif [[ $gcc_version != "8.2.0" ]];then
         echo_warning 升级glibc需要的gcc版本：4.9或更高版本
         echo_warning 推荐版本：8.2.0
         echo_warning 当前版本：$gcc_version
+        echo_warning "是否继续[y/n]"
+        echo_warning "是否继续[y/n]"
         user_confirm
     fi
     if [[ $make_version != "4.2.1" ]];then
         echo_warning 升级glibc需要的make版本：4.0或更高版本
         echo_warning 推荐版本：4.2.1
         echo_warning 当前版本：$make_version
+        echo_warning "是否继续[y/n]"
         user_confirm
     fi
     python_version=$(python --version 2>&1 | awk '{print $2}')
@@ -200,12 +203,14 @@ if [[ $glibc_new_version == "2.28" ]];then
     if [[ $newest_python_version != $python_version ]];then
         echo_warning 升级glibc需要的python版本：3.4或更高版本
         echo_warning 当前版本：$python_version
+        echo_warning "是否继续[y/n]"
         user_confirm
     fi
 fi
 
 download_tar_gz ${src_dir} http://mirrors.cloud.tencent.com/gnu/glibc/glibc-${glibc_new_version}.tar.gz
 cd ${file_in_the_dir}
+[ -d glibc-${glibc_new_version} ] && rm -rf glibc-${glibc_new_version}
 untar_tgz glibc-${glibc_new_version}.tar.gz
 cd glibc-${glibc_new_version}
 echo_info 调整测试文件

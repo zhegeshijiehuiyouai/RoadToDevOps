@@ -155,6 +155,7 @@ yum install -y gcc gcc-c++ bison
 
 download_tar_gz ${src_dir} http://mirrors.cloud.tencent.com/gnu/make/make-${make_new_version}.tar.gz
 cd ${file_in_the_dir}
+[ -d make-${make_new_version} ] && rm -rf make-${make_new_version}
 untar_tgz make-${make_new_version}.tar.gz
 cd make-${make_new_version}
 mkdir make-build

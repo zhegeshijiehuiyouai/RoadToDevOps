@@ -168,7 +168,7 @@ echo_warning "gcc版本将从 ${gcc_old_version} 升级到 ${gcc_new_version} �
 install_confirm
 
 echo_info 安装依赖
-yum -y install bison bzip2 gcc-c++
+yum -y install bison bzip2 gcc-c++ zlib-devel
 
 ########################
 # 需要 GMP 4.2+, MPFR 2.4.0+ and MPC 0.8.0+
@@ -178,6 +178,7 @@ mpc_version=1.2.1
 ########################
 download_tar_gz ${src_dir} http://mirrors.cloud.tencent.com/gnu/gmp/gmp-${gmp_version}.tar.xz
 cd ${file_in_the_dir}
+[ -d gmp-${gmp_version} ] && rm -rf gmp-${gmp_version}
 untar_tgz gmp-${gmp_version}.tar.xz
 cd gmp-${gmp_version}
 ./configure
@@ -186,6 +187,7 @@ echo_info --------------- GMP ${gmp_version} DONE ---------------
 
 download_tar_gz ${src_dir} http://mirrors.cloud.tencent.com/gnu/mpfr/mpfr-${mpfr_version}.tar.xz
 cd ${file_in_the_dir}
+[ -d mpfr-${mpfr_version} ] && rm -rf mpfr-${mpfr_version}
 untar_tgz mpfr-${mpfr_version}.tar.xz
 cd mpfr-${mpfr_version}
 ./configure
@@ -194,6 +196,7 @@ echo_info --------------- MPFR ${mpfr_version} DONE ---------------
 
 download_tar_gz ${src_dir} http://mirrors.cloud.tencent.com/gnu/mpc/mpc-${mpc_version}.tar.gz
 cd ${file_in_the_dir}
+[ -d mpc-${mpc_version} ] && rm -rf mpc-${mpc_version}
 untar_tgz mpc-${mpc_version}.tar.gz
 cd mpc-${mpc_version}
 ./configure
@@ -204,6 +207,7 @@ echo
 echo_info 安装gcc本体
 download_tar_gz ${src_dir} http://mirrors.cloud.tencent.com/gnu/gcc/gcc-${gcc_new_version}/gcc-${gcc_new_version}.tar.xz
 cd ${file_in_the_dir}
+[ -d gcc-${gcc_new_version} ] && rm -rf gcc-${gcc_new_version}
 untar_tgz gcc-${gcc_new_version}.tar.xz
 
 
