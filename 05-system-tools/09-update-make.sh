@@ -4,6 +4,40 @@ make_new_version=4.4.1
 src_dir=$(pwd)/00src00
 mydir=$(pwd)
 
+# 带格式的echo函数
+function echo_info() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m$@\033[0m"
+}
+function echo_warning() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m$@\033[0m"
+}
+function echo_error() {
+    echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
+}
+
+function user_confirm() {
+    read -e user_confirm_input
+    case $user_confirm_input in
+    y|Y)
+        true
+        ;;
+    n|N)
+        echo_info 用户取消
+        exit 0
+        ;;
+    *)
+        echo 请输入y或n
+        user_confirm
+        ;;
+    esac
+}
+
+# 检测操作系统
+if [[ ! -e /etc/centos-release ]]; then
+    echo_warning "本脚本仅针对 CentOS 7，是否继续[y/n]"
+    user_confirm
+fi
+
 # 获取make老版本
 make --help &> /dev/null
 if [ $? -eq 0 ];then
@@ -19,16 +53,6 @@ else
     make_old_version=$(make --version | head -1 | awk '{print $3}')
 fi
 
-# 带格式的echo函数
-function echo_info() {
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m$@\033[0m"
-}
-function echo_warning() {
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[1;33mWARNING\033[0m] \033[1;37m$@\033[0m"
-}
-function echo_error() {
-    echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
-}
 
 # 解压
 function untar_tgz(){

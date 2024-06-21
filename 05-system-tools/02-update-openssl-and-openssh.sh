@@ -22,6 +22,29 @@ function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
 
+function user_confirm() {
+    read -e user_confirm_input
+    case $user_confirm_input in
+    y|Y)
+        true
+        ;;
+    n|N)
+        echo_info 用户取消
+        exit 0
+        ;;
+    *)
+        echo 请输入y或n
+        user_confirm
+        ;;
+    esac
+}
+
+# 检测操作系统
+if [[ ! -e /etc/centos-release ]]; then
+    echo_warning "本脚本仅针对 CentOS 7，是否继续[y/n]"
+    user_confirm
+fi
+
 echo_info 现在的版本：
 openssl version
 ssh -V

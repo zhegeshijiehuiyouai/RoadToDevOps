@@ -16,6 +16,29 @@ function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
 
+function user_confirm() {
+    read -e user_confirm_input
+    case $user_confirm_input in
+    y|Y)
+        true
+        ;;
+    n|N)
+        echo_info 用户取消
+        exit 0
+        ;;
+    *)
+        echo 请输入y或n
+        user_confirm
+        ;;
+    esac
+}
+
+# 检测操作系统
+if [[ ! -e /etc/centos-release ]]; then
+    echo_warning "本脚本仅针对 CentOS 7，是否继续[y/n]"
+    user_confirm
+fi
+
 # 获取gcc老版本
 gcc --help &> /dev/null
 if [ $? -eq 0 ];then
@@ -149,23 +172,9 @@ function multi_core_compile(){
 #     exit 1
 # fi
 
-function install_confirm() {
-    read -e user_input
-    case $user_input in
-    y|Y)
-        true
-        ;;
-    n|N)
-        exit 0
-        ;;
-    *)
-        echo_warning 请输入y或n
-        install_confirm
-        ;;
-    esac
-}
+
 echo_warning "gcc版本将从 ${gcc_old_version} 升级到 ${gcc_new_version} ，是否继续[y/n]"
-install_confirm
+user_confirm
 
 echo_info 安装依赖
 yum -y install bison bzip2 gcc-c++ zlib-devel

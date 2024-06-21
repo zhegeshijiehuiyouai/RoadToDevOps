@@ -18,6 +18,30 @@ function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
 
+function user_confirm() {
+    read -e user_confirm_input
+    case $user_confirm_input in
+    y|Y)
+        true
+        ;;
+    n|N)
+        echo_info 用户取消
+        exit 0
+        ;;
+    *)
+        echo 请输入y或n
+        user_confirm
+        ;;
+    esac
+}
+
+# 检测操作系统
+if [[ ! -e /etc/centos-release ]]; then
+    echo_warning "本脚本仅针对 CentOS 7，是否继续[y/n]"
+    user_confirm
+fi
+
+
 # 解压
 function untar_tgz(){
     echo_info 解压 $1 中
@@ -135,44 +159,13 @@ if [[ ${latest_version} == ${glibc_old_version} ]];then
     exit 1
 fi
 
-function user_confirm() {
-    read -e user_confirm_input
-    case $user_confirm_input in
-    y|Y)
-        true
-        ;;
-    n|N)
-        echo_info 用户取消
-        exit 0
-        ;;
-    *)
-        user_confirm
-        ;;
-    esac
-}
-
 ##################################### 主程序
 
 echo_warning "请确保您知道升级glibc的风险，并已备份系统，否则请退出脚本！！！是否继续[y/n]"
 user_confirm
 
-function install_confirm() {
-    read -e install_confirm_input
-    case $install_confirm_input in
-    y|Y)
-        true
-        ;;
-    n|N)
-        exit 0
-        ;;
-    *)
-        echo_warning 请输入y或n
-        install_confirm
-        ;;
-    esac
-}
 echo_warning "glibc版本将从 ${glibc_old_version} 升级到 ${glibc_new_version} ，是否继续[y/n]"
-install_confirm
+user_confirm
 
 # 版本检测，升级glibc，对于版本的要求有点严格，不匹配的话很可能升级失败。
 gcc_version=$(gcc --version | head -1 | awk '{print $3}')
@@ -192,7 +185,7 @@ if [[ $glibc_new_version == "2.28" ]];then
     fi
     if [[ $make_version != "4.2.1" ]];then
         echo_warning 升级glibc需要的make版本：4.0或更高版本
-        echo_warning 推荐版本：4.2.1
+        echo_warning 推荐版本：4.2.1，若其他版本编译失败可尝试使用该版本
         echo_warning 当前版本：$make_version
         echo_warning "是否继续[y/n]"
         user_confirm
