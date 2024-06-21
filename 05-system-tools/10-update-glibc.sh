@@ -1,11 +1,10 @@
 #!/bin/bash
+# 测试操作系统：CentOS 7.9
+# 升级成功的glibc版本：2.28-2.33
 
 glibc_new_version=2.28
 src_dir=$(pwd)/00src00
 mydir=$(pwd)
-
-# 获取glibc老版本
-glibc_old_version=$(ldd --version | head -1 | awk '{print $NF}')
 
 # 带格式的echo函数
 function echo_info() {
@@ -34,6 +33,15 @@ function user_confirm() {
         ;;
     esac
 }
+
+# 大于等于2.34的提示
+if [[ "$(printf '%s\n%s\n' "$glibc_new_version" "2.34" | sort -V | head -n1)" == "2.34" ]]; then
+    echo_warning "要升级到的glibc版本太高($glibc_new_version)，使用本脚本编译很可能失败，是否继续[y/n]"
+fi
+user_confirm
+
+# 获取glibc老版本
+glibc_old_version=$(ldd --version | head -1 | awk '{print $NF}')
 
 # 检测操作系统
 if [[ ! -e /etc/centos-release ]]; then
@@ -167,38 +175,42 @@ user_confirm
 echo_warning "glibc版本将从 ${glibc_old_version} 升级到 ${glibc_new_version} ，是否继续[y/n]"
 user_confirm
 
+###########################################################################
 # 版本检测，升级glibc，对于版本的要求有点严格，不匹配的话很可能升级失败。
 gcc_version=$(gcc --version | head -1 | awk '{print $3}')
 make_version=$(make --version | head -1 | awk '{print $3}')
-
+gcc_main_version=$(echo $gcc_version | awk -F'.' '{print $1}')
+# 针对2.28版本的提示
 if [[ $glibc_new_version == "2.28" ]];then
-    gcc_main_version=$(echo $gcc_version | awk -F'.' '{print $1}')
     if [ $gcc_main_version -ge 11 ];then
         echo_warning "当前gcc版本为${gcc_version}，使用该版本的gcc升级glibc到${glibc_new_version}版本大概率会出错，是否继续[y/n]"
         user_confirm
-    elif [[ $gcc_version != "8.2.0" ]];then
+    elif [ $gcc_main_version -le 8 ];then
         echo_warning 升级glibc需要的gcc版本：4.9或更高版本
         echo_warning 推荐版本：8.2.0
         echo_warning 当前版本：$gcc_version
         echo_warning "是否继续[y/n]"
         user_confirm
     fi
-    if [[ $make_version != "4.2.1" ]];then
-        echo_warning 升级glibc需要的make版本：4.0或更高版本
-        echo_warning 推荐版本：4.2.1，若其他版本编译失败可尝试使用该版本
-        echo_warning 当前版本：$make_version
-        echo_warning "是否继续[y/n]"
-        user_confirm
-    fi
-    python_version=$(python --version 2>&1 | awk '{print $2}')
-    newest_python_version=$(printf '%s\n%s\n' "$python_version" "3.4" | sort -V | tail -n1)
-    if [[ $newest_python_version != $python_version ]];then
-        echo_warning 升级glibc需要的python版本：3.4或更高版本
-        echo_warning 当前版本：$python_version
-        echo_warning "是否继续[y/n]"
-        user_confirm
-    fi
 fi
+# make版本检测
+if [[ $make_version != "4.2.1" ]];then
+    echo_warning 升级glibc需要的make版本：4.0或更高版本
+    echo_warning 推荐版本：4.2.1，若其他版本编译失败可尝试使用该版本
+    echo_warning 当前版本：$make_version
+    echo_warning "是否继续[y/n]"
+    user_confirm
+fi
+# python版本检测
+python_version=$(python --version 2>&1 | awk '{print $2}')
+newest_python_version=$(printf '%s\n%s\n' "$python_version" "3.4" | sort -V | tail -n1)
+if [[ $newest_python_version != $python_version ]];then
+    echo_warning 升级glibc需要的python版本：3.4或更高版本
+    echo_warning 当前版本：$python_version
+    echo_warning "是否继续[y/n]"
+    user_confirm
+fi
+###########################################################################
 
 download_tar_gz ${src_dir} http://mirrors.cloud.tencent.com/gnu/glibc/glibc-${glibc_new_version}.tar.gz
 cd ${file_in_the_dir}
