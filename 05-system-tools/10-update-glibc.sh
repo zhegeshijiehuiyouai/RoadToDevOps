@@ -37,8 +37,8 @@ function user_confirm() {
 # 大于等于2.34的提示
 if [[ "$(printf '%s\n%s\n' "$glibc_new_version" "2.34" | sort -V | head -n1)" == "2.34" ]]; then
     echo_warning "要升级到的glibc版本太高($glibc_new_version)，使用本脚本编译很可能失败，是否继续[y/n]"
+    user_confirm
 fi
-user_confirm
 
 # 获取glibc老版本
 glibc_old_version=$(ldd --version | head -1 | awk '{print $NF}')
