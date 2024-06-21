@@ -39,9 +39,12 @@ function install_local_rpm() {
 function install_newest_ml_kernel() {
     echo_info 添加镜像源
     rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+    wait
     rpm -Uvh http://www.elrepo.org/elrepo-release-7.0-5.el7.elrepo.noarch.rpm
+    wait
     echo_info 安装主线最新版本的内核
     yum --enablerepo=elrepo-kernel install kernel-ml -y
+    wait
 }
 
 function install_internet_rpm() {
