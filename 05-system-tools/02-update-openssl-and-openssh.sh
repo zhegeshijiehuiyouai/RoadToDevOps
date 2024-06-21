@@ -45,6 +45,28 @@ if [[ ! -e /etc/centos-release ]]; then
     user_confirm
 fi
 
+function confirm_installation(){
+    read -p "请输入数字选择要升级的内容（如需退出请输入q）：" -e confirm_installation_input
+    case $confirm_installation_input in
+        1)
+            only_openssl_tag=1
+            ;;
+        2)
+            only_openssl_tag=2
+            ;;
+        q|Q)
+            exit 0
+            ;;
+        *)
+            confirm_installation
+            ;;
+    esac
+}
+echo -e "\033[31m请选择升级内容：\033[0m"
+echo -e "\033[36m[1]\033[32m 只升级openssl\033[0m"
+echo -e "\033[36m[2]\033[32m 同时升级openssl和openssh\033[0m"
+confirm_installation
+
 echo_info 现在的版本：
 openssl version
 ssh -V
@@ -191,6 +213,10 @@ cd ..
 ######################################################################
 # 删除下面的内容的话，就是单独升级openssl
 ######################################################################
+# 仅安装openssl
+if [ $only_openssl_tag -eq 1 ];then
+    exit 0
+fi
 
 
 [ -d /etc/ssh_old ] && rm -rf /etc/ssh_old
