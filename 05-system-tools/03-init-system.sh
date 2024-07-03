@@ -197,7 +197,7 @@ function yum_install_basic_packages() {
         elif [[ $os == 'alma' ]];then
             # 替换为阿里源
             cd /etc/yum.repos.d
-            sed -i -e 's|^mirrorlist=|#mirrorlist=|g' e 's|^# baseurl=https://repo.almalinux.org|baseurl=https://mirrors.aliyun.com|g' *.repo
+            sed -i -e 's|^mirrorlist=|#mirrorlist=|g' -e 's|^# baseurl=https://repo.almalinux.org|baseurl=https://mirrors.aliyun.com|g' *.repo
             dnf makecache
         fi
     fi
