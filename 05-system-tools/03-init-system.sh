@@ -38,6 +38,9 @@ elif [[ -e /etc/centos-release ]]; then
 elif [[ -e /etc/rocky-release ]]; then
     os="rocky"
     os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+elif [[ -e /etc/almalinux-release ]]; then
+    os="alma"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/almalinux-release)
 else
 	echo_error 不支持的操作系统
 	exit 99
@@ -176,34 +179,39 @@ _EOF_
 
 function yum_install_basic_packages() {
     echo_info 安装常用软件包
-    # if [[ $1 == 'idc' ]];then
-    #     if [[ $os == 'centos' ]];then
-    #         cd /etc/yum.repos.d
-    #         for i in `ls CentOS*`;do mv $i{,.bak};done
-    #         wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
-    #         wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
-    #         yum makecache
-    #         install_chrony
-    #     elif [[ $os == 'ubuntu' ]];then
-    #         sed -i 's|http.*ubuntu|http://mirrors.aliyun.com/ubuntu|g' /etc/apt/sources.list
-    #     elif [[ $os == 'rocky' ]];then
-    #         # 替换为阿里源
-    #         cd /etc/yum.repos.d
-    #         sed -i -e 's|^mirrorlist=|#mirrorlist=|g' -e 's|^#baseurl=http://dl.rockylinux.org/$contentdir|baseurl=https://mirrors.aliyun.com/rockylinux|g' *.repo
-    #         dnf makecache
-    #     fi
-    # fi
+    if [[ $1 == 'idc' ]];then
+        if [[ $os == 'centos' ]];then
+            cd /etc/yum.repos.d
+            for i in `ls CentOS*`;do mv $i{,.bak};done
+            wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
+            wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
+            yum makecache
+            install_chrony
+        elif [[ $os == 'ubuntu' ]];then
+            sed -i 's|http.*ubuntu|http://mirrors.aliyun.com/ubuntu|g' /etc/apt/sources.list
+        elif [[ $os == 'rocky' ]];then
+            # 替换为阿里源
+            cd /etc/yum.repos.d
+            sed -i -e 's|^mirrorlist=|#mirrorlist=|g' -e 's|^#baseurl=http://dl.rockylinux.org/$contentdir|baseurl=https://mirrors.aliyun.com/rockylinux|g' *.repo
+            dnf makecache
+        elif [[ $os == 'alma' ]];then
+            # 替换为阿里源
+            cd /etc/yum.repos.d
+            sed -i -e 's|^mirrorlist=|#mirrorlist=|g' e 's|^# baseurl=https://repo.almalinux.org|baseurl=https://mirrors.aliyun.com|g' *.repo
+            dnf makecache
+        fi
+    fi
 
     if [[ $os == 'centos' ]];then
         yum update -y
         yum install -y vim wget net-tools telnet bash-completion lsof gdisk cloud-utils-growpart
     elif [[ $os == 'ubuntu' ]];then
-        apt update -y
+        apt update -yje
         apt upgrade -y
         apt install -y net-tools
-    elif [[ $os == 'rocky' ]];then
+    elif [[ $os == 'rocky' || $os == 'alma' ]];then
         dnf update -y
-        dnf install -y vim wget net-tools telnet bash-completion lsof cloud-utils-growpart tar
+        dnf install -y vim wget net-tools telnet bash-completion lsof gdisk cloud-utils-growpart tar
     fi
 }
 
@@ -307,7 +315,7 @@ DefaultLimitCORE=infinity
 DefaultLimitNOFILE=infinity
 DefaultLimitNPROC=infinity
 _EOF_
-    elif [[ $os == 'rocky' ]];then
+    elif [[ $os == 'rocky' || $os == 'alma' ]];then
         cat >>'/etc/systemd/system.conf' <<"_EOF_"
 DefaultTimeoutStartSec=30s
 DefaultTimeoutStopSec=30s
@@ -371,7 +379,7 @@ _EOF_
 }
 
 function config_firewalld(){
-    if [[ $os == 'centos' || $os == 'rocky' ]];then
+    if [[ $os == 'centos' || $os == 'rocky' || $os == 'alma' ]];then
         echo_info 关闭SELINUX
         sed -i 's/^SELINUX=.*/SELINUX=disabled/' /etc/selinux/config
         setenforce 0
@@ -570,7 +578,7 @@ _EOF_
 
 function config_hardening(){
     echo_info 安全加固
-    if [[ $os == 'centos' || $os == 'rocky' ]];then
+    if [[ $os == 'centos' || $os == 'rocky' || $os == 'alma' ]];then
         sed -i 's/account[[:space:]]\+required[[:space:]]\+pam_unix.so.*/&  no_pass_expiry/' /etc/pam.d/system-auth
         sed -i 's/password[[:space:]]\+sufficient[[:space:]]\+pam_unix.so.*/&  remember=3  no_pass_expiry/' /etc/pam.d/system-auth
         sed -i 's/password[[:space:]]\+sufficient[[:space:]]\+pam_unix.so.*/&  remember=3  no_pass_expiry/' /etc/pam.d/password-auth
