@@ -18,6 +18,12 @@ function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
 
+# 脚本执行用户检测
+if [[ $(whoami) != 'root' ]];then
+    echo_error 请使用root用户执行
+    exit 99
+fi
+
 # 检测操作系统
 if grep -qs "ubuntu" /etc/os-release; then
 	os="ubuntu"
@@ -27,8 +33,11 @@ if grep -qs "ubuntu" /etc/os-release; then
     # 阻止应用重启弹窗
     export NEEDRESTART_SUSPEND=1
 elif [[ -e /etc/centos-release ]]; then
-	os="centos"
-	os_version=$(grep -oE '[0-9]+\.?.*\s' /etc/centos-release)
+    os="centos"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/centos-release)
+elif [[ -e /etc/rocky-release ]]; then
+    os="rocky"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
 else
 	echo_error 不支持的操作系统
 	exit 99
@@ -46,7 +55,7 @@ function end_add_slash() {
 
 # 检查是否存在inofitywait命令
 function check_is_exist_inotifywait() {
-    if [[ $os == "centos" ]];then
+    if [[ $os == "centos" || $os == 'rocky' ]];then
         rc_local=/etc/rc.d/rc.local
     elif [[ $os == "ubuntu" ]];then
         rc_local=/etc/rc.local
@@ -62,27 +71,15 @@ function check_is_exist_inotifywait() {
     fi
     # 监控时件最大数量，需调整此文件默认大小
     bf_max_queued_events=$(cat /proc/sys/fs/inotify/max_queued_events)
-    if [ $bf_max_queued_events -ge 327679 ];then
-        af_max_queued_events=$bf_max_queued_events
-    else
-        af_max_queued_events=327679
-    fi
-    echo $af_max_queued_events > /proc/sys/fs/inotify/max_queued_events
-    grep '/proc/sys/fs/inotify/max_queued_events' $rc_local &> /dev/null
-    if [ $? -ne 0 ];then
-        echo "echo $af_max_queued_events > /proc/sys/fs/inotify/max_queued_events" >> $rc_local
+    if [ $bf_max_queued_events -lt 327679 ];then
+        echo "fs.inotify.max_queued_events=327679" >> /etc/sysctl.conf
+        sysctl -p
     fi
     # 用户实例可监控的最大目录及文件数量
     bf_max_user_watches=$(cat /proc/sys/fs/inotify/max_user_watches)
-    if [ $bf_max_user_watches -ge 30000000 ];then
-        af_max_user_watches=$bf_max_user_watches
-    else
-        af_max_user_watches=30000000
-    fi
-    echo $af_max_user_watches > /proc/sys/fs/inotify/max_user_watches
-    grep '/proc/sys/fs/inotify/max_user_watches' $rc_local &> /dev/null
-    if [ $? -ne 0 ];then
-        echo "echo $af_max_user_watches > /proc/sys/fs/inotify/max_user_watches" >> $rc_local
+    if [ $bf_max_user_watches -lt 30000000 ];then
+        echo "fs.inotify.max_user_watches=30000000" >> /etc/sysctl.conf
+        sysctl -p
     fi
 
     # 检测是否有inotitywait进程存在
