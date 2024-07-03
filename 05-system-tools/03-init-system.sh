@@ -192,12 +192,12 @@ function yum_install_basic_packages() {
         elif [[ $os == 'rocky' ]];then
             # 替换为阿里源
             cd /etc/yum.repos.d
-            sed -i -e 's|^mirrorlist=|#mirrorlist=|g' -e 's|^#baseurl=http://dl.rockylinux.org/$contentdir|baseurl=https://mirrors.aliyun.com/rockylinux|g' *.repo
+            sed -i -e 's|^mirrorlist=|#mirrorlist=|g' -e 's|^#baseurl=http://dl.rockylinux.org/$contentdir|baseurl=https://mirrors.tencent.com/rockylinux|g' *.repo
             dnf makecache
         elif [[ $os == 'alma' ]];then
             # 替换为阿里源
             cd /etc/yum.repos.d
-            sed -i -e 's|^mirrorlist=|#mirrorlist=|g' -e 's|^# baseurl=https://repo.almalinux.org|baseurl=https://mirrors.aliyun.com|g' *.repo
+            sed -i -e 's|^mirrorlist=|#mirrorlist=|g' -e 's|^# baseurl=https://repo.almalinux.org|baseurl=https://mirrors.tencent.com|g' *.repo
             dnf makecache
         fi
     fi
