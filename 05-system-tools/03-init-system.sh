@@ -209,9 +209,12 @@ function yum_install_basic_packages() {
         apt update -yje
         apt upgrade -y
         apt install -y net-tools
-    elif [[ $os == 'rocky' || $os == 'alma' ]];then
+    elif [[ $os == 'rocky' ]];then
         dnf update -y
-        dnf install -y vim wget net-tools telnet bash-completion lsof gdisk cloud-utils-growpart tar
+        dnf install -y vim wget net-tools telnet bash-completion lsof cloud-utils-growpart tar
+    elif [[ $os == 'alma' ]];then
+        dnf update -y
+        dnf install -y vim wget net-tools telnet bash-completion lsof gdisk cloud-utils-growpart tar libxcrypt-compat
     fi
 }
 

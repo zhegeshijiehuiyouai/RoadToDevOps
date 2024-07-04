@@ -31,6 +31,9 @@ elif [[ -e /etc/centos-release ]]; then
 elif [[ -e /etc/rocky-release ]]; then
     os="rocky"
     os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+elif [[ -e /etc/almalinux-release ]]; then
+    os="alma"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/almalinux-release)
 else
 	echo_error 不支持的操作系统
 	exit 99
@@ -51,7 +54,7 @@ function start_nfs() {
             yum install -y nfs-utils
         elif [[ $os == "ubuntu" ]];then
             apt install -y nfs-common nfs-kernel-server
-        elif [[ $os == "rocky" ]];then
+        elif [[ $os == "rocky" || $os == 'alma' ]];then
             dnf install -y nfs-utils
         fi
     fi
@@ -61,7 +64,7 @@ function start_nfs() {
         systemctl start nfs
     elif [[ $os == "ubuntu" ]];then
         systemctl start nfs-kernel-server
-    elif [[ $os == "rocky" ]];then
+    elif [[ $os == "rocky" || $os == 'alma' ]];then
         systemctl start rpcbind
         systemctl start nfs-server
     fi
@@ -192,7 +195,7 @@ function echo_summary() {
         echo -e "\033[45msystemctl stop nfs\033[0m"
     elif [[ $os == "ubuntu" ]];then
         echo -e "\033[45msystemctl stop nfs-kernel-server\033[0m"
-    elif [[ $os == "rocky" ]];then
+    elif [[ $os == "rocky" || $os == 'alma' ]];then
         echo -e "\033[45msystemctl stop nfs-server\033[0m"
     fi
     echo -e "\033[45msystemctl stop rpcbind\033[0m"

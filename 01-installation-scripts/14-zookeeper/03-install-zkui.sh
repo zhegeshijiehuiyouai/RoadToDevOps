@@ -31,6 +31,9 @@ elif [[ -e /etc/centos-release ]]; then
 elif [[ -e /etc/rocky-release ]]; then
     os="rocky"
     os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+elif [[ -e /etc/almalinux-release ]]; then
+    os="alma"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/almalinux-release)
 else
 	echo_error 不支持的操作系统
 	exit 99
@@ -68,7 +71,7 @@ if [ $? -ne 0 ];then
         yum install -y git
     elif [[ $os == 'ubuntu' ]];then
         apt install -y git
-    elif [[ $os == 'rocky' ]];then
+    elif [[ $os == 'rocky' || $os == 'alma' ]];then
         dnf install -y git
     fi
 fi

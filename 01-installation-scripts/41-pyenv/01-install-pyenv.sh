@@ -49,6 +49,9 @@ elif [[ -e /etc/centos-release ]]; then
 elif [[ -e /etc/rocky-release ]]; then
     os="rocky"
     os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+elif [[ -e /etc/almalinux-release ]]; then
+    os="alma"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/almalinux-release)
 else
 	echo_error 不支持的操作系统
 	exit 99
@@ -100,12 +103,12 @@ elif [[ $os == 'ubuntu' ]];then
     apt update
     apt install -y python3-pip gcc g++ zlib1g-dev libbz2-dev libssl-dev libsqlite3-dev libreadline-dev libffi-dev liblzma-dev
     pip install --upgrade pip
-elif [[ $os == 'rocky' ]];then
+elif [[ $os == 'rocky' || $os == 'alma' ]];then
     pip --version &> /dev/null
     if [ $? -eq 0 ];then
-        yum install -y gcc gcc-c++ zlib-devel bzip2-devel openssl-devel sqlite-devel readline-devel patch libffi-devel xz-devel
+        dnf install -y gcc gcc-c++ zlib-devel bzip2-devel openssl-devel sqlite-devel readline-devel patch libffi-devel xz-devel
     else
-        yum install -y python3-pip gcc gcc-c++ zlib-devel bzip2-devel openssl-devel sqlite-devel readline-devel patch libffi-devel xz-devel
+        dnf install -y python3-pip gcc gcc-c++ zlib-devel bzip2-devel openssl-devel sqlite-devel readline-devel patch libffi-devel xz-devel
     fi
     pip install --upgrade pip
 fi

@@ -38,6 +38,9 @@ elif [[ -e /etc/centos-release ]]; then
 elif [[ -e /etc/rocky-release ]]; then
     os="rocky"
     os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+elif [[ -e /etc/almalinux-release ]]; then
+    os="alma"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/almalinux-release)
 else
 	echo_error 不支持的操作系统
 	exit 99
@@ -83,7 +86,7 @@ function download_tar_gz(){
                     yum install -y wget
                 elif [[ $os == "ubuntu" ]];then
                     apt install -y wget
-                elif [[ $os == 'rocky' ]];then
+                elif [[ $os == 'rocky' || $os == 'alma' ]];then
                     dnf install -y wget
                 fi
             fi
@@ -109,7 +112,7 @@ function download_tar_gz(){
                         yum install -y wget
                     elif [[ $os == "ubuntu" ]];then
                         apt install -y wget
-                    elif [[ $os == 'rocky' ]];then
+                    elif [[ $os == 'rocky' || $os == 'alma' ]];then
                         dnf install -y wget
                     fi
                 fi
@@ -210,7 +213,7 @@ function jdk_install_ubuntu() {
 
 ######################################
 pre_install_check
-if [[ $os == 'centos' || $os == 'rocky' ]];then
+if [[ $os == 'centos' || $os == 'rocky' || $os == 'alma' ]];then
     jdk_install_centos
 elif [[ $os == 'ubuntu' ]];then
     jdk_install_ubuntu

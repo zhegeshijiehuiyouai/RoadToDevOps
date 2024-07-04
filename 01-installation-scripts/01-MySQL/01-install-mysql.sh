@@ -1,14 +1,8 @@
 #!/bin/bash
 
-# 脚本功能：自动部署mysql5.7
-# 测试系统：CentOS7.9 、ubuntu 22.04
-# mysql安装文件：二进制包
-#
 # mysql下载地址：https://cdn.mysql.com/Downloads/MySQL-5.7/mysql-5.7.33-linux-glibc2.12-x86_64.tar.gz
 # 或者官网下载
-#
 # 将本脚本和二进制包放在同一目录下，脚本会在本目录下创建mysql作为mysql安装目录
-#
 # 本脚本默认会下载二进制包，如果自己上传，可以注释掉
 
 
@@ -57,13 +51,16 @@ elif [[ -e /etc/centos-release ]]; then
 elif [[ -e /etc/rocky-release ]]; then
     os="rocky"
     os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+elif [[ -e /etc/almalinux-release ]]; then
+    os="alma"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/almalinux-release)
 else
 	echo_error 不支持的操作系统
 	exit 99
 fi
 
 
-if [[ $os == 'centos' || $os == 'rocky' ]];then
+if [[ $os == 'centos' || $os == 'rocky' || $os == 'alma' ]];then
     unit_file_name=mysqld.service
 elif [[ $os == 'ubuntu' ]];then
     unit_file_name=mysql.service
@@ -120,7 +117,7 @@ function download_tar_gz(){
                     yum install -y wget
                 elif [[ $os == "ubuntu" ]];then
                     apt install -y wget
-                elif [[ $os == "rocky" ]];then
+                elif [[ $os == "rocky" || $os == "alma" ]];then
                     dnf install -y wget
                 fi
             fi
@@ -146,7 +143,7 @@ function download_tar_gz(){
                         yum install -y wget
                     elif [[ $os == "ubuntu" ]];then
                         apt install -y wget
-                    elif [[ $os == "rocky" ]];then
+                    elif [[ $os == "rocky" || $os == "alma" ]];then
                         dnf install -y wget
                     fi
                 fi
@@ -201,7 +198,7 @@ function init_account(){
     source /etc/profile
 
     echo_info 设置密码
-    if [[ $os == 'centos' || $os == 'rocky' ]];then
+    if [[ $os == 'centos' || $os == 'rocky' || $os == "alma" ]];then
         if [[ $user_input_mysql_version -eq 1 ]];then
             # 5.7版本
             mysql -uroot -p"${login_pass}" --connect-expired-password -e "SET PASSWORD = PASSWORD('${my_root_passwd}');flush privileges;" &> /dev/null
@@ -274,7 +271,7 @@ function variable_preparation(){
         # 5.7版本
         if [[ $user_input_install_type -eq 1 ]];then
             # 预制包安装
-            if [[ $os == 'centos' || $os == 'rocky' ]];then
+            if [[ $os == 'centos' || $os == 'rocky' || $os == "alma" ]];then
                 mysql_tgz=mysql-${mysql_version}-1.el7.x86_64.rpm-bundle.tar
                 mysql_untgz=
                 download_url=https://mirrors.aliyun.com/mysql/MySQL-5.7/${mysql_tgz}
@@ -309,7 +306,7 @@ function variable_preparation(){
                     mysql_untgz=mysql-${mysql_version}-linux-glibc2.12-x86_64
                     download_url=https://mirrors.aliyun.com/mysql/MySQL-5.7/${mysql_tgz}
                 fi
-            elif [[ $os == 'rocky' ]];then
+            elif [[ $os == 'rocky' || $os == "alma" ]];then
                 # 二进制安装
                 # mysql二进制包名字
                 mysql_tgz=mysql-${mysql_version}-linux-glibc2.12-x86_64.tar.xz
@@ -327,7 +324,7 @@ function variable_preparation(){
 
 function before_install(){
     variable_preparation
-    if [[ $os == 'centos' || $os == 'rocky' ]];then
+    if [[ $os == 'centos' || $os == 'rocky' || $os == "alma" ]];then
         # 卸载mariadb
         mariadb_pkgs=$(rpm -qa | grep -i mariadb)
         mariadb_pkgs_num=$(echo $mariadb_pkgs | wc -l)
@@ -340,8 +337,15 @@ function before_install(){
         fi
 
         echo_info 安装依赖
-        yum install -y perl-Data-Dumper perl-JSON libaio libaio-devel
-        if [[ $os == 'rocky' ]];then
+        if [[ $os == 'centos' ]];then
+            yum install -y perl-Data-Dumper perl-JSON libaio libaio-devel
+        elif [[ $os == 'rocky' ]];then
+            dnf install -y perl-Data-Dumper perl-JSON libaio libaio-devel tar
+        elif [[ $os == 'alma' ]];then
+            dnf install -y perl-Data-Dumper perl-JSON libaio libaio-devel tar libxcrypt-compat
+        fi
+
+        if [[ $os == 'rocky' || $os == "alma" ]];then
             # rocky linux中没有低版本的库
             [ -f /usr/lib64/libncurses.so.5 ] || ln -s /usr/lib64/libncurses.so.6 /usr/lib64/libncurses.so.5
             [ -f /usr/lib64/libtinfo.so.5 ] || ln -s /usr/lib64/libtinfo.so.6 /usr/lib64/libtinfo.so.5
@@ -367,7 +371,7 @@ function gen_my_cnf() {
     mkdir -p ${DIR}/${mysql_dir_name}/{data,log}
     chown -R mysql:mysql ${DIR}/${mysql_dir_name}
 
-    if [[ $os == 'centos' || $os == 'rocky' ]];then
+    if [[ $os == 'centos' || $os == 'rocky' || $os == "alma" ]];then
         my_cnf_file=/etc/my.cnf
     elif [[ $os == 'ubuntu' ]];then
         # deb安装
@@ -506,7 +510,7 @@ function install_by_tgz(){
     cd ${DIR}/${mysql_dir_name}
     mkdir -p log
     touch log/mysqld.log
-    if [[ $os == 'centos' || $os == 'rocky' ]];then
+    if [[ $os == 'centos' || $os == 'rocky' || $os == "alma" ]];then
         bin/mysqld --initialize --basedir=${DIR}/${mysql_dir_name} --datadir=${DIR}/${mysql_dir_name}/data  --pid-file=${DIR}/${mysql_dir_name}/data/mysql.pid &> /dev/null
     elif [[ $os == 'ubuntu' ]];then
         # ubuntu不会有初始密码，所以直接不设置密码
@@ -621,7 +625,7 @@ function install_by_deb() {
 
 function install_main_func(){
     read -p "请输入数字选择安装类型（如需退出请输入q）：" -e user_input_install_type
-    if [[ $os == 'centos' || $os == 'rocky' ]];then
+    if [[ $os == 'centos' || $os == 'rocky' || $os == "alma" ]];then
         case $user_input_install_type in
             1)
                 echo_info 即将使用 rpm包 安装mysql
@@ -688,7 +692,7 @@ echo -e "\033[36m[2]\033[32m 8.0\033[0m"
 choose_mysql_version
 
 echo -e "\033[31m本脚本支持两种部署方式：\033[0m"
-if [[ $os == 'centos' || $os == 'rocky' ]];then
+if [[ $os == 'centos' || $os == 'rocky' || $os == "alma" ]];then
     echo -e "\033[36m[1]\033[32m rpm包部署mysql\033[0m"
 elif [[ $os == 'ubuntu' ]];then
     echo -e "\033[36m[1]\033[32m deb包部署mysql\033[0m"

@@ -31,6 +31,9 @@ elif [[ -e /etc/centos-release ]]; then
 elif [[ -e /etc/rocky-release ]]; then
     os="rocky"
     os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+elif [[ -e /etc/almalinux-release ]]; then
+    os="alma"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/almalinux-release)
 else
 	echo_error 不支持的操作系统
 	exit 99
@@ -57,7 +60,7 @@ EOF
 }
 
 function install_docker() {
-    if [[ $os == 'centos' || $os == 'rocky' ]];then
+    if [[ $os == 'centos' || $os == 'rocky' || $os == 'alma' ]];then
         echo_info 清理之前安装的docker（如果有）
         yum remove docker \
             docker-client \
@@ -94,7 +97,7 @@ function install_docker() {
                 echo_error 当前版本不支持
                 exit 1
             fi
-        elif [[ $os == 'rocky' ]];then
+        elif [[ $os == 'rocky' || $os == 'alma' ]];then
             dnf install -y docker-ce
         fi
 

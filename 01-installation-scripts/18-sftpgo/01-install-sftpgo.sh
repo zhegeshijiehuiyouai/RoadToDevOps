@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sftpgo_version=2.6.0
+sftpgo_version=2.6.2
 src_dir=$(pwd)/00src00      # 安装包下载地址
 sftp_home=$(pwd)/sftpgo
 data_dir=${sftp_home}/data  # 数据目录
@@ -42,6 +42,9 @@ elif [[ -e /etc/centos-release ]]; then
 elif [[ -e /etc/rocky-release ]]; then
     os="rocky"
     os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+elif [[ -e /etc/almalinux-release ]]; then
+    os="alma"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/almalinux-release)
 else
 	echo_error 不支持的操作系统
 	exit 99
@@ -97,7 +100,7 @@ function download_tar_gz(){
                     yum install -y wget
                 elif [[ $os == "ubuntu" ]];then
                     apt install -y wget
-                elif [[ $os == "rocky" ]];then
+                elif [[ $os == "rocky" || $os == 'alma' ]];then
                     dnf install -y wget
                 fi
             fi
@@ -123,7 +126,7 @@ function download_tar_gz(){
                         yum install -y wget
                     elif [[ $os == "ubuntu" ]];then
                         apt install -y wget
-                    elif [[ $os == "rocky" ]];then
+                    elif [[ $os == "rocky" || $os == 'alma' ]];then
                         dnf install -y wget
                     fi
                 fi
@@ -181,7 +184,7 @@ if [[ $os == "centos" ]];then
     yum install -y jq net-tools
 elif [[ $os == "ubuntu" ]];then
     apt install -y jq net-tools
-elif [[ $os == 'rocky' ]];then
+elif [[ $os == 'rocky' || $os == 'alma' ]];then
     dnf install -y jq net-tools
 fi
 
@@ -197,14 +200,14 @@ if [ $? -eq 0 ];then
     exit 21
 fi
 
-if [[ $os == "centos" || $os == 'rocky' ]];then
+if [[ $os == "centos" || $os == 'rocky' || $os == 'alma' ]];then
     # 使用github加速节点下载
     download_tar_gz $src_dir https://gh.con.sh/https://github.com/drakkan/sftpgo/releases/download/v${sftpgo_version}/sftpgo-${sftpgo_version}-1.x86_64.rpm
     cd $file_in_the_dir
     echo_info 安装sftpgo
     if [[ $os == 'centos' ]];then
         yum localinstall -y sftpgo-${sftpgo_version}-1.x86_64.rpm
-    elif [[ $os == 'rocky' ]];then
+    elif [[ $os == 'rocky' || $os == 'alma' ]];then
         dnf localinstall -y sftpgo-${sftpgo_version}-1.x86_64.rpm
     fi
 elif [[ $os=="ubuntu" ]];then 

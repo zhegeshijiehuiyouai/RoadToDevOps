@@ -35,6 +35,9 @@ elif [[ -e /etc/centos-release ]]; then
 elif [[ -e /etc/rocky-release ]]; then
     os="rocky"
     os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+elif [[ -e /etc/almalinux-release ]]; then
+    os="alma"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/almalinux-release)
 else
 	echo_error 不支持的操作系统
 	exit 99
@@ -48,7 +51,7 @@ function check_rsync_server() {
             yum install -y rsync
         elif [[ $os == "ubuntu" ]];then
             apt install -y rsync
-        elif [[ $os == "rocky" ]];then
+        elif [[ $os == "rocky" || $os == 'alma' ]];then
             dnf install -y rsync
         fi
     fi
@@ -248,7 +251,7 @@ function main() {
             echo_error rsyncd 启动失败，请检查！
             exit 5
         fi
-    elif [[ $os == "rocky" ]];then
+    elif [[ $os == "rocky" || $os == 'alma' ]];then
         # rocky linux中没有rsyncd服务了，要自己创建
         cat > /etc/sysconfig/rsyncd << _EOF_
 OPTIONS=""

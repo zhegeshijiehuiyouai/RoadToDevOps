@@ -33,6 +33,9 @@ elif [[ -e /etc/centos-release ]]; then
 elif [[ -e /etc/rocky-release ]]; then
     os="rocky"
     os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+elif [[ -e /etc/almalinux-release ]]; then
+    os="alma"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/almalinux-release)
 else
 	echo_error 不支持的操作系统
 	exit 99
@@ -106,7 +109,7 @@ function download_tar_gz(){
                     yum install -y wget
                 elif [[ $os == "ubuntu" ]];then
                     apt install -y wget
-                elif [[ $os == "rocky" ]];then
+                elif [[ $os == "rocky" || $os == 'alma' ]];then
                     dnf install -y wget
                 fi
             fi
@@ -132,7 +135,7 @@ function download_tar_gz(){
                         yum install -y wget
                     elif [[ $os == "ubuntu" ]];then
                         apt install -y wget
-                    elif [[ $os == "rocky" ]];then
+                    elif [[ $os == "rocky" || $os == 'alma' ]];then
                         dnf install -y wget
                     fi
                 fi
@@ -193,7 +196,7 @@ function multi_core_compile(){
             yum install -y make
         elif [[ $os == "ubuntu" ]];then
             apt install -y make
-        elif [[ $os == "rocky" ]];then
+        elif [[ $os == "rocky" || $os == 'alma' ]];then
             dnf install -y make
         fi
     fi
@@ -279,7 +282,7 @@ function install_nginx(){
         yum install -y gcc zlib zlib-devel openssl openssl-devel pcre pcre-devel
     elif [[ $os == "ubuntu" ]];then
         apt install -y gcc zlib1g zlib1g-dev openssl libssl-dev libpcre3 libpcre3-dev
-    elif [[ $os == "rocky" ]];then
+    elif [[ $os == "rocky" || $os == 'alma' ]];then
         dnf install -y gcc zlib zlib-devel openssl openssl-devel pcre pcre-devel
     fi
 
@@ -603,7 +606,7 @@ function install_tengine(){
         yum install -y gcc zlib zlib-devel openssl openssl-devel pcre pcre-devel
     elif [[ $os == "ubuntu" ]];then
         apt install -y gcc zlib1g zlib1g-dev openssl libssl-dev libpcre3 libpcre3-dev
-    elif [[ $os == "rocky" ]];then
+    elif [[ $os == "rocky" || $os == 'alma' ]];then
         dnf install -y gcc zlib zlib-devel openssl openssl-devel pcre pcre-devel
     fi
 
