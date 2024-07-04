@@ -132,29 +132,29 @@ w
 Y
 _EOF_
 
-   if [ $? -ne 0 ];then
-       echo_error /dev/$disk格式化失败，退出
-       exit 1
-   fi
-   PART_NAME=$(blkid |grep $disk|grep UUID|awk -F ":" '{print $1}')
+    if [ $? -ne 0 ];then
+        echo_error /dev/$disk格式化失败，退出
+        exit 1
+    fi
+    PART_NAME=$(blkid |grep $disk|grep UUID|awk -F ":" '{print $1}')
 
-   echo_info 创建ext4文件系统
-   mkfs.ext4 $PART_NAME
-   PART_UUID=$(blkid |grep $disk|grep UUID|awk -F '\"' '{print $2}')
+    echo_info 创建ext4文件系统
+    mkfs.ext4 $PART_NAME
+    FS_UUID=$(blkid |grep $PART_NAME|grep UUID|awk -F '\"' '{print $2}')
 
-   if [ $? -eq 0 ]
-   then 
-   	mkdir -p $partition
-   	echo_info 更新/etc/fstab
-   	echo "UUID=$PART_UUID  $partition  ext4     defaults,nofail        0 0" >> /etc/fstab
-    # 更新读取/etc/fstab的systemd文件配置
-    systemctl daemon-reload
-   	mount -a
-   	df -h
-   else
-   	echo_error 文件系统创建失败！
-   	exit 1
-   fi
+    if [ $? -eq 0 ]
+    then 
+        mkdir -p $partition
+        echo_info 更新/etc/fstab
+        echo "UUID=$FS_UUID  $partition  ext4     defaults,nofail        0 0" >> /etc/fstab
+        # 更新读取/etc/fstab的systemd文件配置
+        systemctl daemon-reload
+        mount -a
+        df -h
+    else
+        echo_error 文件系统创建失败！
+        exit 1
+    fi
 }
 
 function install_chrony() {
@@ -379,14 +379,16 @@ _EOF_
 }
 
 function config_firewalld(){
-    if [[ $os == 'centos' || $os == 'rocky' || $os == 'alma' ]];then
-        echo_info 关闭SELINUX
-        sed -i 's/^SELINUX=.*/SELINUX=disabled/' /etc/selinux/config
-        setenforce 0
+    if [[ $os == 'centos' ]];then
         echo_info 关闭不必要的服务
         systemctl disable --now postfix
         systemctl disable --now rpcbind 
         systemctl disable --now rpcbind.socket
+    fi
+    if [[ $os == 'centos' || $os == 'rocky' || $os == 'alma' ]];then
+        echo_info 关闭SELINUX
+        sed -i 's/^SELINUX=.*/SELINUX=disabled/' /etc/selinux/config
+        setenforce 0
         echo_info 关闭防火墙
         systemctl stop firewalld &> /dev/null
         systemctl disable firewalld &> /dev/null
