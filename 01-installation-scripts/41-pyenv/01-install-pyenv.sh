@@ -15,7 +15,7 @@ function echo_error() {
 src_dir=$(pwd)/00src00
 pyenv_root=$(pwd)/pyenv
 # github镜像地址
-GITHUB="https://gh.con.sh/https://github.com/"
+GITHUB="https://gh.con.sh/https://github.com"
 
 echo_info 前置条件检测
 
@@ -115,12 +115,12 @@ fi
 
 
 echo_info 克隆pyenv项目
-checkout "${GITHUB}pyenv/pyenv.git"            "${pyenv_root}"                           "master"
-checkout "${GITHUB}pyenv/pyenv-doctor.git"     "${pyenv_root}/plugins/pyenv-doctor"      "master"
-checkout "${GITHUB}pyenv/pyenv-update.git"     "${pyenv_root}/plugins/pyenv-update"      "master"
-checkout "${GITHUB}pyenv/pyenv-virtualenv.git" "${pyenv_root}/plugins/pyenv-virtualenv"  "master"
+checkout "${GITHUB}/pyenv/pyenv.git"            "${pyenv_root}"                           "master"
+checkout "${GITHUB}/pyenv/pyenv-doctor.git"     "${pyenv_root}/plugins/pyenv-doctor"      "master"
+checkout "${GITHUB}/pyenv/pyenv-update.git"     "${pyenv_root}/plugins/pyenv-update"      "master"
+checkout "${GITHUB}/pyenv/pyenv-virtualenv.git" "${pyenv_root}/plugins/pyenv-virtualenv"  "master"
 mkdir -p ${pyenv_root}/{cache,shims,versions}
-chmod o+w ${pyenv_root}/{shims,versions}
+#chmod o+w ${pyenv_root}/{shims,versions}
 
 echo_info 生成更新脚本
 cat > ${pyenv_root}/update.sh << _EOF_
@@ -141,7 +141,6 @@ export PATH="\$PYENV_ROOT/bin:\$PYENV_ROOT/shims:\$PATH"
 eval "\$(pyenv init -)"
 eval "\$(pyenv virtualenv-init -)"
 _EOF_
-cd
 
 echo
 echo_info $(${pyenv_root}/bin/pyenv --version) 已安装完毕，请重新加载终端以激活pyenv命令。

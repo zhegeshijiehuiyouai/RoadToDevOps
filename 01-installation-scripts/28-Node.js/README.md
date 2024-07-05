@@ -1,5 +1,6 @@
-## 20240704更新：  
-nodejs部署脚本停更，建议用`nvm`安装、管理多版本`nodejs`，nvm github地址 [https://github.com/nvm-sh/nvm](https://github.com/nvm-sh/nvm)
+## 20240705更新：  
+`01-install-Node.js.sh`脚本停更，**推荐**用`02-install-nvm.sh`  
+`nvm`安装、管理多版本`nodejs`，nvm github地址 [https://github.com/nvm-sh/nvm](https://github.com/nvm-sh/nvm)
 
 ---
 ## 单版本部署：  
