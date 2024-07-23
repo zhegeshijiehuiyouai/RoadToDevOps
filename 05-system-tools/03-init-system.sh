@@ -235,6 +235,8 @@ export PROMPT_COMMAND='{ date +" $(history 1 | { read x cmd; echo "$cmd"; })"; }
 _EOF_
 
     source /etc/profile.d/devops.sh
+    # l.命令排除.和..
+    sed -i 's/ls -d \.\*/ls -d \.[^.]\*/g' /etc/profile.d/*
 }
 
 function adjust_vm_swappiness() {
