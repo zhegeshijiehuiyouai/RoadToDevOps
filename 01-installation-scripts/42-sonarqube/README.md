@@ -1,4 +1,4 @@
-## docker-compose 启动及 sonarqube 配置说明
+## 一、docker-compose 启动及 sonarqube 配置说明
 ### 1. docker-compose.yaml 语法
 docker-compose.yaml 里没有 `version` 字段，是因为我是使用 `docker compose` 命令启动的，不需要该字段 
 ### 2. 内核参数
@@ -52,3 +52,37 @@ vim docker-compose.yaml
 # 启动
 docker compose up -d
 ```
+## 二、使用容器 sonar-scanner 分析本地项目
+### 0. 前置说明
+代码仓库使用gitlab，需要事先将gitlab令牌配置到sonarqube
+### 1. 克隆项目到本地
+```bash
+git clone https://your-gitlab.com/group/demo.git
+```
+### 2. 生成令牌及分析命令
+创建项目，创建令牌，选择构建技术和操作系统后，会生成分析命令，如：
+```bash
+sonar-scanner \
+  -Dsonar.projectKey=devops_cmdb2_AZDuRhN-4PcPHzf-y35q \
+  -Dsonar.sources=. \
+  -Dsonar.host.url=http://172.16.20.66:9000 \
+  -Dsonar.login=sqp_b4d36186f5013d50e8508f8f342aa3fc8c179b01
+```
+### 3. 使用容器化的 sonar-scanner 进行分析
+在上面生成命令的步骤下面，会有 sonar-scanner 的使用文档，点击可跳转。9.9 长期支持版本的 sonar 对应的 sonar-scanner 文档地址 [https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/scanners/sonarscanner/](https://docs.sonarsource.com/sonarqube/9.9/analyzing-source-code/scanners/sonarscanner/) ，根据提示选择正确的 sonar-scanner 版本。  
+扫描命令：
+```bash
+docker run \
+--rm \
+-v "/data/demo:/usr/src" \
+sonarsource/sonar-scanner-cli:4.8.1 \
+sonar-scanner \
+  -Dsonar.projectKey=devops_cmdb2_AZDuRhN-4PcPHzf-y35q \
+  -Dsonar.sources=. \
+  -Dsonar.host.url=http://172.16.20.66:9000 \
+  -Dsonar.login=sqp_b4d36186f5013d50e8508f8f342aa3fc8c179b01
+# -v 选项中的/data/demo是本地项目的目录
+# sonarsource/sonar-scanner-cli:4.8.1是镜像:tag
+# sonar-scanner开头的这部分就是2步骤生成的命令
+```
+执行完成后，sonar 上可以看到报告。
