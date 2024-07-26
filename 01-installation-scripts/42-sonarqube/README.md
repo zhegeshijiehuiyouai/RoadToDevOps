@@ -63,7 +63,7 @@ git clone https://your-gitlab.com/group/demo.git
 创建项目，创建令牌，选择构建技术和操作系统后，会生成分析命令，如：
 ```bash
 sonar-scanner \
-  -Dsonar.projectKey=devops_cmdb2_AZDuRhN-4PcPHzf-y35q \
+  -Dsonar.projectKey=group_demo_AZDuRhN-4PcPHzf-y35q \
   -Dsonar.sources=. \
   -Dsonar.host.url=http://172.16.20.66:9000 \
   -Dsonar.login=sqp_b4d36186f5013d50e8508f8f342aa3fc8c179b01
@@ -77,7 +77,7 @@ docker run \
 -v "/data/demo:/usr/src" \
 sonarsource/sonar-scanner-cli:4.8.1 \
 sonar-scanner \
-  -Dsonar.projectKey=devops_cmdb2_AZDuRhN-4PcPHzf-y35q \
+  -Dsonar.projectKey=group_demo_AZDuRhN-4PcPHzf-y35q \
   -Dsonar.sources=. \
   -Dsonar.host.url=http://172.16.20.66:9000 \
   -Dsonar.login=sqp_b4d36186f5013d50e8508f8f342aa3fc8c179b01
