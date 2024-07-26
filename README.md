@@ -61,7 +61,8 @@ rpm -Uvh ./*rpm
 │   ├── 38-sqlite3
 │   ├── 39-git
 │   ├── 40-ffmpeg
-│   └── 41-pyenv
+│   ├── 41-pyenv
+│   └── 42-sonarqube
 ├── 02-elasticsearch-tools
 │   ├── 01-clean-single-es-index-by-date.sh
 │   └── 02-clean-date-format-es-index-by-date.sh
