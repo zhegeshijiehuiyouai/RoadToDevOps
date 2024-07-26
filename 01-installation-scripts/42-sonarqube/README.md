@@ -53,8 +53,6 @@ vim docker-compose.yaml
 docker compose up -d
 ```
 ## 二、使用容器 sonar-scanner 分析本地项目
-### 0. 前置说明
-代码仓库使用gitlab，需要事先将gitlab令牌配置到sonarqube
 ### 1. 克隆项目到本地
 ```bash
 git clone https://your-gitlab.com/group/demo.git
