@@ -44,6 +44,7 @@ docker compose restart sonarqube
 mkdir -p sonarqube_conf
 docker cp sonarqube:/opt/sonarqube/conf/sonar.properties ./sonarqube_conf/sonar.properties
 chown -R 1000:1000 sonarqube_conf
+chmod u+w sonarqube_conf/sonar.properties
 # 关闭容器，修改docker-compose.yaml
 docker compose down
 vim docker-compose.yaml
