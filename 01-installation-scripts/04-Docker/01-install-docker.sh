@@ -46,7 +46,7 @@ function adjust_docker_configuration() {
     cd /etc/docker
     cat > daemon.json << EOF
 {
-    "registry-mirrors": ["https://docker.1panel.live/"],
+    "registry-mirrors": ["https://dockerpull.com/"],
     "insecure-registries":["172.21.100.16:9998"],
     "data-root": "/data/docker",
     "log-opts": {"max-size":"10m", "max-file":"1"}
