@@ -15,7 +15,7 @@ function echo_error() {
 src_dir=$(pwd)/00src00
 pyenv_root=$(pwd)/pyenv
 # github镜像地址
-GITHUB="https://gh.con.sh/https://github.com"
+GITHUB="https://cors.isteed.cc/https://github.com"
 
 echo_info 前置条件检测
 
