@@ -73,6 +73,10 @@ checkout "${GITHUB}/go-nv/goenv.git"            "${goenv_root}"                 
 #mkdir -p ${goenv_root}/{cache,shims,versions}
 #chmod o+w ${goenv_root}/{shims,versions}
 
+echo_info 配置GOPROXY
+echo "export GO111MODULE=on" > /etc/profile.d/go.sh
+echo "export GOPROXY=https://goproxy.cn" >> /etc/profile.d/go.sh
+
 
 echo_info 添加环境变量到~/.bashrc
 cat >> ~/.bashrc << _EOF_
