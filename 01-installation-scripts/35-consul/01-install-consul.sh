@@ -291,7 +291,7 @@ function choose_mode() {
 }
 
 function generate_unit_file() {
-    cat >/usr/lib/systemd/system/${unit_file_name} <<EOF
+    cat >/etc/systemd/system/${unit_file_name} <<EOF
 [Unit]
 Description="HashiCorp Consul - A service mesh solution"
 Documentation=https://www.consul.io

@@ -200,7 +200,7 @@ function install_postgresql_by_yum() {
 }
 
 function generate_unit_file() {
-cat > /usr/lib/systemd/system/${unit_file_name} << EOF
+cat > /etc/systemd/system/${unit_file_name} << EOF
 [Unit]
 Description=PostgreSQL ${postgresql_version_yum} database server
 After=network.target

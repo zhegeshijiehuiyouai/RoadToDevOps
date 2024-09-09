@@ -4,14 +4,13 @@
 src_dir=$(pwd)/00src00
 rocketmq_home=$(pwd)/rocketmq
 # rockermq版本
-rocketmq_version=4.9.1
+rocketmq_version_4x=4.9.8
+rocketmq_version_5x=5.3.0
 # 以什么用户启动rockermq
 sys_user=rocketmq
 # 端口配置
 nameserver_port=9876
 broker_port=10911
-# 使用域名访问服务
-nameserver_dns_name=rocketmq-nameserver-1
 # broker运行内存配置
 broker_java_xms=512m
 broker_java_xmx=512m
@@ -30,6 +29,27 @@ function echo_warning() {
 function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
+
+# 脚本执行用户检测
+if [[ $(whoami) != 'root' ]];then
+    echo_error 请使用root用户执行
+    exit 99
+fi
+
+# 检测操作系统
+if [[ -e /etc/centos-release ]]; then
+    os="centos"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/centos-release)
+elif [[ -e /etc/rocky-release ]]; then
+    os="rocky"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+elif [[ -e /etc/almalinux-release ]]; then
+    os="alma"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/almalinux-release)
+else
+	echo_error 不支持的操作系统
+	exit 99
+fi
 
 # 解压
 function untar_tgz(){
@@ -61,7 +81,7 @@ function download_tar_gz(){
         echo_error 服务端文件不存在，退出
         exit 98
     fi
-    
+
     download_file_name=$(echo $2 |  awk -F"/" '{print $NF}')
     back_dir=$(pwd)
     file_in_the_dir=''  # 这个目录是后面编译目录的父目录
@@ -77,12 +97,18 @@ function download_tar_gz(){
             # 检测是否有wget工具
             if [ ! -f /usr/bin/wget ];then
                 echo_info 安装wget工具
-                yum install -y wget
+                if [[ $os == "centos" ]];then
+                    yum install -y wget
+                elif [[ $os == "ubuntu" ]];then
+                    apt install -y wget
+                elif [[ $os == "rocky" || $os == "alma" ]];then
+                    dnf install -y wget
+                fi
             fi
             wget $2
             if [ $? -ne 0 ];then
                 echo_error 下载 $2 失败！
-                exit 1
+                exit 80
             fi
             file_in_the_dir=$(pwd)
             # 返回脚本所在目录，这样这个函数才可以多次使用
@@ -97,12 +123,18 @@ function download_tar_gz(){
                 # 检测是否有wget工具
                 if [ ! -f /usr/bin/wget ];then
                     echo_info 安装wget工具
-                    yum install -y wget
+                    if [[ $os == "centos" ]];then
+                        yum install -y wget
+                    elif [[ $os == "ubuntu" ]];then
+                        apt install -y wget
+                    elif [[ $os == "rocky" || $os == "alma" ]];then
+                        dnf install -y wget
+                    fi
                 fi
                 wget $2
                 if [ $? -ne 0 ];then
                     echo_error 下载 $2 失败！
-                    exit 1
+                    exit 80
                 fi
                 file_in_the_dir=$(pwd)
                 cd ${back_dir}
@@ -171,7 +203,7 @@ function get_machine_ip() {
 
 function generate_unit_file() {
     echo_info 生成${unit_file_name_nameserver}文件用于systemd控制
-    cat >/usr/lib/systemd/system/${unit_file_name_nameserver} <<EOF
+    cat >/etc/systemd/system/${unit_file_name_nameserver} <<EOF
 [Unit]
 Description=rocketmq nameserver
 After=network.target
@@ -189,7 +221,7 @@ WantedBy=multi-user.target
 EOF
 
     echo_info 生成${unit_file_name_broker}文件用于systemd控制
-    cat >/usr/lib/systemd/system/${unit_file_name_broker} <<EOF
+    cat >/etc/systemd/system/${unit_file_name_broker} <<EOF
 [Unit]
 Description=rocketmq borker
 After=network.target
@@ -213,8 +245,8 @@ EOF
     echo -e "\033[37m                  broker启动：systemctl start ${unit_file_name_broker}\033[0m"
 }
 
-function binary_install() {
-    download_tar_gz ${src_dir} https://mirrors.tuna.tsinghua.edu.cn/apache/rocketmq/${rocketmq_version}/rocketmq-all-${rocketmq_version}-bin-release.zip
+function binary_install_4x() {
+    download_tar_gz ${src_dir} https://dist.apache.org/repos/dist/release/rocketmq/${rocketmq_version}/rocketmq-all-${rocketmq_version}-bin-release.zip
     echo_info 检测解压工具
     unar -v &> /dev/null
     if [ $? -ne 0 ];then
@@ -239,11 +271,6 @@ function binary_install() {
     sed -i 's#JAVA_OPT="${JAVA_OPT} -server -Xms.*#JAVA_OPT="${JAVA_OPT} -server -Xms'${broker_java_xms}' -Xmx'${broker_java_xmx}' -Xmn'${broker_java_xmn}'"#g' ${rocketmq_home}/bin/runbroker.sh
 
     get_machine_ip
-    grep "${nameserver_dns_name}" /etc/hosts &> /dev/null
-    if [ $? -ne 0 ];then
-        echo_info 配置hosts文件
-        echo "${machine_ip}    ${nameserver_dns_name}" >> /etc/hosts
-    fi
 
     echo_info 生成nameserver配置文件
     cat > ${rocketmq_home}/conf/namesrv.properties << EOF
@@ -261,8 +288,8 @@ brokerId=0
 # Broker对外服务的监听端口
 listenPort=${broker_port}
 # NameServer地址，使用分号分隔
-# namesrvAddr=${nameserver_dns_name}:${nameserver_port};${nameserver_dns_name}-2:${nameserver_port}
-namesrvAddr=${nameserver_dns_name}:${nameserver_port}
+# namesrvAddr=${machine_ip}:${nameserver_port};nameserver_2_ip:nameserver_2_port
+namesrvAddr=${machine_ip}:${nameserver_port}
 # 删除文件时间点, 默认为凌晨4点
 deleteWhen=04
 # 文件保留时间, 默认48小时
@@ -305,6 +332,34 @@ EOF
 
 }
 
-check_jdk
-is_run_rocketmq
-binary_install
+function choose_rocketmq_version(){
+    read -p "请输入数字选择要安装的MySQL版本（如需退出请输入q）：" -e user_choose_rocketmq_version
+    case $user_choose_rocketmq_version in
+        1)
+            rocketmq_version=${rocketmq_version_4x}
+            echo_info 选择了安装 RocketMQ ${rocketmq_version}
+            is_run_rocketmq
+            binary_install_4x
+            ;;
+        2)
+            rocketmq_version=${rocketmq_version_5x}
+            echo_info 选择了安装 RocketMQ ${rocketmq_version}
+            ;;
+        q|Q)
+            exit 0
+            ;;
+        *)
+            choose_rocketmq_version
+            ;;
+    esac
+}
+
+function main(){
+    check_jdk
+    echo -e "\033[31m本脚本支持两种版本的RocketMQ：\033[0m"
+    echo -e "\033[36m[1]\033[32m ${rocketmq_version_4x}\033[0m"
+    echo -e "\033[36m[2]\033[32m ${rocketmq_version_5x}\033[0m"
+    choose_rocketmq_version
+}
+
+main

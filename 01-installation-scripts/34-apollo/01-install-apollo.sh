@@ -508,7 +508,7 @@ function generate_unit_file() {
     # 用法：generate_unit_file [portal|config_admin]，根据参数生成unitfile
     if [[ $1 == "portal" ]];then
         echo_info 生成apollo-portal.service文件用于systemd控制
-        cat >/usr/lib/systemd/system/apollo-portal.service <<EOF
+        cat >/etc/systemd/system/apollo-portal.service <<EOF
 [Unit]
 Description=Apollo Portal, install script from https://github.com/zhegeshijiehuiyouai/RoadToDevOps
 After=syslog.target network.target remote-fs.target nss-lookup.target
@@ -527,7 +527,7 @@ WantedBy=multi-user.target
 EOF
     elif [[ $1 == "config_admin" ]];then
         echo_info 生成apollo-configservice.service文件用于systemd控制
-        cat >/usr/lib/systemd/system/apollo-configservice.service <<EOF
+        cat >/etc/systemd/system/apollo-configservice.service <<EOF
 [Unit]
 Description=Apollo ConfigService, install script from https://github.com/zhegeshijiehuiyouai/RoadToDevOps
 After=syslog.target network.target remote-fs.target nss-lookup.target
@@ -545,7 +545,7 @@ PrivateTmp=false
 WantedBy=multi-user.target
 EOF
         echo_info 生成apollo-adminservice.service文件用于systemd控制
-        cat >/usr/lib/systemd/system/apollo-adminservice.service <<EOF
+        cat >/etc/systemd/system/apollo-adminservice.service <<EOF
 [Unit]
 Description=Apollo AdminService, install script from https://github.com/zhegeshijiehuiyouai/RoadToDevOps
 After=syslog.target network.target remote-fs.target nss-lookup.target

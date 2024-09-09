@@ -385,7 +385,7 @@ EOF
 
 function generate_unit_file_and_start() {
     echo_info 生成${unit_file_name}文件用于systemd控制
-    cat >/usr/lib/systemd/system/${unit_file_name} <<EOF
+    cat >/etc/systemd/system/${unit_file_name} <<EOF
 [Unit]
 Description=mysqld_exporter -- script from https://github.com/zhegeshijiehuiyouai/RoadToDevOps
 Documentation=https://prometheus.io/

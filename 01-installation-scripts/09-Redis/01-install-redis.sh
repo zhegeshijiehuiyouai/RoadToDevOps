@@ -314,7 +314,7 @@ rm -f /tmp/_redis_file1
 ######################
 echo_info 生成redis.service文件用于systemd控制
 
-cat > /usr/lib/systemd/system/redis.service << EOF
+cat > /etc/systemd/system/redis.service << EOF
 [Unit]
 Description=Redis
 After=network.target

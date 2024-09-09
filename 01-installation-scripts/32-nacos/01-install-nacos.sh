@@ -278,7 +278,7 @@ function is_init_nacos_mysql() {
 }
 
 function generate_unit_file() {
-    cat >/usr/lib/systemd/system/nacos.service <<EOF
+    cat >/etc/systemd/system/nacos.service <<EOF
 [Unit]
 Description=nacos
 After=network.target
