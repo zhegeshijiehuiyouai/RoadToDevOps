@@ -17,7 +17,7 @@ redis_pass=OrcMu4tDie
 # 源码下载目录
 src_dir=$(pwd)/00src00
 # redis版本
-redis_version=6.2.3
+redis_version=6.2.9
 # 部署目录的父目录
 DIR=$(pwd)
 # 部署的目录名，完整的部署目录为${DIR}/${redis_dir_name}
@@ -49,8 +49,14 @@ if grep -qs "ubuntu" /etc/os-release; then
     # 阻止应用重启弹窗
     export NEEDRESTART_SUSPEND=1
 elif [[ -e /etc/centos-release ]]; then
-	os="centos"
-	os_version=$(grep -oE '[0-9]+\.?.*\s' /etc/centos-release)
+    os="centos"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/centos-release)
+elif [[ -e /etc/rocky-release ]]; then
+    os="rocky"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+elif [[ -e /etc/almalinux-release ]]; then
+    os="alma"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/almalinux-release)
 else
 	echo_error 不支持的操作系统
 	exit 99
@@ -79,6 +85,14 @@ function untar_tgz(){
 # 语法： download_tar_gz 保存的目录 下载链接
 # 使用示例： download_tar_gz /data/openssh-update https://mirrors.cloud.tencent.com/openssl/source/openssl-1.1.1h.tar.gz
 function download_tar_gz(){
+    # 检测下载文件在服务器上是否存在
+    http_code=$(curl -IsS $2 | head -1 | awk '{print $2}')
+    if [ $http_code -eq 404 ];then
+        echo_error $2
+        echo_error 服务端文件不存在，退出
+        exit 98
+    fi
+
     download_file_name=$(echo $2 |  awk -F"/" '{print $NF}')
     back_dir=$(pwd)
     file_in_the_dir=''  # 这个目录是后面编译目录的父目录
@@ -98,12 +112,14 @@ function download_tar_gz(){
                     yum install -y wget
                 elif [[ $os == "ubuntu" ]];then
                     apt install -y wget
+                elif [[ $os == "rocky" || $os == "alma" ]];then
+                    dnf install -y wget
                 fi
             fi
             wget $2
             if [ $? -ne 0 ];then
                 echo_error 下载 $2 失败！
-                exit 1
+                exit 80
             fi
             file_in_the_dir=$(pwd)
             # 返回脚本所在目录，这样这个函数才可以多次使用
@@ -122,12 +138,14 @@ function download_tar_gz(){
                         yum install -y wget
                     elif [[ $os == "ubuntu" ]];then
                         apt install -y wget
+                    elif [[ $os == "rocky" || $os == "alma" ]];then
+                        dnf install -y wget
                     fi
                 fi
                 wget $2
                 if [ $? -ne 0 ];then
                     echo_error 下载 $2 失败！
-                    exit 1
+                    exit 80
                 fi
                 file_in_the_dir=$(pwd)
                 cd ${back_dir}
@@ -169,6 +187,8 @@ function multi_core_compile(){
             yum install -y make
         elif [[ $os == "ubuntu" ]];then
             apt install -y make
+        elif [[ $os == "rocky" || $os == "alma" ]];then
+            dnf install -y make
         fi
     fi
     assumeused=$(w | grep 'load average' | awk -F': ' '{print $2}' | awk -F'.' '{print $1}')
@@ -228,9 +248,10 @@ redis_home=$(pwd)
 echo_info 检查编译环境
 # 比较版本号
 redis_latest_version=$(printf '%s\n%s\n' "$redis_version" "6.0.0" | sort -V | tail -n1)
-gcc --version &> /dev/null
-# 没有安装gcc的情况下
+
 if [[ $os == "centos" ]];then
+    gcc --version &> /dev/null
+    # 没有安装gcc的情况下
     if [ $? -ne 0 ];then
         # centos7默认的gcc版本是gcc 4.8
         yum install -y gcc
@@ -252,8 +273,15 @@ if [[ $os == "centos" ]];then
             fi
         fi
     fi
-elif [[ $os == "ubuntu" ]];then
-    apt install -y gcc
+fi
+# 其他操作系统没有安装gcc的情况下
+gcc --version &> /dev/null
+if [ $? -ne 0 ];then
+    if [[ $os == "ubuntu" ]];then
+        apt install -y gcc
+    elif [[ $os == "rocky" || $os == "alma" ]];then
+        dnf install -y gcc
+    fi
 fi
 
 echo_info 编译redis
@@ -365,8 +393,15 @@ echo -e "\033[37m                  redis密码：${redis_pass}\033[0m"
 
 echo_info 启动redis
 systemctl start redis
-
+if [[ $? -ne 0 ]];then
+    echo_error redis启动失败！
+    exit 2
+fi
 netstat -tnlp | grep ${PORT}
+
+echo_info 设置开机启动
+systemctl enable redis
+
 if [ $? -eq 0 ];then
     echo_info redis已成功启动！
     echo -e "\033[37m                  启动命令：systemctl start redis\033[0m"
@@ -390,6 +425,8 @@ case ${choice} in
             yum install -y python3-pip
         elif [[ $os == "ubuntu" ]];then
             apt install -y python3-pip
+        elif [[ $os == "rocky" || $os == "alma" ]];then
+            dnf install -y python3-pip
         fi
         pip3 install iredis -i https://pypi.tuna.tsinghua.edu.cn/simple
         echo
