@@ -335,7 +335,15 @@ http {
     # 因为我们修改了server_token，所以这行要注释掉，如果指定了off，那么即使修改了，还是会显示nginx，这和nginx取值的逻辑有关
     # 详见 https://blog.csdn.net/Leopard_89/article/details/50778477
     # server_tokens off;
-    
+
+##############使用代理服务器的XFF信息作为remote_addr################
+    # 当Nginx处在SLB后面时，就会把remote_addr设为SLB的IP，这个值其实是毫无意义的，可以通过nginx的realip模块，让它使用
+    # x_forwarded_for里的值。使用这个模块需要重新编译Nginx，增加--with-http_realip_module参数
+    #下面的配置就是把从10.64.0.0/10（云服务商专用网段）这一网段过来的请求全部使用X-Forwarded-For里的头信息作为remote_addr
+#   set_real_ip_from    10.64.0.0/10;
+#   real_ip_header    X-Forwarded-For;
+
+
 #######################gzip压缩功能设置###############################
 #########禁止nginx页面返回版本信息##############
     gzip on; #开启Gzip
