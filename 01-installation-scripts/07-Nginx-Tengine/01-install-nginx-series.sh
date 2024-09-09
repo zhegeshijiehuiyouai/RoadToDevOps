@@ -370,7 +370,7 @@ http {
     send_timeout 10;
 ################分页面大小##########
     client_header_buffer_size 4k;
-################缓存配置############
+################缓存文件描述符和文件信息，提高文件的读取效率############
     open_file_cache max=65535 inactive=20s;  # 如果注释掉这句，后面的也就失效了
     open_file_cache_valid 30s;  #缓存检查频率
     open_file_cache_min_uses 2;  #缓存时间（20s）内的最少使用次数-未超过则移除
@@ -385,7 +385,7 @@ http {
     fastcgi_connect_timeout 1000;
     fastcgi_send_timeout 1000;
     fastcgi_read_timeout 1000;
-##########动态访问proxy缓存配置################
+##########用于反向代理时的缓存服务器功能，将后端服务器的响应缓存下来，减轻后端压力（缓存服务器）################
     # proxy_cache_path /data/nginx/cache levels=1:2 keys_zone=cache_one:10m max_size=1G inactive=1d; 
 #########获取真实IP访问头######################    
     proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
