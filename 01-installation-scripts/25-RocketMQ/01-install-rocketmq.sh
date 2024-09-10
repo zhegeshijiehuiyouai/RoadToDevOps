@@ -1,8 +1,10 @@
 #!/bin/bash
 
+#################################配置
 # 目录配置
 src_dir=$(pwd)/00src00
-rocketmq_home=$(pwd)/rocketmq
+# rocketmq家目录的父目录，在父目录下创建rocketmq-${version}目录作为应用目录
+rocketmq_father_home=$(pwd)
 # rockermq版本
 rocketmq_version_4x=4.9.8
 rocketmq_version_5x=5.3.0
@@ -11,13 +13,20 @@ sys_user=rocketmq
 # 端口配置
 nameserver_port=9876
 broker_port=10911
+# nameserver运行内存配置
+nameserver_java_xms=512m
+nameserver_java_xmx=512m
+nameserver_java_xmn=256m
 # broker运行内存配置
 broker_java_xms=512m
 broker_java_xmx=512m
 broker_java_xmn=256m
+# broker集群名字
+broker_cluster_name=DefaultCluster
 # unit file文件名
 unit_file_name_nameserver=rmq_namesrv.service
 unit_file_name_broker=rmq_broker.service
+#################################
 
 # 带格式的echo函数
 function echo_info() {
@@ -167,16 +176,51 @@ function add_user_and_group(){
     fi
 }
 
-function is_run_rocketmq() {
-    ps -ef | grep ${rocketmq_home}/ | grep -v grep &> /dev/null
-    if [ $? -eq 0 ];then
-        echo_error 检测到rocketmq正在运行中，退出
-        exit 3
-    fi
+function choose_dir_action() {
+    read -p "请输入（如需退出请输入q）：" -e user_choose_dir_action
+    case $user_choose_dir_action in
+        1)
+            echo_info 用户主动退出
+            exit 0
+            ;;
+        2)
+            echo_info 删除目录 ${rocketmq_home}
+            rm -rf ${rocketmq_home}
+            ;;
+        3)
+            echo_info 保留目录 ${rocketmq_home}
+            true
+            ;;
+        q|Q)
+            exit 0
+            ;;
+        *)
+            echo_warning 请输入对应序号
+            choose_dir_action
+            ;;
+    esac
+}
 
-    if [ -d ${rocketmq_home} ];then
-        echo_error 检测到目录${rocketmq_home}，请检查是否重复安装，退出
-        exit 4
+function is_run_rocketmq() {
+    if [[ $rocketmq_version == $rocketmq_version_4x ]];then
+        ps -ef | grep ${rocketmq_home}/ | grep -v grep &> /dev/null
+        if [ $? -eq 0 ];then
+            echo_error 检测到rocketmq正在运行中，退出
+            exit 3
+        fi
+
+        if [ -d ${rocketmq_home} ];then
+            echo_error 检测到目录${rocketmq_home}，请检查是否重复安装，退出
+            exit 4
+        fi
+    elif [[ $rocketmq_version == $rocketmq_version_5x ]];then
+        if [ -d ${rocketmq_home} ];then
+            echo_warning 检测到目录${rocketmq_home}，请输入序号选择操作
+            echo -e "\033[36m[1]\033[32m 重复部署了，退出\033[0m"
+            echo -e "\033[36m[2]\033[32m 准备重新部署，删除目录，继续下一步\033[0m"
+            echo -e "\033[36m[3]\033[32m 部署组件，保留目录，继续下一步\033[0m"
+            choose_dir_action
+        fi
     fi
 }
 
@@ -201,7 +245,7 @@ function get_machine_ip() {
     fi
 }
 
-function generate_unit_file() {
+function generate_nameserver_unit_file() {
     echo_info 生成${unit_file_name_nameserver}文件用于systemd控制
     cat >/etc/systemd/system/${unit_file_name_nameserver} <<EOF
 [Unit]
@@ -220,6 +264,16 @@ ExecStop=${rocketmq_home}/bin/mqshutdown namesrv
 WantedBy=multi-user.target
 EOF
 
+    systemctl daemon-reload
+    echo_info nameserver已部署完毕，相关信息如下：
+    echo -e "\033[37m                  nameserver端口：${nameserver_port}\033[0m"
+    echo -e "\033[37m                  nameserver启动：systemctl start ${unit_file_name_nameserver}\033[0m"
+}
+
+function generate_broker_unit_file() {
+    if [[ -z ${broker_config_file} ]]; then
+        broker_config_file=broker-a.properties
+    fi
     echo_info 生成${unit_file_name_broker}文件用于systemd控制
     cat >/etc/systemd/system/${unit_file_name_broker} <<EOF
 [Unit]
@@ -230,54 +284,243 @@ After=network.target
 Type=simple
 # 如要配置多主多从，则将配置文件替换为${rocketmq_home}/conf/{2m-2s-async  2m-2s-sync  2m-noslave}下的配置文件
 # ExecStart=${rocketmq_home}/bin/mqbroker -c ${rocketmq_home}/conf/broker.conf
-ExecStart=${rocketmq_home}/bin/mqbroker -c ${rocketmq_home}/conf/2m-2s-async/broker-a.properties
+ExecStart=${rocketmq_home}/bin/mqbroker -c ${rocketmq_home}/conf/2m-2s-async/${broker_config_file}
 ExecStop=/usr/local/rocketmq/bin/mqshutdown broker
 
 [Install]
 WantedBy=multi-user.target
 EOF
+
     systemctl daemon-reload
-    echo_warning 如需配置多主多从，请自行修改unit file中-c参数中的配置
-    echo_info rockermq已部署完毕，相关信息如下：
-    echo -e "\033[37m                  nameserver端口：${nameserver_port}\033[0m"
-    echo -e "\033[37m                  nameserver启动：systemctl start ${unit_file_name_nameserver}\033[0m"
+    echo_info broker已部署完毕，相关信息如下：
     echo -e "\033[37m                  broker端口：${broker_port}\033[0m"
     echo -e "\033[37m                  broker启动：systemctl start ${unit_file_name_broker}\033[0m"
 }
 
-function binary_install_4x() {
-    download_tar_gz ${src_dir} https://dist.apache.org/repos/dist/release/rocketmq/${rocketmq_version}/rocketmq-all-${rocketmq_version}-bin-release.zip
-    echo_info 检测解压工具
+function common_action_1() {
+    get_machine_ip
     unar -v &> /dev/null
     if [ $? -ne 0 ];then
-        yum install -y epel-release
-        yum install -y unar
-        if [ $? -ne 0 ];then
-            echo_error unar安装失败，请检查网络
-            exit 1
+        echo_info 安装解压工具
+        if [[ $os == "centos" ]];then
+            yum install -y epel-release
+            yum install -y unar
+            if [ $? -ne 0 ];then
+                echo_error unar安装失败，请检查网络
+                exit 1
+            fi
+        elif [[ $os == "rocky" || $os == "alma" ]];then
+            dnf install -y unar
+            if [ $? -ne 0 ];then
+                echo_error unar安装失败，请检查网络
+                exit 1
+            fi
         fi
     fi
-    cd ${file_in_the_dir}
-    unar rocketmq-all-${rocketmq_version}-bin-release.zip
-    mv rocketmq-all-${rocketmq_version}-bin-release ${rocketmq_home}
-    add_user_and_group ${sys_user}
 
-    echo_info 修改rocketmq日志目录
+    # 如果是部署组件，要保留目录，那么就不执行下面的内容
+    if [[ $user_choose_dir_action != 3 ]];then
+        download_tar_gz ${src_dir} https://dist.apache.org/repos/dist/release/rocketmq/${rocketmq_version}/rocketmq-all-${rocketmq_version}-bin-release.zip
+        cd ${file_in_the_dir}
+        unar rocketmq-all-${rocketmq_version}-bin-release.zip
+        mv rocketmq-all-${rocketmq_version}-bin-release ${rocketmq_home}
+        add_user_and_group ${sys_user}
+        echo_info 修改rocketmq日志目录
+        cd ${rocketmq_home}
+        mkdir -p {logs,store/{commitlog,consumequeue}}
+        sed -i 's#\${user.home}#'${rocketmq_home}'#g' ${rocketmq_home}/conf/*.xml
+    fi
+}
+
+function config_nameserver() {
     cd ${rocketmq_home}
-    mkdir -p {logs,store/{commitlog,consumequeue}}
-    sed -i 's#\${user.home}#'${rocketmq_home}'/logs#g' ${rocketmq_home}/conf/*.xml
+    echo_info 修改nameserver初始化堆栈大小
+    sed -i -E 's/(-Xms)[^ ]*/\1'${nameserver_java_xms}'/' ${rocketmq_home}/bin/runserver.sh
+    sed -i -E 's/(-Xmx)[^ ]*/\1'${nameserver_java_xmx}'/' ${rocketmq_home}/bin/runserver.sh
+    # 先删除原有的 -Xmn 参数
+    sed -i -E 's/-Xmn[^ ]*\s*//g' ${rocketmq_home}/bin/runserver.sh
+    # 再添加新的 -Xmn 参数
+    sed -i -E "s/(-Xmx[^ ]*)/\1 -Xmn${nameserver_java_xmn}/" ${rocketmq_home}/bin/runserver.sh
+    echo_info 生成nameserver配置文件
+    cat > ${rocketmq_home}/conf/namesrv.properties << EOF
+listenPort=${nameserver_port}
+EOF
+    chown -R ${sys_user}:${sys_user} ${rocketmq_home}
+    generate_nameserver_unit_file
+}
 
+function choose_nameserver_addr(){
+    read -p "请输入（如需退出请输入q）：" -e user_choose_nameserver_addr
+    case $user_choose_nameserver_addr in
+        1)
+            nameserver_addr=${machine_ip}:${nameserver_port}
+            ;;
+        2)
+            read -p "请输入nameserver地址(ip:port)，多个地址使用英文分号分隔：" -e nameserver_addr
+            ;;
+        q|Q)
+            exit 0
+            ;;
+        *)
+            echo_warning 请输入对应序号
+            choose_nameserver_addr
+            ;;
+    esac
+}
+
+function generate_broker_config() {
+    broker_config_file=${1}.properties
+    if [[ $1 == "broker-a" ]];then
+        broker_name="broker-a"
+        broker_id="0"
+        broker_role="ASYNC_MASTER"
+    elif [[ $1 == "broker-a-s" ]];then
+        broker_name="broker-a"
+        broker_id="2"
+        broker_role="SLAVE"
+    elif [[ $1 == "broker-b" ]];then
+        broker_name="broker-b"
+        broker_id="0"
+        broker_role="ASYNC_MASTER"
+    elif [[ $1 == "broker-b-s" ]];then
+        broker_name="broker-b"
+        broker_id="2"
+        broker_role="SLAVE"
+    fi
+
+    if [[ ${user_choose_install_5x_component} == 2 ]];then
+        is_enable_proxy="true"
+    elif [[ ${user_choose_install_5x_component} == 3 ]];then
+        is_enable_proxy="false"
+    fi
+
+    echo_warning 是否使用 ${machine_ip}:${nameserver_port} 作为nameserver地址？
+    echo -e "\033[36m[1]\033[32m 是\033[0m"
+    echo -e "\033[36m[2]\033[32m 否，手动输入nameserver地址\033[0m"
+    choose_nameserver_addr
+
+    cat > ${rocketmq_home}/conf/2m-2s-async/${broker_config_file} << EOF
+# 所属集群的名字
+brokerClusterName=${broker_cluster_name}
+# Broker的名称
+brokerName=${broker_name}
+# brokerId为0表示Master，>0表示Slave。配置slave的话记得下面的brokerRole参数修改为brokerRole=SLAVE
+brokerId=${broker_id}
+# Broker对外服务的监听端口
+listenPort=${broker_port}
+# NameServer地址，使用分号分隔
+# namesrvAddr=ip1:port1;ip2:port2
+namesrvAddr=${nameserver_addr}
+# 删除文件时间点, 默认为凌晨4点
+deleteWhen=04
+# 文件保留时间, 默认48小时
+fileReservedTime=72
+# Broker Role
+brokerRole=${broker_role}
+# 开启从Slave读数据功能
+# slaveReadEnable=true
+# 刷盘方式，ASYNC_FLUSH：异步刷盘
+flushDiskType=ASYNC_FLUSH
+# 存储路径
+storePathRootDir=${rocketmq_home}/store
+# commitLog存储路径
+storePathCommitLog=${rocketmq_home}/store/commitlog
+# 消费队列存储路径
+storePathConsumeQueue=${rocketmq_home}/store/consumequeue
+# 消息索引存储路径
+storePathIndex=${rocketmq_home}/store/index
+# checkpoint 文件存储路径
+storeCheckpoint=${rocketmq_home}/store/checkpoint
+# abort 文件存储路径
+abortFile=${rocketmq_home}/store/abort
+# 是否允许Broker自动创建Topic
+autoCreateTopicEnable=true
+# 是否允许Broker自动创建订阅组
+autoCreateSubscriptionGroup=true
+#commitLog每个文件的大小，默认是1G
+mapedFileSizeCommitLog=1073741824
+#ConsumerQueue每个文件默认存30W条
+mapedFileSizeConsumeQueue=300000
+#限制的消息大小
+maxMessageSize=65536
+#强制指定本机IP，需要根据每台机器进行修改。官方介绍可为空，系统默认自动识别，但多网卡时IP地址可能读取错误
+brokerIP1=${machine_ip}
+# Proxy 和 Broker 是否同进程部署
+enableProxy=${is_enable_proxy}
+EOF
+
+    chown -R ${sys_user}:${sys_user} ${rocketmq_home}
+    generate_broker_unit_file
+}
+
+
+function choose_2m_2s_config_implement() {
+    read -p "请输入（如需退出请输入q）：" -e user_choose_2m_2s_config_implement
+    case $user_choose_2m_2s_config_implement in
+        1)
+            echo_info 配置为 A-Master
+            generate_broker_config broker-a
+            ;;
+        2)
+            echo_info 配置为 A-Slave
+            generate_broker_config broker-a-s
+            ;;
+        3)
+            echo_info 配置为 B-Master
+            generate_broker_config broker-b
+            ;;
+        4)
+            echo_info 配置为 B-Slave
+            generate_broker_config broker-b-s
+            ;;
+        q|Q)
+            exit 0
+            ;;
+        *)
+            echo_warning 请输入对应序号
+            choose_2m_2s_config_implement
+            ;;
+    esac
+}
+
+function choose_2m_2s_config() {
+    echo_info 优化broker配置文件,多节点（集群）多副本模式-异步复制 2m-2s-async
+    echo -e "\033[31m请输入序号选择 当前节点角色\033[0m"
+    echo -e "\033[36m[1]\033[32m A-Master\033[0m"
+    echo -e "\033[36m[2]\033[32m A-Slave\033[0m"
+    echo -e "\033[36m[3]\033[32m B-Master\033[0m"
+    echo -e "\033[36m[4]\033[32m B-Slave\033[0m"
+    choose_2m_2s_config_implement
+}
+
+function config_broker_proxy() {
+    cd ${rocketmq_home}
     echo_info 修改broker初始化堆栈大小
     sed -i 's#JAVA_OPT="${JAVA_OPT} -server -Xms.*#JAVA_OPT="${JAVA_OPT} -server -Xms'${broker_java_xms}' -Xmx'${broker_java_xmx}' -Xmn'${broker_java_xmn}'"#g' ${rocketmq_home}/bin/runbroker.sh
+    choose_2m_2s_config
+}
 
-    get_machine_ip
+function binary_install_4x() {
+    # 5.x中，打算拆分服务，各个服务可以单独安装，所以判断rocketmq是否启动，就不放在common_pre_install_check里
+    is_run_rocketmq
+    common_action_1
+
+    echo_info 修改nameserver初始化堆栈大小
+    sed -i -E 's/(-Xms)[^ ]*/\1'${nameserver_java_xms}'/' ${rocketmq_home}/bin/runserver.sh
+    sed -i -E 's/(-Xmx)[^ ]*/\1'${nameserver_java_xmx}'/' ${rocketmq_home}/bin/runserver.sh
+    # 先删除原有的 -Xmn 参数
+    sed -i -E 's/-Xmn[^ ]*\s*//g' ${rocketmq_home}/bin/runserver.sh
+    # 再添加新的 -Xmn 参数
+    sed -i -E "s/(-Xmx[^ ]*)/\1 -Xmn${nameserver_java_xmn}/" ${rocketmq_home}/bin/runserver.sh
+    echo_info 修改broker初始化堆栈大小
+    sed -i 's#JAVA_OPT="${JAVA_OPT} -server -Xms.*#JAVA_OPT="${JAVA_OPT} -server -Xms'${broker_java_xms}' -Xmx'${broker_java_xmx}' -Xmn'${broker_java_xmn}'"#g' ${rocketmq_home}/bin/runbroker.sh
 
     echo_info 生成nameserver配置文件
     cat > ${rocketmq_home}/conf/namesrv.properties << EOF
 listenPort=${nameserver_port}
 EOF
 
-    echo_info 优化broker配置文件
+    echo_info 优化broker配置文件,多节点（集群）多副本模式-异步复制 2m-2s-async
     cat > ${rocketmq_home}/conf/2m-2s-async/broker-a.properties << EOF
 # 所属集群的名字
 brokerClusterName=my-rocketmq-cluster
@@ -328,22 +571,81 @@ EOF
 
     chown -R ${sys_user}:${sys_user} ${rocketmq_home}
 
-    generate_unit_file
+    generate_nameserver_unit_file
+    generate_broker_unit_file
+}
 
+function binary_install_5x_nameserver() {
+    is_run_rocketmq
+    common_action_1
+    config_nameserver
+}
+
+function binary_install_5x_broker_proxy() {
+    is_run_rocketmq
+    common_action_1
+    config_broker_proxy
+}
+
+
+function choose_install_5x_component(){
+    read -p "请输入（如需退出请输入q）：" -e user_choose_install_5x_component
+    case $user_choose_install_5x_component in
+        1)
+            echo_info 即将部署 NameServer
+            sleep 2
+            binary_install_5x_nameserver
+            ;;
+        2)
+            echo_info 即将部署 Broker+Proxy
+            binary_install_5x_broker_proxy
+            sleep 2
+            ;;
+        3)
+            echo_info 即将部署 Broker
+            # 通过变量user_choose_install_5x_component来和上面做区分
+            binary_install_5x_broker_proxy
+            sleep 2
+            ;;
+        4)
+            echo_info 即将部署 Proxy
+            sleep 2
+            ;;
+        q|Q)
+            exit 0
+            ;;
+        *)
+            echo_warning 请输入对应序号
+            choose_install_5x_component
+            ;;
+    esac
+}
+
+function binary_install_5x() {
+    echo -e "\033[31m请输入序号选择要部署的服务\033[0m"
+    echo -e "\033[36m[1]\033[32m NameServer\033[0m"
+    echo -e "\033[36m[2]\033[32m Broker+Proxy\033[0m"
+    echo -e "\033[36m[3]\033[32m Broker\033[0m"
+    echo -e "\033[36m[4]\033[32m Proxy\033[0m"
+    choose_install_5x_component
 }
 
 function choose_rocketmq_version(){
-    read -p "请输入数字选择要安装的MySQL版本（如需退出请输入q）：" -e user_choose_rocketmq_version
+    read -p "请输入（如需退出请输入q）：" -e user_choose_rocketmq_version
     case $user_choose_rocketmq_version in
         1)
             rocketmq_version=${rocketmq_version_4x}
+            rocketmq_home=${rocketmq_father_home}/rocketmq-${rocketmq_version}
             echo_info 选择了安装 RocketMQ ${rocketmq_version}
-            is_run_rocketmq
+            echo_info 即将开始部署...
+            sleep 2
             binary_install_4x
             ;;
         2)
             rocketmq_version=${rocketmq_version_5x}
+            rocketmq_home=${rocketmq_father_home}/rocketmq-${rocketmq_version}
             echo_info 选择了安装 RocketMQ ${rocketmq_version}
+            binary_install_5x
             ;;
         q|Q)
             exit 0
@@ -356,7 +658,7 @@ function choose_rocketmq_version(){
 
 function main(){
     check_jdk
-    echo -e "\033[31m本脚本支持两种版本的RocketMQ：\033[0m"
+    echo -e "\033[31m本脚本支持两种版本的RocketMQ，请输入序号选择要部署的版本\033[0m"
     echo -e "\033[36m[1]\033[32m ${rocketmq_version_4x}\033[0m"
     echo -e "\033[36m[2]\033[32m ${rocketmq_version_5x}\033[0m"
     choose_rocketmq_version
