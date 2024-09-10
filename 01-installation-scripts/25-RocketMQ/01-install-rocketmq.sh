@@ -10,9 +10,20 @@ rocketmq_version_4x=4.9.8
 rocketmq_version_5x=5.3.0
 # 以什么用户启动rockermq
 sys_user=rocketmq
-# 端口配置
+
+#### 端口配置
 nameserver_port=9876
-broker_port=10911
+# broker对外服务的监听端口
+broker_listen_port=10911
+# 主要用于slave同步master，默认为broker_listen_port - 2
+broker_fast_listen_port=10909
+# HAService组件服务使用，默认为broker_listen_port + 1
+broker_ha_listen_port=10912
+#  proxy代理监听端口
+proxy_remoting_listen_port=9080
+# proxy gRPC服务器端口
+proxy_grpc_server_port=9081
+
 # nameserver运行内存配置
 nameserver_java_xms=512m
 nameserver_java_xmx=512m
@@ -26,6 +37,7 @@ broker_cluster_name=DefaultCluster
 # unit file文件名
 unit_file_name_nameserver=rmq_namesrv.service
 unit_file_name_broker=rmq_broker.service
+unit_file_name_proxy=rmq_proxy.service
 #################################
 
 # 带格式的echo函数
@@ -256,9 +268,10 @@ After=network.target
 #这里Type一定要写simple
 Type=simple
 
-#ExecStart和ExecStop分别在systemctl start和systemctl stop时候调动
 ExecStart=${rocketmq_home}/bin/mqnamesrv -c ${rocketmq_home}/conf/namesrv.properties
 ExecStop=${rocketmq_home}/bin/mqshutdown namesrv
+User=rocketmq
+Group=rocketmq
 
 [Install]
 WantedBy=multi-user.target
@@ -286,6 +299,8 @@ Type=simple
 # ExecStart=${rocketmq_home}/bin/mqbroker -c ${rocketmq_home}/conf/broker.conf
 ExecStart=${rocketmq_home}/bin/mqbroker -c ${rocketmq_home}/conf/2m-2s-async/${broker_config_file}
 ExecStop=/usr/local/rocketmq/bin/mqshutdown broker
+User=rocketmq
+Group=rocketmq
 
 [Install]
 WantedBy=multi-user.target
@@ -293,8 +308,31 @@ EOF
 
     systemctl daemon-reload
     echo_info broker已部署完毕，相关信息如下：
-    echo -e "\033[37m                  broker端口：${broker_port}\033[0m"
+    echo -e "\033[37m                  broker端口：${broker_listen_port}\033[0m"
     echo -e "\033[37m                  broker启动：systemctl start ${unit_file_name_broker}\033[0m"
+}
+
+function generate_proxy_unit_file() {
+    cat >/etc/systemd/system/${unit_file_name_proxy} <<EOF
+[Unit]
+Description=rocketmq proxy
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=${rocketmq_home}/bin/mqproxy -pc ${rocketmq_home}/conf/rmq-proxy.json
+ExecStop=/usr/local/rocketmq/bin/mqshutdown proxy
+User=rocketmq
+Group=rocketmq
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    systemctl daemon-reload
+    echo_info proxy已部署完毕，相关信息如下：
+    echo -e "\033[37m                  proxy端口：${proxy_remoting_listen_port}\033[0m"
+    echo -e "\033[37m                  proxy启动：systemctl start ${unit_file_name_proxy}\033[0m"
 }
 
 function common_action_1() {
@@ -407,7 +445,11 @@ brokerName=${broker_name}
 # brokerId为0表示Master，>0表示Slave。配置slave的话记得下面的brokerRole参数修改为brokerRole=SLAVE
 brokerId=${broker_id}
 # Broker对外服务的监听端口
-listenPort=${broker_port}
+listenPort=${broker_listen_port}
+# 主要用于slave同步master，默认为broker_listen_port - 2
+fastListenPort=${broker_fast_listen_port}
+# HAService组件服务使用，默认为broker_listen_port + 1
+haListenPort=${broker_ha_listen_port}
 # NameServer地址，使用分号分隔
 # namesrvAddr=ip1:port1;ip2:port2
 namesrvAddr=${nameserver_addr}
@@ -500,6 +542,29 @@ function config_broker_proxy() {
     choose_2m_2s_config
 }
 
+function config_proxy() {
+    echo_info 配置rmq-proxy.json
+    echo_warning 是否使用 ${machine_ip}:${nameserver_port} 作为nameserver地址？
+    echo -e "\033[36m[1]\033[32m 是\033[0m"
+    echo -e "\033[36m[2]\033[32m 否，手动输入nameserver地址\033[0m"
+    choose_nameserver_addr
+    cat > ${rocketmq_home}/conf/rmq-proxy.json << EOF
+{
+    //集群名称 与broker一致
+    "rocketMQClusterName": "${broker_cluster_name}",
+    // 代理监听端口
+    "remotingListenPort": ${proxy_remoting_listen_port},
+    // gRPC服务器端口
+    "grpcServerPort": ${proxy_grpc_server_port},
+    // 对应namesr的ip
+    "namesrvAddr": "${nameserver_addr}"
+}
+EOF
+
+    chown -R ${sys_user}:${sys_user} ${rocketmq_home}
+    generate_proxy_unit_file
+}
+
 function binary_install_4x() {
     # 5.x中，打算拆分服务，各个服务可以单独安装，所以判断rocketmq是否启动，就不放在common_pre_install_check里
     is_run_rocketmq
@@ -529,7 +594,7 @@ brokerName=broker-a
 # brokerId为0表示Master，>0表示Slave。配置slave的话记得下面的brokerRole参数修改为brokerRole=SLAVE
 brokerId=0
 # Broker对外服务的监听端口
-listenPort=${broker_port}
+listenPort=${broker_listen_port}
 # NameServer地址，使用分号分隔
 # namesrvAddr=${machine_ip}:${nameserver_port};nameserver_2_ip:nameserver_2_port
 namesrvAddr=${machine_ip}:${nameserver_port}
@@ -587,29 +652,32 @@ function binary_install_5x_broker_proxy() {
     config_broker_proxy
 }
 
+function binary_install_5x_proxy() {
+    is_run_rocketmq
+    common_action_1
+    config_proxy
+}
+
 
 function choose_install_5x_component(){
     read -p "请输入（如需退出请输入q）：" -e user_choose_install_5x_component
     case $user_choose_install_5x_component in
         1)
-            echo_info 即将部署 NameServer
-            sleep 2
+            echo_info 选择了部署 NameServer
             binary_install_5x_nameserver
             ;;
         2)
-            echo_info 即将部署 Broker+Proxy
+            echo_info 选择了部署 Broker+Proxy
             binary_install_5x_broker_proxy
-            sleep 2
             ;;
         3)
-            echo_info 即将部署 Broker
+            echo_info 选择了部署 Broker
             # 通过变量user_choose_install_5x_component来和上面做区分
             binary_install_5x_broker_proxy
-            sleep 2
             ;;
         4)
-            echo_info 即将部署 Proxy
-            sleep 2
+            echo_info 选择了部署 Proxy
+            binary_install_5x_proxy
             ;;
         q|Q)
             exit 0
@@ -636,15 +704,13 @@ function choose_rocketmq_version(){
         1)
             rocketmq_version=${rocketmq_version_4x}
             rocketmq_home=${rocketmq_father_home}/rocketmq-${rocketmq_version}
-            echo_info 选择了安装 RocketMQ ${rocketmq_version}
-            echo_info 即将开始部署...
-            sleep 2
+            echo_info 选择了部署 RocketMQ ${rocketmq_version}
             binary_install_4x
             ;;
         2)
             rocketmq_version=${rocketmq_version_5x}
             rocketmq_home=${rocketmq_father_home}/rocketmq-${rocketmq_version}
-            echo_info 选择了安装 RocketMQ ${rocketmq_version}
+            echo_info 选择了部署 RocketMQ ${rocketmq_version}
             binary_install_5x
             ;;
         q|Q)
