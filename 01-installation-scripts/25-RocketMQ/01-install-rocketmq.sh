@@ -537,6 +537,12 @@ function choose_2m_2s_config() {
 
 function config_broker_proxy() {
     cd ${rocketmq_home}
+    # 提取java主版本号
+    java_major_version=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}' | awk -F. '{print $1}')
+    if [ ${java_major_version} -ge 15 ]; then
+        echo_info 'java版本大于等于15，删除 -XX:-UseBiasedLocking'
+        sed -i 's/ -XX:-UseBiasedLocking//g' ${rocketmq_home}/bin/runbroker.sh
+    fi
     echo_info 修改broker初始化堆栈大小
     sed -i 's#JAVA_OPT="${JAVA_OPT} -server -Xms.*#JAVA_OPT="${JAVA_OPT} -server -Xms'${broker_java_xms}' -Xmx'${broker_java_xmx}' -Xmn'${broker_java_xmn}'"#g' ${rocketmq_home}/bin/runbroker.sh
     choose_2m_2s_config
