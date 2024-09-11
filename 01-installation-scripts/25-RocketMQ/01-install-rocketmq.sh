@@ -673,7 +673,7 @@ function choose_install_5x_component(){
             binary_install_5x_nameserver
             ;;
         2)
-            echo_info 选择了部署 Broker+Proxy
+            echo_info 选择了部署 Broker+Proxy（同进程部署）
             binary_install_5x_broker_proxy
             ;;
         3)
@@ -698,7 +698,7 @@ function choose_install_5x_component(){
 function binary_install_5x() {
     echo -e "\033[31m请输入序号选择要部署的服务\033[0m"
     echo -e "\033[36m[1]\033[32m NameServer\033[0m"
-    echo -e "\033[36m[2]\033[32m Broker+Proxy\033[0m"
+    echo -e "\033[36m[2]\033[32m Broker+Proxy（同进程部署）\033[0m"
     echo -e "\033[36m[3]\033[32m Broker\033[0m"
     echo -e "\033[36m[4]\033[32m Proxy\033[0m"
     choose_install_5x_component

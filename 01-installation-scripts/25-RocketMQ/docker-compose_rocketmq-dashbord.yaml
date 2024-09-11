@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  rocketmq-dashboard:
+    image: apacherocketmq/rocketmq-dashboard:latest
+    container_name: rocketmq-dashboard
+    environment:
+      - JAVA_OPTS=-Drocketmq.namesrv.addr=172.16.20.8:9876
+      - ROCKETMQ_CONFIG_LOGIN_REQUIRED=true  # 开启登录认证
+      # - ROCKETMQ_PROXY_ADDR=172.16.20.8:9080  # 添加 proxy 地址
+    ports:
+      - "8228:8080"
+    volumes:
+      - ./data:/tmp/rocketmq-console/data  # 挂载账号密码目录
+    restart: always

@@ -2,17 +2,16 @@
 
 # 目录配置
 src_dir=$(pwd)/00src00
-rocketmq_dashboard_home=$(pwd)/rocketmq_dashboard
+rocketmq_dashboard_home=$(pwd)/rocketmq-dashboard
 rocketmq_dashboard_data_path=${rocketmq_dashboard_home}/data
 rocketmq_dashboard_port=8228
-rocketmq_web_user=nohack
-rocketmq_web_pass=dashboard_2021
+rocketmq_web_user=admin
+rocketmq_web_pass=dashboard
 # 以什么用户启动rockermq-dashboard
 sys_user=rocketmq
 unit_file_name=rmq_dashboard.service
 xms=512m
 xmx=512m
-
 
 
 # 带格式的echo函数
@@ -25,6 +24,27 @@ function echo_warning() {
 function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
+
+# 脚本执行用户检测
+if [[ $(whoami) != 'root' ]];then
+    echo_error 请使用root用户执行
+    exit 99
+fi
+
+# 检测操作系统
+if [[ -e /etc/centos-release ]]; then
+    os="centos"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/centos-release)
+elif [[ -e /etc/rocky-release ]]; then
+    os="rocky"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+elif [[ -e /etc/almalinux-release ]]; then
+    os="alma"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/almalinux-release)
+else
+	echo_error 不支持的操作系统
+	exit 99
+fi
 
 function check_java_and_maven() {
     java -version &> /dev/null
@@ -50,7 +70,7 @@ function download_tar_gz(){
         exit 98
     fi
     
-    download_file_name=rocketmq-externals-master.zip
+    download_file_name=rocketmq-dashboard-master.zip
     back_dir=$(pwd)
     file_in_the_dir=''  # 这个目录是后面编译目录的父目录
 
@@ -67,7 +87,7 @@ function download_tar_gz(){
                 echo_info 安装wget工具
                 yum install -y wget
             fi
-            wget $2 -O rocketmq-externals-master.zip
+            wget $2 -O rocketmq-dashboard-master.zip
             if [ $? -ne 0 ];then
                 echo_error 下载 $2 失败！
                 exit 1
@@ -87,7 +107,7 @@ function download_tar_gz(){
                     echo_info 安装wget工具
                     yum install -y wget
                 fi
-                wget $2 -O rocketmq-externals-master.zip
+                wget $2 -O rocketmq-dashboard-master.zip
                 if [ $? -ne 0 ];then
                     echo_error 下载 $2 失败！
                     exit 1
@@ -152,10 +172,14 @@ function check_unzip() {
 
 function config_rocketmq_dashboard() {
     # 默认已经在rocketmq-dashboard目录下了
-    sed -i 's#^server\.port=.*#server.port='${rocketmq_dashboard_port}'#' src/main/resources/application.properties
-    sed -i 's#^rocketmq\.config\.namesrvAddr=.*#rocketmq.config.namesrvAddr='${rocketmq_namesrv_ip}'#' src/main/resources/application.properties
-    sed -i 's#^rocketmq\.config\.dataPath=.*#rocketmq.config.dataPath='${rocketmq_dashboard_data_path}'#' src/main/resources/application.properties
-    sed -i 's#^rocketmq\.config\.loginRequired=.*#rocketmq.config.loginRequired=true#' src/main/resources/application.properties
+    sed -i 's#  port: 8080#  port: '${rocketmq_dashboard_port}'#' src/main/resources/application.yml
+    sed -i 's#      - 127.0.0.1:9876#      - '${rocketmq_namesrv_addr}'#' src/main/resources/application.yml
+    sed -i 's#    dataPath: /tmp/rocketmq-console/data#    dataPath: '${rocketmq_dashboard_data_path}'#' src/main/resources/application.yml
+    if [[ -n ${rocketmq_proxy_addr} ]];then
+        sed -i 's#    proxyAddr: 127.0.0.1:8080#    proxyAddr: '${rocketmq_proxy_addr}'#' src/main/resources/application.yml
+        sed -i 's#      - 127.0.0.1:8080#      - '${rocketmq_proxy_addr}'#' src/main/resources/application.yml
+    fi
+    sed -i 's#    loginRequired: false#    loginRequired: true#' src/main/resources/application.yml
     sed -i 's#\${user.home}#'${rocketmq_dashboard_home}'/logs#g' src/main/resources/logback.xml
     cat > ${rocketmq_dashboard_data_path}/users.properties << EOF
 # 该文件支持热修改，即添加和修改用户时，不需要重新启动dashboard
@@ -222,21 +246,30 @@ function download_and_compile() {
 
     check_unzip
     echo_info 解压rocketmq-dashboard
-    unzip rocketmq-externals-master.zip
+    unzip rocketmq-dashboard-master.zip
     cd rocketmq-dashboard-master
 
-    echo_info 请输入rocketmq nameserver的IP:port地址：
-    read rocketmq_namesrv_ip
-    check_ip_legeal ${rocketmq_namesrv_ip}
+    echo_info 请输入rocketmq nameserver的IP:port
+    read rocketmq_namesrv_addr
+    check_ip_legeal ${rocketmq_namesrv_addr}
+
+    echo_info 请输入rocketmq proxy的IP:port，如未部署proxy请直接敲回车键：
+    read rocketmq_proxy_addr
 
     echo_info 调整rockermq-dashboard配置
     config_rocketmq_dashboard
 
     echo_info 编译rocketmq-dashboard
+    echo_warning 编译需要下载node，需要配置代理才能成功下载！
+    echo_warning 常用代理方式，修改环境变量 HTTP_PROXY 和 HTTPS_PROXY
     mvn clean package -Dmaven.test.skip=true
+    if [[ $? -ne 0 ]];then
+        echo_warning '常规编译失败，尝试添加 -Dcheckstyle.skip=true 选项后，重新编译'
+        mvn clean package -Dmaven.test.skip=true -Dcheckstyle.skip=true
+    fi
 
     echo_info 拷贝jar包
-    cp -a target/rocketmq-dashboard-2.0.0.jar ${rocketmq_dashboard_home}/rocketmq-dashboard.jar
+    cp -a target/rocketmq-dashboard-1.0.1-SNAPSHOT.jar ${rocketmq_dashboard_home}/rocketmq-dashboard.jar
 
     add_user_and_group ${sys_user}
     echo_info 部署目录授权
@@ -244,7 +277,7 @@ function download_and_compile() {
 
     echo_info 清理解压文件
     cd
-    rm -rf ${file_in_the_dir}/rocketmq-externals-master
+    rm -rf ${file_in_the_dir}/rocketmq-dashboard-master
 }
 
 function main() {
