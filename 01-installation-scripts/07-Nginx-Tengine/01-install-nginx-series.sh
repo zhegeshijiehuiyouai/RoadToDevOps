@@ -343,6 +343,8 @@ http {
 #   set_real_ip_from    10.64.0.0/10;
 #   real_ip_header    X-Forwarded-For;
 
+#########允许请求头header中包含下划线##############
+    # underscores_in_headers on;
 
 #######################gzip压缩功能设置###############################
 #########禁止nginx页面返回版本信息##############
