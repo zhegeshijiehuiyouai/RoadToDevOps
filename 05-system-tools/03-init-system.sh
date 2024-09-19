@@ -549,6 +549,9 @@ _EOF_
 
 function config_privillege(){
     echo_info 配置账号权限
+    if [[ ! -f /home/devops/.ssh/authorized_keys ]];then
+        touch /home/devops/.ssh/authorized_keys
+    fi
     chmod 600 /home/devops/.ssh/authorized_keys
     chmod 700 /home/devops/.ssh
     chown -R devops:devops /home/devops
