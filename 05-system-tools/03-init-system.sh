@@ -76,9 +76,9 @@ if [[ $disk != ''  ]];then
    capacity=$(lsblk -l | grep disk | egrep $disk | awk '{print $4}')
 fi
 
-function how_to_deal_with_datadir(){
-    read -p "请输入：" -e user_input_how_to_deal_with_datadir
-    case $user_input_how_to_deal_with_datadir in
+function rm_dir_confirm(){
+    read -p "请输入：" -e user_rm_dir_confirm
+    case $user_rm_dir_confirm in
         y|Y)
             echo_info 选择了删除${partition}目录，继续执行初始化操作
             ;;
@@ -87,7 +87,7 @@ function how_to_deal_with_datadir(){
             exit 0
             ;;
         *)
-            how_to_deal_with_datadir
+            rm_dir_confirm
             ;;
     esac
 }
@@ -102,7 +102,7 @@ function format_disk(){
     echo_info 格式化数据盘
     if [ -d $partition ];then
         echo_warning "${partition}目录已存在，是否删除，并继续执行(y/n)"
-        how_to_deal_with_datadir
+        rm_dir_confirm
     fi
     
     echo_info 请确认信息（5秒后自动执行）：
