@@ -1,4 +1,5 @@
 - 服务端工具  
+  - kafka-console-ui，推荐，GitHub地址：[https://github.com/xxd763795151/kafka-console-ui](https://github.com/xxd763795151/kafka-console-ui)
   - kafka egale，较重，且感觉界面较乱（虽然示例中截图漂亮，但部署出来看着乱）
   - CMAK，对`jdk`，`zookeeper`版本有要求 
   - kafka-manager，CMAK前身
