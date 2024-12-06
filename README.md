@@ -76,7 +76,8 @@ rpm -Uvh ./*rpm
 ├── 04-disk-tools
 │   ├── 01-Create-Swap
 │   ├── 02-Create-LVM
-│   └── 03-delete-empty-dir.sh
+│   ├── 03-delete-empty-dir.sh
+│   └── 04-wipe-data-disk.sh
 ├── 05-system-tools
 │   ├── 01-check-package-manager.sh
 │   ├── 02-update-openssl-and-openssh.sh
