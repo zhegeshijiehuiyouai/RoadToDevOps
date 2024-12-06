@@ -2,7 +2,7 @@
 # 功能：清空数据盘，删除所有数据盘的分区和 fstab 中对应的条目
 
 # 获取所有非vda的物理磁盘
-disks=$(lsblk | grep -v vda | grep disk | awk '{print $1}')
+disks=$(lsblk | egrep -v ".da|nvme0" | grep disk | awk '{print $1}')
 
 echo "检测到以下磁盘将被清空："
 echo "$disks"
