@@ -69,9 +69,9 @@ echo_info 开始执行
 touch /opt/._install.lock
 
 # 定义最终挂载的名称
-partition=/data
-# 默认只格式化第一块数据盘
-disk=$(lsblk -l | grep disk| egrep -v ".da|nvme0"|awk '{print $1}' | sort | head -1)
+partition_prefix=/data
+# 所有数据盘均格式化
+disks=($(lsblk -l | grep disk | egrep -v ".da|nvme0" | awk '{print $1}' | sort))
 if [[ $disk != ''  ]];then
    capacity=$(lsblk -l | grep disk | egrep $disk | awk '{print $4}')
 fi
@@ -94,34 +94,44 @@ function rm_dir_confirm(){
 
 # 格式化数据盘
 function format_disk(){
-    if [[ $disk == ''  ]];then
-        echo_warning 未发现数据盘，忽略创建分区和格式化
+    if [ ${#disks[@]} -eq 0 ]; then
+        echo_warning "未发现数据盘，忽略创建分区和格式化"
         return
     fi
-
-    echo_info 格式化数据盘
-    if [ -d $partition ];then
-        echo_warning "${partition}目录已存在，是否删除，并继续执行(y/n)"
-        rm_dir_confirm
-    fi
     
-    echo_info 请确认信息（5秒后自动执行）：
-    echo "硬盘：$disk"
-    echo "大小：$capacity"
-    echo "文件系统：ext4"
-    echo_info 5
-    sleep 1
-    echo_info 4
-    sleep 1
-    echo_info 3
-    sleep 1
-    echo_info 2
-    sleep 1
-    echo_info 1
-    sleep 1
+    echo_info "发现 ${#disks[@]} 个数据盘，开始格式化"
+    
+    # 遍历所有数据盘
+    for i in "${!disks[@]}"; do
+        current_disk=${disks[$i]}
+        
+        # 如果只有一块磁盘，挂载点就是/data
+        if [ ${#disks[@]} -eq 1 ]; then
+            current_partition="${partition_prefix}"
+        else
+            current_partition="${partition_prefix}${i}"
+        fi
+        
+        if [[ -d $current_partition ]]; then
+            echo_warning "${current_partition}目录已存在，是否删除，并继续执行(y/n)"
+            rm_dir_confirm
+        fi
+        
+        capacity=$(lsblk -l | grep $current_disk | awk '{print $4}')
+        
+        echo_info "请确认信息（5秒后自动执行）："
+        echo "硬盘：$current_disk"
+        echo "挂载点：$current_partition"
+        echo "大小：$capacity"
+        echo "文件系统：ext4"
+        
+        for count in {5..1}; do
+            echo_info $count
+            sleep 1
+        done
 
-# 自动化完成分区gdisk的交互步骤
-    gdisk /dev/$disk <<"_EOF_"
+        # 自动化完成分区gdisk的交互步骤
+        gdisk /dev/$current_disk <<"_EOF_"
 n
 
 
@@ -132,29 +142,32 @@ w
 Y
 _EOF_
 
-    if [ $? -ne 0 ];then
-        echo_error /dev/$disk格式化失败，退出
-        exit 1
-    fi
-    PART_NAME=$(blkid |grep $disk|grep UUID|awk -F ":" '{print $1}')
+        if [ $? -ne 0 ]; then
+            echo_error "/dev/$current_disk格式化失败，继续处理下一个磁盘"
+            continue
+        fi
+        
+        PART_NAME=$(blkid | grep $current_disk | grep UUID | awk -F ":" '{print $1}')
 
-    echo_info 创建ext4文件系统
-    mkfs.ext4 $PART_NAME
-    FS_UUID=$(blkid |grep $PART_NAME|grep UUID|awk -F '\"' '{print $2}')
+        echo_info "在 $PART_NAME 上创建ext4文件系统"
+        mkfs.ext4 $PART_NAME
+        FS_UUID=$(blkid | grep $PART_NAME | grep UUID | awk -F '\"' '{print $2}')
 
-    if [ $? -eq 0 ]
-    then 
-        mkdir -p $partition
-        echo_info 更新/etc/fstab
-        echo "UUID=$FS_UUID  $partition  ext4     defaults,nofail        0 0" >> /etc/fstab
-        # 更新读取/etc/fstab的systemd文件配置
-        systemctl daemon-reload
-        mount -a
-        df -h
-    else
-        echo_error 文件系统创建失败！
-        exit 1
-    fi
+        if [ $? -eq 0 ]; then 
+            mkdir -p $current_partition
+            echo_info "更新/etc/fstab"
+            echo "UUID=$FS_UUID  $current_partition  ext4     defaults,nofail        0 0" >> /etc/fstab
+            
+            # 更新读取/etc/fstab的systemd文件配置
+            systemctl daemon-reload
+            mount -a
+            df -h
+            echo_info "磁盘 $current_disk 处理完成，已挂载到 $current_partition"
+        else
+            echo_error "$current_disk 文件系统创建失败！继续处理下一个磁盘"
+            continue
+        fi
+    done
 }
 
 function install_chrony() {
