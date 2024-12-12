@@ -17,6 +17,28 @@ function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
 
+# 检测操作系统
+if grep -qs "ubuntu" /etc/os-release; then
+	os="ubuntu"
+    os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
+    # 阻止配置更新弹窗
+    export UCF_FORCE_CONFFOLD=1
+    # 阻止应用重启弹窗
+    export NEEDRESTART_SUSPEND=1
+elif [[ -e /etc/centos-release ]]; then
+    os="centos"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/centos-release)
+    if echo "$os_version" | grep -q '^7'; then
+        true
+    else
+        echo "仅支持centos7"
+        exit 99
+    fi
+else
+	echo_error 不支持的操作系统
+	exit 99
+fi
+
 function install_local_rpm() {
     exist_kernel_rpm=$1
     echo_info "发现kernel安装包：${exist_kernel_rpm}，是否安装[y/n]"
@@ -55,8 +77,8 @@ function install_internet_rpm() {
         ;;
     2)
         echo_info "提供两个kernel下载地址："
-        echo "coreix源，包全，速度稍慢：http://mirrors.coreix.net/elrepo-archive-archive/kernel/el7/x86_64/RPMS/"
-        echo "阿里源，包较少，速度快：  http://mirrors.aliyun.com/elrepo/kernel/el7/x86_64/RPMS/"
+        echo "coreix源，包全，速度中等：http://mirrors.coreix.net/elrepo-archive-archive/kernel/el7/x86_64/RPMS/"
+        echo "阿里源，包较少，速度快：  http://mirrors.aliyun.com/elrepo/kernel/el7/x86_64/RPMS/ (疑似已失效)"
         exit 0
         ;;
     *)
@@ -76,8 +98,14 @@ elif [ -d ${src_dir} ];then
     exist_kernel_rpm=$(ls ${src_dir} | egrep -o "^kernel-(lt|ml)-[0-9].*rpm$")
     if [ $? -eq 0 ];then
         install_local_rpm ${src_dir}/${exist_kernel_rpm}
+    else
+        # 通过互联网安装
+        echo_info "请输入数字选择升级到的kernel版本："
+        echo -e "\033[36m[1]\033[32m 主线最新版本\033[0m"
+        echo -e "\033[36m[2]\033[32m 自己下载rpm包，然后上传到 $(pwd) ，再重新执行脚本\033[0m"
+        install_internet_rpm
     fi
-# 本地没有的话，才通过互联网安装
+# 通过互联网安装
 else
     echo_info "请输入数字选择升级到的kernel版本："
     echo -e "\033[36m[1]\033[32m 主线最新版本\033[0m"
