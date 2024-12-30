@@ -170,7 +170,7 @@ EOF
 function jdk_install_centos() {
     # download_tar_gz $src_dir https://github.com/frekele/oracle-java/releases/download/8u202-b08/jdk-8u202-linux-x64.rpm
     # github加速节点下载
-    download_tar_gz $src_dir https://gh.con.sh/https://github.com/frekele/oracle-java/releases/download/8u202-b08/jdk-8u202-linux-x64.rpm
+    download_tar_gz $src_dir https://cors.isteed.cc/https://github.com/frekele/oracle-java/releases/download/8u202-b08/jdk-8u202-linux-x64.rpm
 
     cd ${file_in_the_dir}
     rpm -Uvh jdk-8u202-linux-x64.rpm
@@ -183,7 +183,7 @@ function jdk_install_centos() {
 }
 
 function jdk_install_ubuntu() {
-    download_tar_gz $src_dir https://gh.con.sh/https://github.com/frekele/oracle-java/releases/download/8u202-b08/jdk-8u202-linux-x64.tar.gz
+    download_tar_gz $src_dir https://cors.isteed.cc/https://github.com/frekele/oracle-java/releases/download/8u202-b08/jdk-8u202-linux-x64.tar.gz
     cd ${file_in_the_dir}
     untar_tgz jdk-8u202-linux-x64.tar.gz
     [ -d /usr/java/jdk1.8.0_202 ] && rm -rf /usr/java/jdk1.8.0_202

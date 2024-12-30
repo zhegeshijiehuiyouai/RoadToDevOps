@@ -202,7 +202,7 @@ fi
 
 if [[ $os == "centos" || $os == 'rocky' || $os == 'alma' ]];then
     # 使用github加速节点下载
-    download_tar_gz $src_dir https://gh.con.sh/https://github.com/drakkan/sftpgo/releases/download/v${sftpgo_version}/sftpgo-${sftpgo_version}-1.x86_64.rpm
+    download_tar_gz $src_dir https://cors.isteed.cc/https://github.com/drakkan/sftpgo/releases/download/v${sftpgo_version}/sftpgo-${sftpgo_version}-1.x86_64.rpm
     cd $file_in_the_dir
     echo_info 安装sftpgo
     if [[ $os == 'centos' ]];then
@@ -211,7 +211,7 @@ if [[ $os == "centos" || $os == 'rocky' || $os == 'alma' ]];then
         dnf localinstall -y sftpgo-${sftpgo_version}-1.x86_64.rpm
     fi
 elif [[ $os=="ubuntu" ]];then 
-    download_tar_gz $src_dir https://gh.con.sh/https://github.com/drakkan/sftpgo/releases/download/v${sftpgo_version}/sftpgo_${sftpgo_version}-1_amd64.deb
+    download_tar_gz $src_dir https://cors.isteed.cc/https://github.com/drakkan/sftpgo/releases/download/v${sftpgo_version}/sftpgo_${sftpgo_version}-1_amd64.deb
     cd $file_in_the_dir
     echo_info 安装sftpgo
     apt install -y ./sftpgo_${sftpgo_version}-1_amd64.deb

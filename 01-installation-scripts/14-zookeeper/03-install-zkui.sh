@@ -78,7 +78,7 @@ fi
 
 if [ ! -d zkui ];then
     echo_info 从github下载zkui，项目地址：https://github.com/DeemOpen/zkui.git
-    git clone https://gh.con.sh/https://github.com/DeemOpen/zkui.git
+    git clone https://cors.isteed.cc/https://github.com/DeemOpen/zkui.git
 else
     echo_info 发现zkui目录
 fi
