@@ -83,8 +83,8 @@ function rm_dir_confirm(){
             echo_info 选择了删除${partition}目录，继续执行初始化操作
             ;;
         n|N)
-            echo_warning 用户退出
-            exit 0
+            echo_warning 不删除目录${partition}，跳过格式化磁盘
+            sleep 1
             ;;
         *)
             rm_dir_confirm
@@ -116,7 +116,11 @@ function format_disk(){
             echo_warning "${current_partition}目录已存在，是否删除，并继续执行(y/n)"
             rm_dir_confirm
         fi
-        
+        if [[ "$user_rm_dir_confirm" == "n" || "$user_rm_dir_confirm" == "N" ]]; then
+            # 不删除目录就退出本函数，不格式化盘
+            return
+        fi
+
         capacity=$(lsblk -l | grep $current_disk | awk '{print $4}')
         
         echo_info "请确认信息（5秒后自动执行）："
@@ -190,31 +194,50 @@ _EOF_
     systemctl enable --now chronyd
 }
 
-function yum_install_basic_packages() {
-    echo_info 安装常用软件包
-    if [[ $1 == 'idc' ]];then
-        if [[ $os == 'centos' ]];then
-            cd /etc/yum.repos.d
-            for i in `ls CentOS*`;do mv $i{,.bak};done
-            wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
-            wget -O /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
-            yum makecache
-            install_chrony
-        elif [[ $os == 'ubuntu' ]];then
-            sed -i 's|http.*ubuntu|http://mirrors.aliyun.com/ubuntu|g' /etc/apt/sources.list
-        elif [[ $os == 'rocky' ]];then
-            # 替换为阿里源
-            cd /etc/yum.repos.d
-            sed -i -e 's|^mirrorlist=|#mirrorlist=|g' -e 's|^#baseurl=http://dl.rockylinux.org/$contentdir|baseurl=https://mirrors.tencent.com/rocky|g' *.repo
-            dnf makecache
-        elif [[ $os == 'alma' ]];then
-            # 替换为阿里源
-            cd /etc/yum.repos.d
-            sed -i -e 's|^mirrorlist=|#mirrorlist=|g' -e 's|^# baseurl=https://repo.almalinux.org|baseurl=https://mirrors.tencent.com|g' *.repo
-            dnf makecache
-        fi
-    fi
+function replace_repos_confirm(){
+    echo_warning 是否需要替换仓库源为国内源？[y/N]
+    read -p "请输入：" -e user_replace_repos_confirm
+    case $user_replace_repos_confirm in
+        y|Y)
+            echo_info 替换为国内源
+            replace_repos
+            ;;
+        n|N)
+            echo_warning 不更新仓库源
+            ;;
+        *)
+            echo_warning '请输入 y 或者 N'
+            replace_repos_confirm
+            ;;
+    esac
+}
 
+function replace_repos() {
+    if [[ $os == 'centos' ]];then
+        cd /etc/yum.repos.d
+        for i in `ls CentOS*`;do mv $i{,.bak};done
+        curl -sS -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
+        curl -sS -o /etc/yum.repos.d/epel.repo http://mirrors.aliyun.com/repo/epel-7.repo
+        yum makecache
+        install_chrony
+    elif [[ $os == 'ubuntu' ]];then
+        sed -i 's|http.*ubuntu|http://mirrors.aliyun.com/ubuntu|g' /etc/apt/sources.list
+    elif [[ $os == 'rocky' ]];then
+        # 替换为阿里源
+        cd /etc/yum.repos.d
+        sed -i -e 's|^mirrorlist=|#mirrorlist=|g' -e 's|^#baseurl=http://dl.rockylinux.org/$contentdir|baseurl=https://mirrors.tencent.com/rocky|g' *.repo
+        dnf makecache
+    elif [[ $os == 'alma' ]];then
+        # 替换为阿里源
+        cd /etc/yum.repos.d
+        sed -i -e 's|^mirrorlist=|#mirrorlist=|g' -e 's|^# baseurl=https://repo.almalinux.org|baseurl=https://mirrors.tencent.com|g' *.repo
+        dnf makecache
+    fi
+}
+
+function yum_install_basic_packages() {
+    replace_repos_confirm
+    echo_info 安装常用软件包
     if [[ $os == 'centos' ]];then
         yum update -y
         yum install -y vim wget net-tools telnet bash-completion lsof gdisk cloud-utils-growpart
@@ -426,7 +449,7 @@ function config_sshd(){
     echo_info 优化sshd配置
     sed -i 's/^UseDNS/#UseDNS/' /etc/ssh/sshd_config
     sed -i 's/^AddressFamily/#AddressFamily/' /etc/ssh/sshd_config
-    sed -i 's/^PermitRootLogin/#PermitRootLogin/' /etc/ssh/sshd_config
+    #sed -i 's/^PermitRootLogin/#PermitRootLogin/' /etc/ssh/sshd_config
     sed -i 's/^SyslogFacility/#SyslogFacility/' /etc/ssh/sshd_config
     sed -i 's/^PasswordAuthentication/#PasswordAuthentication/' /etc/ssh/sshd_config
     sed -i 's/^ClientAliveCountMax/#ClientAliveCountMax/' /etc/ssh/sshd_config
@@ -440,7 +463,7 @@ function config_sshd(){
 ### sshd hardening
 UseDNS no
 AddressFamily inet
-PermitRootLogin no
+#PermitRootLogin no
 SyslogFacility AUTHPRIV
 PasswordAuthentication yes
 ClientAliveInterval 600
