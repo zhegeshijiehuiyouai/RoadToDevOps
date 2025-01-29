@@ -90,7 +90,7 @@ function download_tar_gz(){
                     dnf install -y wget
                 fi
             fi
-            wget $2
+            wget --no-check-certificate $2
             if [ $? -ne 0 ];then
                 echo_error 下载 $2 失败！
                 exit 1
@@ -116,7 +116,7 @@ function download_tar_gz(){
                         dnf install -y wget
                     fi
                 fi
-                wget $2
+                wget --no-check-certificate $2
                 if [ $? -ne 0 ];then
                     echo_error 下载 $2 失败！
                     exit 1
