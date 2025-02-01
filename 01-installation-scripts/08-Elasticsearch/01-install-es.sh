@@ -430,12 +430,58 @@ function install_by_docker() {
     fi
 }
 
+function jdk_check_user_confirm() {
+    read jdk_check_user_confirm_input
+    case ${jdk_check_user_confirm_input} in
+    Y|y)
+        true
+        ;;
+    N|n)
+        exit 0
+        ;;
+    *)
+        echo_warning 请输入y或n
+        jdk_check_user_confirm
+        ;;
+    esac
+}
+
+function jdk_check() {
+    jdk_version=$(java -version 2>&1 | grep 'java version' | cut -d '"' -f 2)
+    if [[ ${jdk_version} == '' ]];then
+        echo_error 未检测到jdk，请先安装，退出
+        exit 1
+    fi
+    if [ ${es_major_version} -eq 6 ];then
+        if [[ ! $jdk_version =~ ^1\.8 ]]; then
+            echo_warning 当前jdk版本：${jdk_version}，推荐版本：jdk 8，是否继续？[Y/n]
+            jdk_check_user_confirm
+        fi
+    elif [ ${es_major_version} -eq 7 ];then
+        if [[ ! $jdk_version =~ ^11 ]]; then
+            echo_warning 当前jdk版本：${jdk_version}，推荐版本：jdk 11，是否继续？[Y/n]
+            jdk_check_user_confirm
+        fi
+    elif [ ${es_major_version} -eq 8 ];then
+        if [[ $jdk_version =~ ^1\.8 ]]; then
+            echo_error "Elasticsearch 8.x 不再支持jdk 8"
+            exit 0
+        elif [[ ! $jdk_version =~ ^17 ]]; then
+            echo_warning 当前jdk版本：${jdk_version}，推荐版本：jdk 17，是否继续？[Y/n]
+            jdk_check_user_confirm
+        fi
+    else
+        echo_error Elasticsearch版本号错误
+        exit 18
+    fi
+}
 
 
-function install_main_func(){
+function install_main_func() {
     read -p "请输入数字选择安装类型（如需退出请输入q）：" -e software
     case $software in
         1)
+            jdk_check
             unit_file=/etc/systemd/system/elasticsearch.service
             es_yml_file=${deploy_dir}/config/elasticsearch.yml
             jvm_options_file=${deploy_dir}/config/jvm.options
@@ -446,6 +492,7 @@ function install_main_func(){
             install_by_tgz
             ;;
         2)
+            jdk_check
             unit_file=/usr/lib/systemd/system/elasticsearch.service
             es_yml_file=/etc/elasticsearch/elasticsearch.yml
             jvm_options_file=/etc/elasticsearch/jvm.options
