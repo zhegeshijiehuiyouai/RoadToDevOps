@@ -146,14 +146,14 @@ function add_user_and_group(){
         true
     else
         groupadd ${1}
-        echo_info 创建${1}组
+        echo_info 创建 ${1} 组
     fi
 
     if id -u ${2} >/dev/null 2>&1; then
         true
     else
         useradd -M -g ${1} -s /sbin/nologin ${2}
-        echo_info 创建${2}用户
+        echo_info 创建 ${2} 用户
     fi
 }
 
@@ -223,6 +223,21 @@ function config_es() {
     echo "# 单节点部署" >> ${es_yml_file}
     echo "discovery.type: single-node" >> ${es_yml_file}
 
+    echo "# 锁住内存，不使用swap，生产环境推荐开启" >> ${es_yml_file}
+    echo "bootstrap.memory_lock: true" >> ${es_yml_file}
+    # unitfile也要修改
+    if [ ${software} -eq 2 ];then
+        sed -i '/\[Install\]/i# 设置内存锁定\nLimitMEMLOCK=infinity\n' ${unit_file}
+    fi
+    # unitfile加了/etc/security/limits.conf可以不加，但为了预防二进制部署时手动启动，还是加上
+    cat >> /etc/security/limits.conf << _EOF_
+
+### allow user '${es_user}' mlockall
+${es_user} soft memlock unlimited
+${es_user} hard memlock unlimited
+_EOF_
+    
+
     cat >> ${jvm_options_file} << _EOF_
 
 ########## 脚本添加 #########
@@ -280,8 +295,8 @@ EOF
     fi
     sed -i 's#User=.*#User='${es_user}'#g' ${unit_file}
     sed -i 's#Group=.*#Group='${es_group}'#g' ${unit_file}
-    systemctl daemon-reload
     config_es
+    systemctl daemon-reload
     echo_info elasticsearch 目录授权
     chown -R ${es_user}:${es_group} ${log_dir}
     chown -R ${es_user}:${es_group} ${data_dir}
@@ -326,6 +341,9 @@ LimitAS=infinity
 
 # Specifies the maximum file size
 LimitFSIZE=infinity
+
+# 设置内存锁定
+LimitMEMLOCK=infinity
 
 # Disable timeout logic and wait until process is stopped
 TimeoutStopSec=0
