@@ -12,12 +12,11 @@ node_name=node-01
 # 启动用户和组，二进制、yum部署时使用
 es_user=elasticsearch
 es_group=elasticsearch
-jvm_xms=1g
-jvm_xmx=1g
 # 二进制部署使用
 src_dir=$(pwd)/00src00
 deploy_dir=/data/elasticsearch-${es_version}
-
+# 其他
+limits_conf_file=/etc/security/limits.conf
 
 # 带格式的echo函数
 function echo_info() {
@@ -180,6 +179,70 @@ function get_machine_ip() {
 }
 #-------------------------------------------------
 
+function jvm_user_confirm() {
+    read -p "请输入：" jvm_user_confirm_input
+    case ${jvm_user_confirm_input} in
+    r|R)
+        write_jvm_xms=$1
+        write_jvm_xmx=$1
+        ;;
+    d|D)
+        write_jvm_xms=${default_jvm_xms}
+        write_jvm_xmx=${default_jvm_xms}
+        ;;
+    *)
+        echo_warning 请输入r或d
+        jvm_user_confirm
+        ;;
+    esac
+}
+
+function config_jvm() {
+    # 获取系统总内存(KB)
+    # total_mem_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+    # 实际可用内存用来计算jvm才合适，变量名就不修改了
+    total_mem_kb=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
+    # 转换为MB
+    total_mem_mb=$((total_mem_kb / 1024))
+    # 计算50%的内存(MB)
+    half_mem_mb=$((total_mem_mb / 2))
+    # 32GB转换为MB
+    max_allowed_mb=$((32 * 1024))
+    # 1GB转换为MB
+    min_allowed_mb=1024
+    # 5GB转换为MB
+    five_gb_mb=$((5 * 1024))
+    # 计算推荐内存值(MB)
+    if [ $half_mem_mb -gt $max_allowed_mb ]; then
+        recommended_mb=$max_allowed_mb
+    else
+        recommended_mb=$half_mem_mb
+    fi
+    # 确保不小于最小值
+    if [ $recommended_mb -lt $min_allowed_mb ]; then
+        recommended_mb=$min_allowed_mb
+    fi
+    # 格式化内存配置
+    # 如果小于5GB
+    if [ $recommended_mb -lt $five_gb_mb ]; then
+        # 检查是否能被1024整除（即是否能被完整转换为GB）
+        if [ $((recommended_mb % 1024)) -eq 0 ]; then
+            recommended_jvm_xmx="$((recommended_mb / 1024))g"
+        else
+            recommended_jvm_xmx="${recommended_mb}m"
+        fi
+    else
+        # 5GB及以上，向下取整到GB
+        recommended_jvm_xmx="$((recommended_mb / 1024))g"
+    fi
+    cat >> ${jvm_options_file} << _EOF_
+
+########## 脚本添加 #########
+-Xms${recommended_jvm_xmx}
+-Xmx${recommended_jvm_xmx}
+_EOF_
+}
+
 function config_es() {
     get_machine_ip
     echo_info 调整 elasticsearch 配置
@@ -229,25 +292,23 @@ function config_es() {
     if [ ${software} -eq 2 ];then
         sed -i '/\[Install\]/i# 设置内存锁定\nLimitMEMLOCK=infinity\n' ${unit_file}
     fi
-    # unitfile加了/etc/security/limits.conf可以不加，但为了预防二进制部署时手动启动，还是加上
-    cat >> /etc/security/limits.conf << _EOF_
-
+    # unitfile加了，那么${limits_conf_file}可以不加，但为了预防二进制部署时手动启动，还是加上
+    # 确保幂等性，删除现有配置（如果有）
+    sed -i "/### allow user '${es_user}' mlockall/d" ${limits_conf_file}
+    sed -i "/^${es_user}[[:space:]]*soft[[:space:]]*memlock/d" ${limits_conf_file}
+    sed -i "/^${es_user}[[:space:]]*hard[[:space:]]*memlock/d" ${limits_conf_file}
+    cat >> ${limits_conf_file} << _EOF_
 ### allow user '${es_user}' mlockall
 ${es_user} soft memlock unlimited
 ${es_user} hard memlock unlimited
 _EOF_
     
-
-    cat >> ${jvm_options_file} << _EOF_
-
-########## 脚本添加 #########
--Xms${jvm_xms}
--Xmx${jvm_xmx}
-_EOF_
+    config_jvm
 }
 
 function echo_summary() {
     echo_info elasticsearch 已部署完毕，以下是相关信息：
+    echo -e "\033[37m                  ES内存大小：${recommended_jvm_xmx}（根据物理内存自动计算），如需调整，修改${jvm_options_file}文件\033[0m"
     echo -e "\033[37m                  启动命令：systemctl start elasticsearch\033[0m"
     echo -e "\033[37m                  es服务地址：http://${machine_ip}:${es_port}\033[0m"
     echo -e "\033[37m                  es节点间通信地址：${machine_ip}:${es_transport_port}\033[0m"
@@ -431,7 +492,7 @@ function install_by_docker() {
 }
 
 function jdk_check_user_confirm() {
-    read jdk_check_user_confirm_input
+    read -p "请输入：" jdk_check_user_confirm_input
     case ${jdk_check_user_confirm_input} in
     Y|y)
         true
