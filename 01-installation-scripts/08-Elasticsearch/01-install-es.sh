@@ -203,7 +203,7 @@ function config_kernel_params() {
     # 标志位，是否有这个参数，没有的话需要新增
     local kp_change_tag=0
     devops_sysctl_conf=/etc/sysctl.d/99-zz-devops.conf
-    sysctl_files=(/etc/sysctl.d/* /etc/sysctl.conf)
+    sysctl_files=(/etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf)
     for file in "${sysctl_files[@]}"; do
         grep '^[[:space:]]*'$1'' $file &> /dev/null
         if [ $? -eq 0 ];then
