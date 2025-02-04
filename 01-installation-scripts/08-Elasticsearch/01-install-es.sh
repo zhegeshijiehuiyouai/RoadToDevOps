@@ -17,7 +17,6 @@ src_dir=$(pwd)/00src00
 deploy_dir=/data/elasticsearch-${es_version}
 # 其他
 limits_conf_file=/etc/security/limits.conf
-devops_sysctl_conf=/etc/sysctl.d/99-zz-devops.conf
 
 # 带格式的echo函数
 function echo_info() {
@@ -198,29 +197,36 @@ function jvm_user_confirm() {
     esac
 }
 
+function config_kernel_params() {
+    # 用法 config_kernel_params 要调整的参数 值
+
+    # 标志位，是否有这个参数，没有的话需要新增
+    local kp_change_tag=0
+    devops_sysctl_conf=/etc/sysctl.d/99-zz-devops.conf
+    sysctl_files=(/etc/sysctl.d/* /etc/sysctl.conf)
+    for file in "${sysctl_files[@]}"; do
+        grep '^[[:space:]]*'$1'' $file &> /dev/null
+        if [ $? -eq 0 ];then
+            kp_change_tag=1
+            sed -i 's@^[[:space:]]*'$1'.*@'$1' = '$2'@g' $file
+            break
+        fi
+    done
+
+    if [ $kp_change_tag -eq 0 ];then
+        if [ ! -f $devops_sysctl_conf ];then
+            echo '# 该配置文件由脚本生成' > $devops_sysctl_conf
+        fi
+        echo ''$1' = '$2'' >> $devops_sysctl_conf
+    fi
+    sysctl -w "${1}=${2}" &> /dev/null
+}
+
 function disable_swap() {
     echo_info 关闭swap
     swapoff -a
     echo_info 调整swap相关内核参数
-    cd /etc/sysctl.d
-    sysctl_files=$(ls /etc/sysctl.d)
-    # 标志位，是否有这个配置，没有的话需要新增
-    change_tag=0
-    for file in $sysctl_files;do
-        grep 'vm.swappiness' $file &> /dev/null
-        if [ $? -eq 0 ];then
-            change_tag=1
-            sed -i 's/vm.swappiness.*/vm.swappiness = 0/g' $file
-        fi
-    done
-    # 配置中没有vm.swappiness，需要新增
-    if [ $change_tag -eq 0 ];then
-        if [ ! -f $devops_sysctl_conf ];then
-            echo '# 该配置文件由初始化脚本生成' > $devops_sysctl_conf
-        fi
-        echo 'vm.swappiness = 0' >> $devops_sysctl_conf
-    fi
-    sysctl vm.swappiness=0
+    config_kernel_params "vm.swappiness" "0"
     echo_info /etc/fstab中注释掉swap
     fstab_file="/etc/fstab"
     # 过滤出不以 # 开头的行，并找出第三列为 swap 的行

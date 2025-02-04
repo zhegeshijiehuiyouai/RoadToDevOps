@@ -1,8 +1,6 @@
 #!/bin/bash
 # 基于CentOS 7.9/Ubuntu 20.04/Ubuntu 22.04
 
-# 全局变量
-devops_sysctl_conf=/etc/sysctl.d/99-zz-devops.conf
 # 要创建的用户
 SUPER_USER_LIST="devops"
 NORMAL_USER_LIST="monitor"
@@ -275,34 +273,36 @@ _EOF_
     sed -i 's/ls -d \.\*/ls -d \.[^.]\*/g' /etc/profile.d/*
 }
 
-function adjust_vm_swappiness() {
-    echo_info '调整vm.swappiness'
-    sysctl -w vm.swappiness=30
-    cd /etc/sysctl.d
-    sysctl_files=$(ls /etc/sysctl.d)
-    # 标志位，是否有这个配置，没有的话需要新增
-    change_tag=0
-    for file in $sysctl_files;do
-        grep 'vm.swappiness' $file &> /dev/null
+function config_kernel_params() {
+    # 用法 config_kernel_params 要调整的参数 值
+
+    # 标志位，是否有这个参数，没有的话需要新增
+    local kp_change_tag=0
+    devops_sysctl_conf=/etc/sysctl.d/99-zz-devops.conf
+    sysctl_files=(/etc/sysctl.d/* /etc/sysctl.conf)
+    for file in "${sysctl_files[@]}"; do
+        grep '^[[:space:]]*'$1'' $file &> /dev/null
         if [ $? -eq 0 ];then
-            change_tag=1
-            sed -i 's/vm.swappiness.*/vm.swappiness = 30/g' $file
+            kp_change_tag=1
+            sed -i 's@^[[:space:]]*'$1'.*@'$1' = '$2'@g' $file
+            break
         fi
     done
-    # 配置中没有vm.swappiness，需要新增
-    if [ $change_tag -eq 0 ];then
+
+    if [ $kp_change_tag -eq 0 ];then
         if [ ! -f $devops_sysctl_conf ];then
-            echo '# 该配置文件由初始化脚本生成' > $devops_sysctl_conf
+            echo '# 该配置文件由脚本生成' > $devops_sysctl_conf
         fi
-        echo 'vm.swappiness = 30' >> $devops_sysctl_conf
+        echo ''$1' = '$2'' >> $devops_sysctl_conf
     fi
+    sysctl -w "${1}=${2}" &> /dev/null
 }
 
 function create_swapfile() {
     # 已经有swap了的不创建
     swap_size=$(free | grep Swap | awk '{print $2}')
     if [ $swap_size -ne 0 ];then
-        adjust_vm_swappiness
+        config_kernel_params "vm.swappiness" "30"
         return 0
     fi
     # 内存大于等于16G的不创建（给出警告，人工斟酌是否需要创建）
@@ -319,7 +319,7 @@ function create_swapfile() {
     swapon /swapfile
    	echo_info 更新/etc/fstab
    	echo "/swapfile  swap  swap     defaults,nofail        0 0" >> /etc/fstab
-    adjust_vm_swappiness
+    config_kernel_params "vm.swappiness" "30"
 }
 
 function config_system_parameter(){
