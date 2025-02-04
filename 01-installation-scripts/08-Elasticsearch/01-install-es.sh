@@ -343,8 +343,8 @@ function install_by_yum() {
     echo_info 配置 elasticsearch 仓库
     cat > /etc/yum.repos.d/elasticsearch.repo << EOF
 [elasticsearch]
-name=Elasticsearch repository for 7.x packages
-baseurl=https://mirrors.bfsu.edu.cn/elasticstack/yum/elastic-7.x/
+name=Elasticsearch repository for ${es_major_version}.x packages
+baseurl=https://mirrors.bfsu.edu.cn/elasticstack/yum/elastic-${es_major_version}.x/
 enable=1
 gpgcheck=0
 EOF
