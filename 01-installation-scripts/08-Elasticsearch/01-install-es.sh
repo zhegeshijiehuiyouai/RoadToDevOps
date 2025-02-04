@@ -304,6 +304,34 @@ function config_jvm() {
 _EOF_
 }
 
+function install_analysis() {
+    echo_info 安装ik、pinyin分词器
+    # yum安装的话，需要获取实际安装的版本号
+    if [ ${software} -eq 2 ];then
+        es_version=$(rpm -qa | grep elasticsearch- | head -1 | cut -d '-' -f 2)
+    fi
+    download_tar_gz ${src_dir} https://release.infinilabs.com/analysis-ik/stable/elasticsearch-analysis-ik-${es_version}.zip
+    download_tar_gz ${src_dir} https://release.infinilabs.com/analysis-pinyin/stable/elasticsearch-analysis-pinyin-${es_version}.zip
+    command unzip &> /dev/null
+    if [ $? -ne 0 ];then
+        echo_info 安装unzip
+        yum install -y unzip
+    fi
+    cd ${file_in_the_dir}
+    unzip elasticsearch-analysis-ik-${es_version}.zip -d elasticsearch-analysis-ik-${es_version}
+    unzip elasticsearch-analysis-pinyin-${es_version}.zip -d elasticsearch-analysis-pinyin-${es_version}
+    if [ ${software} -eq 1 ];then
+        plugins_dir=${deploy_dir}/plugins
+        mv elasticsearch-analysis-ik-${es_version} ${plugins_dir}
+        mv elasticsearch-analysis-pinyin-${es_version} ${plugins_dir}
+    elif [ ${software} -eq 2 ];then
+        plugins_dir=/usr/share/elasticsearch/plugins
+        mv elasticsearch-analysis-ik-${es_version} ${plugins_dir}
+        mv elasticsearch-analysis-pinyin-${es_version} ${plugins_dir}
+    fi
+    chown -R ${es_user}:${es_group} ${plugins_dir}
+}
+
 function config_es() {
     get_machine_ip
     echo_info 调整 elasticsearch 配置
@@ -368,12 +396,30 @@ _EOF_
     config_swap
 }
 
+function ia_user_confirm() {
+    read -p "请输入：" ia_user_confirm_input
+    case ${ia_user_confirm_input} in
+    Y|y)
+        install_analysis
+        ;;
+    N|n)
+        true
+        ;;
+    *)
+        echo_warning 请输入y或n
+        ia_user_confirm
+        ;;
+    esac
+}
+
 function echo_summary() {
     echo_info elasticsearch 已部署完毕，以下是相关信息：
     echo -e "\033[37m                  ES内存大小：${recommended_jvm_xmx}（根据物理内存自动计算），如需调整，修改${jvm_options_file}文件\033[0m"
     echo -e "\033[37m                  启动命令：systemctl start elasticsearch\033[0m"
     echo -e "\033[37m                  es服务地址：http://${machine_ip}:${es_port}\033[0m"
     echo -e "\033[37m                  es节点间通信地址：${machine_ip}:${es_transport_port}\033[0m"
+    echo_info 是否安装ik、pinyin分词器？[y/N]
+    ia_user_confirm
 }
 
 function is_installed_es() {
@@ -423,6 +469,7 @@ EOF
     echo_info elasticsearch 目录授权
     chown -R ${es_user}:${es_group} ${log_dir}
     chown -R ${es_user}:${es_group} ${data_dir}
+    chown -R ${es_user}:${es_group} /usr/share/elasticsearch
     echo_summary
 }
 
