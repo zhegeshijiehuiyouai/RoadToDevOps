@@ -17,6 +17,7 @@ src_dir=$(pwd)/00src00
 deploy_dir=/data/elasticsearch-${es_version}
 # 其他
 limits_conf_file=/etc/security/limits.conf
+devops_sysctl_conf=/etc/sysctl.d/99-zz-devops.conf
 
 # 带格式的echo函数
 function echo_info() {
@@ -197,6 +198,60 @@ function jvm_user_confirm() {
     esac
 }
 
+function disable_swap() {
+    echo_info 关闭swap
+    swapoff -a
+    echo_info 调整swap相关内核参数
+    cd /etc/sysctl.d
+    sysctl_files=$(ls /etc/sysctl.d)
+    # 标志位，是否有这个配置，没有的话需要新增
+    change_tag=0
+    for file in $sysctl_files;do
+        grep 'vm.swappiness' $file &> /dev/null
+        if [ $? -eq 0 ];then
+            change_tag=1
+            sed -i 's/vm.swappiness.*/vm.swappiness = 0/g' $file
+        fi
+    done
+    # 配置中没有vm.swappiness，需要新增
+    if [ $change_tag -eq 0 ];then
+        if [ ! -f $devops_sysctl_conf ];then
+            echo '# 该配置文件由初始化脚本生成' > $devops_sysctl_conf
+        fi
+        echo 'vm.swappiness = 0' >> $devops_sysctl_conf
+    fi
+    sysctl vm.swappiness=0
+    echo_info /etc/fstab中注释掉swap
+    fstab_file="/etc/fstab"
+    # 过滤出不以 # 开头的行，并找出第三列为 swap 的行
+    awk '!/^#/ && $3=="swap" { $0="#" $0; print; next } 1' "$fstab_file" > "${fstab_file}.tmp"
+    mv -f "${fstab_file}.tmp" "$fstab_file"
+}
+
+function config_swap_user_confirm() {
+    read -p "请输入：" config_swap_user_confirm_input
+    case ${config_swap_user_confirm_input} in
+    Y|y)
+        disable_swap
+        ;;
+    N|n)
+        true
+        ;;
+    *)
+        echo_warning 请输入y或n
+        config_swap_user_confirm
+        ;;
+    esac
+}
+
+function config_swap() {
+    is_swap_on=$(swapon --show)
+    if [[ ${is_swap_on} != "" ]];then
+        echo_info "检测到系统开启了swap，是否关闭？[y/N]"
+        config_swap_user_confirm
+    fi
+}
+
 function config_jvm() {
     # 获取系统总内存(KB)
     # total_mem_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
@@ -304,6 +359,7 @@ ${es_user} hard memlock unlimited
 _EOF_
     
     config_jvm
+    config_swap
 }
 
 function echo_summary() {
