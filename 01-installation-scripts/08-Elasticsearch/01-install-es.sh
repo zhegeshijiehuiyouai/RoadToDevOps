@@ -379,6 +379,21 @@ function config_es() {
     echo "" >> ${es_yml_file}
     echo "# 单节点部署" >> ${es_yml_file}
     echo "discovery.type: single-node" >> ${es_yml_file}
+    echo "# 缓冲区限制，防止OOM" >> ${es_yml_file}
+    echo "indices.fielddata.cache.size:  40%" >> ${es_yml_file}
+    echo "# 断路器限制，需要比indices.fielddata.cache.size大" >> ${es_yml_file}
+    echo "indices.breaker.fielddata.limit:  60%" >> ${es_yml_file}
+    echo "# 限制单个es中允许存在的字段（Field）总数，vivo经验20000（默认1000）" >> ${es_yml_file}
+    echo "index.mapping.total_fields.limit: 2000" >> ${es_yml_file}
+    echo "# 索引刷新间隔，vivo经验：业务类1s（默认）；部分写入流量大调整为5s；日志类30s" >> ${es_yml_file}
+    echo "index.refresh_interval:  5s" >> ${es_yml_file}
+    echo "# 异步刷盘，降低写入延迟（但可能丢失部分数据）" >> ${es_yml_file}
+    echo "index.translog.durability: async" >> ${es_yml_file}
+    echo "# 数据落盘间隔，vivo经验90s" >> ${es_yml_file}
+    echo "index.translog.sync_interval: 90s" >> ${es_yml_file}
+    echo "# 数据达到多少落盘，vivo经验1000m" >> ${es_yml_file}
+    echo "index.translog.flush_threshold_size: 1000m" >> ${es_yml_file}
+    
 
     echo "# 锁住内存，不使用swap，生产环境推荐开启" >> ${es_yml_file}
     echo "bootstrap.memory_lock: true" >> ${es_yml_file}
@@ -423,6 +438,13 @@ function echo_summary() {
     echo -e "\033[37m                  启动命令：systemctl start elasticsearch\033[0m"
     echo -e "\033[37m                  es服务地址：http://${machine_ip}:${es_port}\033[0m"
     echo -e "\033[37m                  es节点间通信地址：${machine_ip}:${es_transport_port}\033[0m"
+    echo
+    echo_info "---下面配置只能通过接口更新，请待ES启动后执行---"
+    echo "# 推迟节点离开集群后分片分配时间为20m（vivo经验）"
+    echo "curl -X PUT \"127.0.0.1:9200/_cluster/settings\" -H 'Content-Type: application/json' -d '{\"persistent\":{\"index.unassigned.node_left.delayed_timeout\":\"20m\"}}'"
+    echo
+
+    sleep 1
     echo_info 是否安装ik、pinyin分词器？[y/N]
     ia_user_confirm
 }
