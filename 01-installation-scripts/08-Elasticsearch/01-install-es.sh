@@ -199,9 +199,7 @@ function jvm_user_confirm() {
 
 function config_kernel_params() {
     # 用法 config_kernel_params 要调整的参数 值
-
-    # 标志位，是否有这个参数，没有的话需要新增
-    local kp_change_tag=0
+    local kp_change_tag=0    # 标志位，是否有这个参数，没有的话需要新增
     devops_sysctl_conf=/etc/sysctl.d/99-zz-devops.conf
     sysctl_files=(/etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf)
     for file in "${sysctl_files[@]}"; do
@@ -220,6 +218,13 @@ function config_kernel_params() {
         echo ''$1' = '$2'' >> $devops_sysctl_conf
     fi
     sysctl -w "${1}=${2}" &> /dev/null
+}
+
+function check_kernel_params() {
+    vm_max_map_count=$(sysctl vm.max_map_count | cut -d ' ' -f 3)
+    if [[ ${vm_max_map_count} < 262144 ]];then
+        config_kernel_params "vm.max_map_count" "262184"
+    fi
 }
 
 function disable_swap() {
@@ -391,7 +396,7 @@ function config_es() {
 ${es_user} soft memlock unlimited
 ${es_user} hard memlock unlimited
 _EOF_
-    
+    check_kernel_params
     config_jvm
     config_swap
 }
