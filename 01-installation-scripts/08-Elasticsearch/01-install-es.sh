@@ -383,16 +383,6 @@ function config_es() {
     echo "indices.fielddata.cache.size:  40%" >> ${es_yml_file}
     echo "# 断路器限制，需要比indices.fielddata.cache.size大" >> ${es_yml_file}
     echo "indices.breaker.fielddata.limit:  60%" >> ${es_yml_file}
-    echo "# 限制单个es中允许存在的字段（Field）总数，vivo经验20000（默认1000）" >> ${es_yml_file}
-    echo "index.mapping.total_fields.limit: 2000" >> ${es_yml_file}
-    echo "# 索引刷新间隔，vivo经验：业务类1s（默认）；部分写入流量大调整为5s；日志类30s" >> ${es_yml_file}
-    echo "index.refresh_interval:  5s" >> ${es_yml_file}
-    echo "# 异步刷盘，降低写入延迟（但可能丢失部分数据）" >> ${es_yml_file}
-    echo "index.translog.durability: async" >> ${es_yml_file}
-    echo "# 数据落盘间隔，vivo经验90s" >> ${es_yml_file}
-    echo "index.translog.sync_interval: 90s" >> ${es_yml_file}
-    echo "# 数据达到多少落盘，vivo经验1000m" >> ${es_yml_file}
-    echo "index.translog.flush_threshold_size: 1000m" >> ${es_yml_file}
     
 
     echo "# 锁住内存，不使用swap，生产环境推荐开启" >> ${es_yml_file}
@@ -440,8 +430,26 @@ function echo_summary() {
     echo -e "\033[37m                  es节点间通信地址：${machine_ip}:${es_transport_port}\033[0m"
     echo
     echo_info "---下面配置只能通过接口更新，请待ES启动后执行---"
-    echo "# 推迟节点离开集群后分片分配时间为20m（vivo经验）"
-    echo "curl -X PUT \"127.0.0.1:9200/_cluster/settings\" -H 'Content-Type: application/json' -d '{\"persistent\":{\"index.unassigned.node_left.delayed_timeout\":\"20m\"}}'"
+    echo_warning "注意，以下是针对索引的设置，需要集群中存在索引，没有索引时执行会报错"
+    echo "创建索引：curl -X PUT 'http://localhost:9200/test_index'"
+    echo "删除索引：curl -X DELETE 'http://127.0.0.1:9200/test_index'"
+    echo
+    cat << _EOF_
+curl -X PUT 'http://127.0.0.1:9200/_all/_settings?preserve_existing=true' -H 'Content-Type: application/json' -d '{
+    // 推迟节点离开集群后分片分配时间为20m（vivo经验）
+    "index.unassigned.node_left.delayed_timeout": "20m",
+    // 限制单个es中允许存在的字段（Field）总数，vivo经验20000（默认1000）
+    "index.mapping.total_fields.limit" : "2000",
+    // 索引刷新间隔，vivo经验：业务类1s（默认）；部分写入流量大调整为5s；日志类30s
+    "index.refresh_interval" : "5s",
+    // 异步刷盘，降低写入延迟（但可能丢失部分数据）
+    "index.translog.durability" : "async",
+    // 数据达到多少落盘，vivo经验1000m
+    "index.translog.flush_threshold_size" : "1000m",
+    // 数据落盘间隔，vivo经验90s
+    "index.translog.sync_interval" : "90s"
+}'
+_EOF_
     echo
 
     sleep 1
@@ -645,9 +653,12 @@ function jdk_check_user_confirm() {
 
 function jdk_check() {
     jdk_version=$(java -version 2>&1 | grep 'java version' | cut -d '"' -f 2)
-    if [[ ${jdk_version} == '' ]];then
-        echo_error 未检测到jdk，请先安装，退出
-        exit 1
+    # 7.x后自带jdk，之前的需要检查是否有jdk
+    if [ ${es_major_version} -lt 7 ];then
+        if [[ ${jdk_version} == '' ]];then
+            echo_error 未检测到jdk，请先安装，退出
+            exit 1
+        fi
     fi
     if [ ${es_major_version} -eq 6 ];then
         if [[ ! $jdk_version =~ ^1\.8 ]]; then
@@ -655,18 +666,22 @@ function jdk_check() {
             jdk_check_user_confirm
         fi
     elif [ ${es_major_version} -eq 7 ];then
-        if [[ ! $jdk_version =~ ^11 ]]; then
+        if [[ $jdk_version == "" ]];then
+            echo_warning 当前jdk版本：Elasticsearch自带JDK，推荐版本：jdk 11，是否继续？[Y/n]
+        elif [[ ! $jdk_version =~ ^11 ]]; then
             echo_warning 当前jdk版本：${jdk_version}，推荐版本：jdk 11，是否继续？[Y/n]
-            jdk_check_user_confirm
         fi
+        jdk_check_user_confirm
     elif [ ${es_major_version} -eq 8 ];then
         if [[ $jdk_version =~ ^1\.8 ]]; then
             echo_error "Elasticsearch 8.x 不再支持jdk 8"
             exit 0
+        elif [[ $jdk_version == "" ]];then
+            echo_warning 当前jdk版本：Elasticsearch自带JDK，推荐版本：jdk 17，是否继续？[Y/n]
         elif [[ ! $jdk_version =~ ^17 ]]; then
             echo_warning 当前jdk版本：${jdk_version}，推荐版本：jdk 17，是否继续？[Y/n]
-            jdk_check_user_confirm
         fi
+        jdk_check_user_confirm
     else
         echo_error Elasticsearch版本号错误
         exit 18
