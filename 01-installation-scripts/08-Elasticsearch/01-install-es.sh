@@ -272,8 +272,8 @@ function config_jvm() {
     total_mem_mb=$((total_mem_kb / 1024))
     # 计算50%的内存(MB)
     half_mem_mb=$((total_mem_mb / 2))
-    # 32GB转换为MB
-    max_allowed_mb=$((32 * 1024))
+    # 31GB转换为MB；32G时，有些操作系统已经开启指针压缩了
+    max_allowed_mb=$((31 * 1024))
     # 1GB转换为MB
     min_allowed_mb=1024
     # 5GB转换为MB
