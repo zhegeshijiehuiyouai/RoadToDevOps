@@ -27,14 +27,22 @@ if [ ! ${zk_exact_version} ];then
 fi
 sed -i '$d' /etc/resolv.conf
 
+####################################### 配置
 # 包下载目录
 src_dir=$(pwd)/00src00
 # 部署目录的父目录，比如要部署到/data/zookeeper，那么basedir就是/data
 basedir=$(pwd)
 # 就是上面注释中的zookeeper，完整部署目录为${basedir}/${zookeeperdir}
 zookeeperdir=zookeeper-${zk_exact_version}
+# 数据目录，可单独设定
+zk_data_dir=${basedir}/${zookeeperdir}/data
+# 日志目录，可单独设定
+zk_logs_dir=${basedir}/${zookeeperdir}/logs
 # 端口
 zk_port=2181
+# zookeeper堆内存
+zk_xms=512m
+zk_xmx=512m
 # 启动服务的用户
 sys_user=zookeeper
 
@@ -209,20 +217,31 @@ function install_single_zk(){
     untar_tgz apache-zookeeper-${zk_exact_version}-bin.tar.gz
 
     mv apache-zookeeper-${zk_exact_version}-bin ${basedir}/${zookeeperdir}
-    mkdir -p ${basedir}/${zookeeperdir}/{data,logs}
+    mkdir -p ${zk_data_dir} && chown -R ${sys_user}:${sys_user} ${zk_data_dir}
+    mkdir -p ${zk_logs_dir} && chown -R ${sys_user}:${sys_user} ${zk_logs_dir}
     cd ${basedir}/${zookeeperdir}   
 
-    cp conf/zoo_sample.cfg conf/zoo.cfg
-    sed -i 's#^dataDir=.*#dataDir='${basedir}'/'${zookeeperdir}'/data#g' conf/zoo.cfg
-    sed -i 's#^clientPort=.*#clientPort='${zk_port}'#g' conf/zoo.cfg
+    zoo_conf_file=${basedir}/${zookeeperdir}/conf/zoo.cfg
+    cp conf/zoo_sample.cfg ${zoo_conf_file}
+    # 数据目录
+    sed -i 's#^dataDir=.*#dataDir='${zk_data_dir}'#g' ${zoo_conf_file}
+    sed -i 's#^clientPort=.*#clientPort='${zk_port}'#g' ${zoo_conf_file}
     # 3.5版本以后，zookeeper会多一个8080端口，没什么用，把它禁用掉
     # 当前版本小于3.5，下面的值为0
     port8080toggle=$(awk -v version=3.5 -v currentversion=${zk_version} 'BEGIN{print(version>currentversion)?"0":"1"}')
     if [ $port8080toggle -ne 0 ];then
-        echo "admin.enableServer=false" >> conf/zoo.cfg
+        echo "admin.enableServer=false" >> ${zoo_conf_file}
     fi
     # 开启四字命令
-    echo "4lw.commands.whitelist=*" >> conf/zoo.cfg
+    echo "4lw.commands.whitelist=*" >> ${zoo_conf_file}
+
+    # 调整堆内存
+    zkenv_file=${basedir}/${zookeeperdir}/bin/zkEnv.sh
+    sed -i "s@SERVER_JVMFLAGS=\"-Xm.*[[:space:]]@SERVER_JVMFLAGS=\"-Xms${zk_xms} -Xmx${zk_xmx} @g" ${zkenv_file}
+    if [ $? -ne 0 ];then
+        echo_error "堆内存修改失败，请检查 ${zkenv_file} 文件是否有 SERVER_JVMFLAGS=-Xm... 这行内容"
+        exit 2
+    fi
 
     echo_info 部署目录授权中
     chown -R ${sys_user}:${sys_user} ${basedir}/${zookeeperdir}
@@ -242,6 +261,7 @@ Description=Zookeeper server manager
 User=zookeeper
 Group=zookeeper
 Type=forking
+Environment=ZOO_LOG_DIR=${zk_logs_dir}
 ExecStart=${basedir}/${zookeeperdir}/bin/zkServer.sh start
 ExecStop=${basedir}/${zookeeperdir}/bin/zkServer.sh stop
 ExecReload=${basedir}/${zookeeperdir}/bin/zkServer.sh restart
@@ -253,6 +273,7 @@ WantedBy=multi-user.target
 EOF
 
     systemctl daemon-reload
+    echo_info 启动zookeeper...
     systemctl start zookeeper
     if [ $? -ne 0 ];then
         echo_error zookeeper启动出错，请检查！
