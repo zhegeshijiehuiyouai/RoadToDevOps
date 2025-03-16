@@ -2,7 +2,7 @@
 # 可根据需要选择部署nginx、tengine
 
 # 默认版本
-nginx_default_version=1.26.1
+nginx_default_version=1.26.3
 tengine_default_version=3.1.0
 # 所有需要下载的文件都下载到当前目录下的${src_dir}目录中
 src_dir=00src00
@@ -45,10 +45,10 @@ function get_latest_version() {
     echo_info 从官网获取最新版本中
 
     # 设置dns超时时间，避免没网情况下等很久
-    curl_timeout=3
+    curl_timeout=5
     echo "options timeout:${curl_timeout} attempts:1 rotate" >> /etc/resolv.conf
     if [[ $tag == 'nginx' ]];then
-        nginx_version=$(curl -sS  --connect-timeout ${curl_timeout} http://nginx.org/en/download.html | grep -oP 'Stable version.*?nginx-\K[0-9.]+' | sed 's/.$//')
+        nginx_version=$(curl -sS  --connect-timeout ${curl_timeout} -L http://nginx.org/en/download.html | grep -oP 'Stable version.*?nginx-\K[0-9.]+' | sed 's/.$//')
         # 接口正常，[ ! ${nginx_version} ]为1；接口失败，[ ! ${nginx_version} ]为0
         if [ ! ${nginx_version} ];then
             echo_error nginx接口访问超时，使用默认版本：${nginx_default_version}
@@ -56,7 +56,7 @@ function get_latest_version() {
         fi
         echo_info "nginx最新稳定版本：${nginx_version}"
     elif [[ $tag == 'tengine' ]];then
-        tengine_version=$(curl -sS --connect-timeout ${curl_timeout} http://tengine.taobao.org/changelog_cn.html | awk -F'class="article-entry"' '{print $2}' | awk -F'id="Tengine' '{print $2}' | grep -oE "\".*\"" | grep -oE "title=.*" | awk -F"-" '{print $2}' | awk '{print $1}')
+        tengine_version=$(curl -sS --connect-timeout ${curl_timeout} -L http://tengine.taobao.org/changelog_cn.html | awk -F'class="article-entry"' '{print $2}' | awk -F'id="Tengine' '{print $2}' | grep -oE "\".*\"" | grep -oE "title=.*" | awk -F"-" '{print $2}' | awk '{print $1}')
         # 接口正常，[ ! ${tengine_version} ]为1；接口失败，[ ! ${tengine_version} ]为0
         if [ ! ${tengine_version} ];then
             echo_error tengine接口访问超时，使用默认版本：${tengine_default_version}
@@ -256,51 +256,14 @@ function use_default_or_latest_version() {
     esac
 }
 
-# 编译安装Nginx
-function install_nginx(){
-    # 用tag标识部署什么，后续脚本中调用
-    tag=nginx
-    # 部署目录
-    installdir=${mydir}/${tag}
-
-    use_default_or_latest_version
-    result=$?
-    # 使用默认返回1，使用最新返回2
-    if [ $result -eq 1 ];then
-        nginx_version=${nginx_default_version}
-        echo_info "使用默认版本：${nginx_version}"
-    elif [ $result -eq 2 ];then
-        get_latest_version
-    else
-        echo_error "use_default_or_latest_version函数返回参数错误，退出"
-        exit 20
+function check_dir_exist() {
+    if [ -d $1 ];then
+        echo_error "检测到存在目录 $1，请确认是否重复安装"
+        exit 1
     fi
+}
 
-    download ${tag} ${tag}-${nginx_version}.tar.gz
-    cd ${file_in_the_dir}
-    untar_tgz ${tag}-${nginx_version}.tar.gz
-
-    echo_info 安装依赖程序
-    if [[ $os == "centos" ]];then
-        yum install -y gcc zlib zlib-devel openssl openssl-devel pcre pcre-devel
-    elif [[ $os == "ubuntu" ]];then
-        apt install -y gcc zlib1g zlib1g-dev openssl libssl-dev libpcre3 libpcre3-dev
-    elif [[ $os == "rocky" || $os == 'alma' ]];then
-        dnf install -y gcc zlib zlib-devel openssl openssl-devel pcre pcre-devel
-    fi
-
-
-    add_user_and_group ${tag}
-    cd ${tag}-${nginx_version}
-    # 修改server_token
-    server_token_name=webserver-${nginx_version}
-    sed -i 's@#define NGINX_VER          "nginx/" NGINX_VERSION@#define NGINX_VER          "'${server_token_name}'"@' src/core/nginx.h
-
-    echo_info 配置编译参数
-    ./configure --prefix=${installdir} --user=${tag} --group=${tag} --with-pcre --with-http_ssl_module --with-http_v2_module --with-stream --with-http_stub_status_module
-    echo_info 多核编译
-    multi_core_compile
-
+function gen_nginx_conf() {
     echo
     echo_info 优化nginx.conf
     worker_connections=$(expr 65535 / $cpucores)
@@ -430,7 +393,7 @@ http {
 #        server_name xxx;
 #        location / {
 #            # 不要将request_uri换为uri，这样将存在漏洞。可通过传入%0d%0a传入换行符，控制响应头及响应体。
-#            return 302 https://$host$request_uri;
+#            return 302 https://\$host\$request_uri;
 #        }
 #    }
 
@@ -472,7 +435,7 @@ http {
 #        location /proxy_url/ {
 #            proxy_pass http://ip:port/proxy_url/;
 #            #这个头有时很关键
-#            proxy_set_header Host $http_host;
+#            proxy_set_header Host \$http_host;
 #        }
 
 
@@ -545,7 +508,6 @@ http {
     include conf.d/*.conf;
 }
 EOF
-
     echo_info 创建自配置目录
     mkdir -p ${installdir}/conf/conf.d
     chown -R ${tag}:${tag} ${installdir}
@@ -553,6 +515,55 @@ EOF
     echo_info 设置nginx配置文件语法高亮显示
     [ -d ~/.vim ] || mkdir -p ~/.vim
     \cp -rf contrib/vim/* ~/.vim/
+}
+
+# 编译安装Nginx
+function install_nginx(){
+    # 用tag标识部署什么，后续脚本中调用
+    tag=nginx
+    # 部署目录
+    installdir=${mydir}/${tag}
+    check_dir_exist ${installdir}
+
+    use_default_or_latest_version
+    result=$?
+    # 使用默认返回1，使用最新返回2
+    if [ $result -eq 1 ];then
+        nginx_version=${nginx_default_version}
+        echo_info "使用默认版本：${nginx_version}"
+    elif [ $result -eq 2 ];then
+        get_latest_version
+    else
+        echo_error "use_default_or_latest_version函数返回参数错误，退出"
+        exit 20
+    fi
+
+    download ${tag} ${tag}-${nginx_version}.tar.gz
+    cd ${file_in_the_dir}
+    untar_tgz ${tag}-${nginx_version}.tar.gz
+
+    echo_info 安装依赖程序
+    if [[ $os == "centos" ]];then
+        yum install -y gcc zlib zlib-devel openssl openssl-devel pcre pcre-devel
+    elif [[ $os == "ubuntu" ]];then
+        apt install -y gcc zlib1g zlib1g-dev openssl libssl-dev libpcre3 libpcre3-dev
+    elif [[ $os == "rocky" || $os == 'alma' ]];then
+        dnf install -y gcc zlib zlib-devel openssl openssl-devel pcre pcre-devel
+    fi
+
+
+    add_user_and_group ${tag}
+    cd ${tag}-${nginx_version}
+    # 修改server_token
+    server_token_name=webserver-${nginx_version}
+    sed -i 's@#define NGINX_VER          "nginx/" NGINX_VERSION@#define NGINX_VER          "'${server_token_name}'"@' src/core/nginx.h
+
+    echo_info 配置编译参数
+    ./configure --prefix=${installdir} --user=${tag} --group=${tag} --with-pcre --with-http_ssl_module --with-http_v2_module --with-stream --with-http_stub_status_module
+    echo_info 多核编译
+    multi_core_compile
+
+    gen_nginx_conf
 
     # 清理包
     cd ${installdir}
@@ -596,6 +607,7 @@ function install_tengine(){
     tag=tengine
     # 部署目录
     installdir=${mydir}/${tag}
+    check_dir_exist ${installdir}
 
     use_default_or_latest_version
     result=$?
@@ -630,18 +642,11 @@ function install_tengine(){
     echo_info 多核编译
     multi_core_compile
 
+    gen_nginx_conf
+
     # 清理包
     cd ${installdir}
     rm -rf ${file_in_the_dir}/${tag}-${tengine_version}
-
-    echo
-    echo_info 设置tengine配置文件语法高亮显示
-    [ -d ~/.vim ] || mkdir -p ~/.vim
-    \cp -rf contrib/vim/* ~/.vim/
-
-    # 清理包
-    cd ${installdir}
-    rm -rf ${file_in_the_dir}/${tag}-${nginx_version}
 
     echo_info 生成tengine.service文件用于systemd控制
 cat > /etc/systemd/system/tengine.service <<EOF
