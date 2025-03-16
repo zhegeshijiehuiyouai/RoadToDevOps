@@ -226,6 +226,11 @@ function install_single_zk(){
     # 数据目录
     sed -i 's#^dataDir=.*#dataDir='${zk_data_dir}'#g' ${zoo_conf_file}
     sed -i 's#^clientPort=.*#clientPort='${zk_port}'#g' ${zoo_conf_file}
+    # 配置自动清理
+    sed -i 's@^#autopurge.snapRetainCount=.*@autopurge.snapRetainCount=3@g' ${zoo_conf_file}
+    sed -i 's@^#autopurge.purgeInterval=.*@autopurge.purgeInterval=12@g' ${zoo_conf_file}
+    sed -i '/^autopurge\.purgeInterval=/i # 单位：小时' ${zoo_conf_file}
+
     # 3.5版本以后，zookeeper会多一个8080端口，没什么用，把它禁用掉
     # 当前版本小于3.5，下面的值为0
     port8080toggle=$(awk -v version=3.5 -v currentversion=${zk_version} 'BEGIN{print(version>currentversion)?"0":"1"}')
@@ -271,9 +276,8 @@ Restart=always
 WantedBy=multi-user.target
 
 EOF
-
-    systemctl daemon-reload
     echo_info 启动zookeeper...
+    systemctl daemon-reload
     systemctl start zookeeper
     if [ $? -ne 0 ];then
         echo_error zookeeper启动出错，请检查！
