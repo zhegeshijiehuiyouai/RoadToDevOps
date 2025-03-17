@@ -2,7 +2,7 @@
 
 # 包下载目录
 src_dir=$(pwd)/00src00
-version=3.9.7
+version=3.9.9
 
 # 带格式的echo函数
 function echo_info() {
@@ -89,7 +89,7 @@ function download_tar_gz(){
                 fi
             fi
             check_downloadfile $2
-            wget --no-check-certificate $2
+            wget --user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36" --no-check-certificate $2
             if [ $? -ne 0 ];then
                 echo_error 下载 $2 失败！
                 exit 1
@@ -116,7 +116,7 @@ function download_tar_gz(){
                     fi
                 fi
                 check_downloadfile $2
-                wget --no-check-certificate $2
+                wget --user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36" --user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36"--no-check-certificate $2
                 if [ $? -ne 0 ];then
                     echo_error 下载 $2 失败！
                     exit 1
