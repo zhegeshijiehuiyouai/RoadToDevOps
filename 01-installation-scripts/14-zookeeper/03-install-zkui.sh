@@ -49,8 +49,10 @@ function show_summary() {
     echo
 }
 
-echo_info 本项目为服务端应用（B/S），如果需要使用客户端工具，可使用 https://github.com/xin497668869/zookeeper-visualizer
-echo_info
+echo_info 本项目为服务端应用（B/S），如果需要使用客户端工具，可使用
+echo https://github.com/vran-dev/PrettyZoo
+echo https://github.com/xin497668869/zookeeper-visualizer
+echo
 
 java -version &> /dev/null
 if [ $? -ne 0 ];then
