@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 腾讯镜像只有最新2-3个版本，找老版本的话，要去官网：https://kafka.apache.org/downloads
-download_url=https://mirrors.cloud.tencent.com/apache/kafka/3.7.0/kafka_2.13-3.7.0.tgz
+download_url=https://mirrors.cloud.tencent.com/apache/kafka/3.9.0/kafka_2.13-3.9.0.tgz
 src_dir=$(pwd)/00src00
 kafka_port=9092
 kafka_jmx_port=9988
@@ -393,7 +393,7 @@ function start_the_installation_by_confirm_zk() {
             # 该标志位用户是否输入了空行，输入两次空行则表示没有zk地址了，继续下一步
             zk_null_flag=0
             echo_info
-            echo "请输入zookeeper地址(ip:port[/path])，如有多个，请回车后继续输入，连输两次空行继续下一步部署操作："
+            echo "请输入zookeeper地址(ip:port[/path])，如有多个，请回车后继续输入。zookeeper地址输入完毕后，请再连输两次空行，继续下一步部署操作："
             accept_zk_addr
             # 检测输入的地址是否是zookeeper地址的格式
             check_zk_addr_is_legal
