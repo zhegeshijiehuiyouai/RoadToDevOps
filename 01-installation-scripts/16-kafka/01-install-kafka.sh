@@ -239,9 +239,9 @@ function show_installed_kafka_info() {
 function config_kafka_common() {
     cd ${back_dir}/${bare_name}/config/
     sed -i 's#^log.dirs=.*#log.dirs='${back_dir}'/'${bare_name}'/logs#g' server.properties
-    sed -i 's@^#listeners=PLAINTEXT://:9092.*@listeners=PLAINTEXT://'${machine_ip}':'${kafka_port}'@g' server.properties
-    # 下面这个可以不设置，不设置的话，取listeners的值
-    # sed -i 's@^#advertised.listeners=PLAINTEXT://your.host.name:9092.*@advertised.listeners=PLAINTEXT://'${machine_ip}':'${kafka_port}'@g' server.properties
+    sed -i 's@^#listeners=PLAINTEXT://:9092.*@listeners=PLAINTEXT://0.0.0.0:'${kafka_port}'@g' server.properties
+    # 下面这个可以不设置，不设置的话，取listeners的值，而且不设置的话，listeners就不能用0.0.0.0
+    sed -i 's@^#advertised.listeners=PLAINTEXT://your.host.name:9092.*@advertised.listeners=PLAINTEXT://'${machine_ip}':'${kafka_port}'@g' server.properties
 }
 
 # 内置kafka
