@@ -248,9 +248,9 @@ function config_kafka_common() {
 function config_kafka_with_internal_zk() {
     config_kafka_common
     cd ${back_dir}/${bare_name}/config/
-    sed -i 's#^dataDir=.*#dataDir=${back_dir}/'${bare_name}'/'${zookeeper_data_dir}'#g' zookeeper.properties
+    sed -i 's#^dataDir=.*#dataDir='${back_dir}'/'${bare_name}'/'${zookeeper_data_dir}'#g' zookeeper.properties
 
-    cat >/etc/systemd/system/kakfa-zookeeper.service <<EOF
+    cat >/etc/systemd/system/kafka-zookeeper.service <<EOF
 [Unit]
 Description=Apache Zookeeper server (Kafka)
 Documentation=http://zookeeper.apache.org
