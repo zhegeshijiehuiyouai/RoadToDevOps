@@ -7,6 +7,8 @@ kafka_console_ui_version=1.0.12
 download_url=https://gitee.com/xiaodong_xu/kafka-console-ui/releases/download/v${kafka_console_ui_version}/kafka-console-ui-${kafka_console_ui_version}.zip
 deploy_dir=$(pwd)/kafka_console_ui
 src_dir=$(pwd)/00src00
+# 服务端口
+service_port=7766
 # 以什么用户启动
 sys_user=kafka
 # 堆内存配置
@@ -146,6 +148,27 @@ function download_tar_gz(){
     fi
 }
 
+function get_machine_ip() {
+    function input_machine_ip_fun() {
+        read input_machine_ip
+        machine_ip=${input_machine_ip}
+        if [[ ! $machine_ip =~ ^([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))(\.([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))){3} ]];then
+            echo_error 错误的ip格式，退出
+            exit 7
+        fi
+    }
+    ip a | grep -E "bond" &> /dev/null
+    if [ $? -eq 0 ];then
+        echo_warning 检测到绑定网卡（bond），请手动输入使用的 ip ：
+        input_machine_ip_fun
+    elif [ $(ip a | grep -E "inet.*e(ns|np|th).*[[:digit:]]+.*" | awk '{print $2}' | cut -d / -f 1 | wc -l) -gt 1 ];then
+        echo_warning 检测到多个 ip，请手动输入使用的 ip ：
+        input_machine_ip_fun
+    else
+        machine_ip=$(ip a | grep -E "inet.*e(ns|np|th).*[[:digit:]]+.*" | awk '{print $2}' | cut -d / -f 1)
+    fi
+}
+
 function add_user_and_group(){
     if id -g ${1} >/dev/null 2>&1; then
         echo_warning ${1}组已存在，无需创建
@@ -178,7 +201,7 @@ Type=simple
 User=${sys_user}
 Group=${sys_user}
 WorkingDirectory=${deploy_dir}
-ExecStart=${JAVA_CMD} -Xms${service_xms} -Xmx${service_xmx} -Dfile.encoding=utf-8 -jar ${deploy_dir}/lib/kafka-console-ui.jar --spring.config.location=${deploy_dir}/config/application.yml --logging.home=${deploy_dir} --data.dir=${deploy_dir} kafka-console-ui-process-flag:${base_name}
+ExecStart=${JAVA_CMD} -Xms${service_xms} -Xmx${service_xmx} -Dserver.port=${service_port} -Dfile.encoding=utf-8 -jar ${deploy_dir}/lib/kafka-console-ui.jar --spring.config.location=${deploy_dir}/config/application.yml --logging.home=${deploy_dir} --data.dir=${deploy_dir} kafka-console-ui-process-flag:${base_name}
 ExecStop=/usr/bin/pkill -f kafka-console-ui-process-flag:${base_name}
 Restart=on-failure
 TimeoutStopSec=15
@@ -228,5 +251,8 @@ chown -R ${sys_user}:${sys_user} ${deploy_dir}
 
 gen_systemd_unitfile
 
+get_machine_ip
+
 echo_info kafka-console-ui部署成功
 echo -e "\033[37m                  启动命令：systemctl start kafka-console-ui\033[0m"
+echo -e "\033[37m                  访问地址：http://${machine_ip}:${service_port}\033[0m"
