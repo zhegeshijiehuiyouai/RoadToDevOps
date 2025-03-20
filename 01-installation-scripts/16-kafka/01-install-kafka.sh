@@ -5,6 +5,8 @@ download_url=https://mirrors.cloud.tencent.com/apache/kafka/3.9.0/kafka_2.13-3.9
 src_dir=$(pwd)/00src00
 kafka_port=9092
 kafka_jmx_port=9988
+# 以什么用户启动
+sys_user=kafka
 
 # 带格式的echo函数
 function echo_info() {
@@ -259,8 +261,8 @@ After=network.target remote-fs.target
  
 [Service]
 Type=simple
-User=kafka
-Group=kafka
+User=${sys_user}
+Group=${sys_user}
 ExecStart=${back_dir}/${bare_name}/bin/zookeeper-server-start.sh ${back_dir}/${bare_name}/config/zookeeper.properties
 ExecStop=${back_dir}/${bare_name}/bin/zookeeper-server-stop.sh
  
@@ -320,7 +322,7 @@ function install_kafka() {
     echo_info 配置环境变量
     echo "export PATH=\$PATH:${back_dir}/${bare_name}/bin" > /etc/profile.d/kafka.sh
 
-    add_user_and_group kafka
+    add_user_and_group ${sys_user}
     [ -d ${back_dir}/${bare_name}/logs ] || mkdir -p ${back_dir}/${bare_name}/logs
 
 ########### 根据使用外部zk还是内置zk进行调整
@@ -336,7 +338,7 @@ function install_kafka() {
     fi
 
     echo_info 对 ${back_dir}/${bare_name} 目录进行授权
-    chown -R kafka:kafka ${back_dir}/${bare_name}
+    chown -R ${sys_user}:${sys_user} ${back_dir}/${bare_name}
     systemctl daemon-reload
     show_installed_kafka_info
 }
