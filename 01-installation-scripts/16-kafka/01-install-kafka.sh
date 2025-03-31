@@ -319,8 +319,14 @@ function install_kafka() {
     echo_info 开启 kafka jmx
     sed -i '/^# limitations under the License./a export JMX_PORT='${kafka_jmx_port}'' bin/kafka-server-start.sh
 
+    # 开启自带zookeeper的四字命令
+    if [ -f ${back_dir}/${bare_name}/config/zookeeper.properties ];then
+        echo "4lw.commands.whitelist=*" >> ${back_dir}/${bare_name}/config/zookeeper.properties
+    fi
+
     echo_info 配置环境变量
     echo "export PATH=\$PATH:${back_dir}/${bare_name}/bin" > /etc/profile.d/kafka.sh
+
 
     add_user_and_group ${sys_user}
     [ -d ${back_dir}/${bare_name}/logs ] || mkdir -p ${back_dir}/${bare_name}/logs
