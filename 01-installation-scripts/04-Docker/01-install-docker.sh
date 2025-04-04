@@ -49,7 +49,8 @@ function adjust_docker_configuration() {
     "registry-mirrors": ["https://docker.1panel.live", "https://hub.rat.dev/", "https://docker.chenby.cn", "https://docker.m.daocloud.io"],
     "insecure-registries":["172.21.100.16:9998"],
     "data-root": "/data/docker",
-    "log-opts": {"max-size":"10m", "max-file":"1"}
+    "log-opts": {"max-size":"10m", "max-file":"1"},
+    "exec-opts": ["native.cgroupdriver=systemd"]
 }
 EOF
     systemctl restart docker
