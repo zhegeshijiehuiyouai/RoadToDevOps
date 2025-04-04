@@ -139,7 +139,7 @@ net.ipv6.conf.default.disable_ipv6=1
 net.ipv6.conf.lo.disable_ipv6=1
 EOF
 
-sysctl -p
+sysctl --system
 
 echo_info "是否重启服务器 [Y/n]"
 read is_reboot

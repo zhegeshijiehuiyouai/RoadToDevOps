@@ -416,7 +416,7 @@ vm.max_map_count = 262184
 vm.dirty_background_ratio = 5
 vm.dirty_ratio = 10
 _EOF_
-    sysctl -p &> /dev/null
+    sysctl --system &> /dev/null
 }
 
 function config_firewalld(){
