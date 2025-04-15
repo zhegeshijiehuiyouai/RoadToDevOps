@@ -63,7 +63,8 @@ rpm -Uvh ./*rpm
 │   ├── 40-ffmpeg
 │   ├── 41-pyenv
 │   ├── 42-sonarqube
-│   └── 43-goenv
+│   ├── 43-goenv
+│   └── 44-shc
 ├── 02-elasticsearch-tools
 │   ├── 01-clean-single-es-index-by-date.sh
 │   └── 02-clean-date-format-es-index-by-date.sh
