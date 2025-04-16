@@ -1,4 +1,16 @@
-# Nginx热升级、手动日志切割
+# 一、文件说明
+## 01-install-nginx-series.sh
+`nginx`、`tengine` 的安装脚本  
+## 02-geoip2-helper.sh
+Geoip2相关工具部署和下载。主要包含：  
+- libmaxminddb安装
+- GeoLite.mmdb下载
+- ngx_http_geoip2_module模块下载
+
+<br>  
+<br>  
+
+# 二、Nginx热升级、手动日志切割
 
 ## 1、热升级
 首先运行老的 `nginx`，`ps` 命令查看得到 `master` 进程的 `pid`，假设 `pid` 是 `999`    

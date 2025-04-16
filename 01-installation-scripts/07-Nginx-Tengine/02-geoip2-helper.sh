@@ -1,8 +1,6 @@
 #!/bin/bash
 
-shc_version=4.0.3
 src_dir=$(pwd)/00src00
-
 
 # 带格式的echo函数
 function echo_info() {
@@ -181,12 +179,24 @@ function multi_core_compile(){
     fi
 }
 
-download_tar_gz ${src_dir} https://cors.isteed.cc/https://github.com/neurobin/shc/archive/refs/tags/${shc_version}.tar.gz
+
+echo_info 获取libmaxminddb最新版本号
+libmaxminddb_version=$(curl -s "https://api.github.com/repos/maxmind/libmaxminddb/releases/latest" | awk -F'"' '/tag_name/ {print $4}')
+echo ${libmaxminddb_version}
+# 这个必须联网获取，因为仅保留2个tag，而且经常更新
+echo_info 获取GeoLite.mmdb最新版本号
+GeoLitemmdb_version=$(curl -s "https://api.github.com/repos/P3TERX/GeoLite.mmdb/releases/latest" | awk -F'"' '/tag_name/ {print $4}')
+echo ${GeoLitemmdb_version}
+echo_info 获取ngx_http_geoip2_module最新版本号
+geoip2_module_version=$(curl -s "https://api.github.com/repos/leev/ngx_http_geoip2_module/releases/latest" | awk -F'"' '/tag_name/ {print $4}')
+echo ${geoip2_module_version}
+
+
+echo_info 安装libmaxminddb
+download_tar_gz ${src_dir} https://cors.isteed.cc/https://github.com/maxmind/libmaxminddb/releases/download/${libmaxminddb_version}/libmaxminddb-${libmaxminddb_version}.tar.gz
 cd ${file_in_the_dir}
-[ -d shc-${shc_version} ] && rm -rf shc-${shc_version}
-untar_tgz ${shc_version}.tar.gz
-cd shc-${shc_version}
 pre_make
+cd libmaxminddb-${libmaxminddb_version}
 ./configure
 multi_core_compile
 if [ $? -ne 0 ];then
@@ -195,8 +205,23 @@ if [ $? -ne 0 ];then
 fi
 echo_info 清理文件
 cd ..
-rm -rf shc-${shc_version}
+rm -rf libmaxminddb-${libmaxminddb_version}
 
-echo_info shc已部署完毕，使用示例：
-echo "                  shc -f yourfile.sh"
-echo
+local_ld_conf=/etc/ld.so.conf.d/local.conf
+if [ ! -f ${local_ld_conf} ];then
+    echo '/usr/local/lib'  >> ${local_ld_conf}
+else
+    grep '/usr/local/lib' ${local_ld_conf} &> /dev/null
+    if [ $? ] -ne 0;then
+        echo '/usr/local/lib'  >> ${local_ld_conf}
+    fi
+fi
+ldconfig
+echo_info libmaxminddb安装成功
+
+echo_info 下载GeoLite.mmdb
+download_tar_gz ${src_dir} https://cors.isteed.cc/https://github.com/P3TERX/GeoLite.mmdb/releases/download/${GeoLitemmdb_version}/GeoLite2-Country.mmdb
+download_tar_gz ${src_dir} https://cors.isteed.cc/https://github.com/P3TERX/GeoLite.mmdb/releases/download/${GeoLitemmdb_version}/GeoLite2-City.mmdb
+
+echo_info 下载ngx_http_geoip2_module
+download_tar_gz ${src_dir} https://cors.isteed.cc/https://github.com/leev/ngx_http_geoip2_module/archive/refs/tags/${geoip2_module_version}.tar.gz
