@@ -54,7 +54,10 @@ function adjust_docker_configuration() {
     "live-restore": true
 }
 EOF
-    systemctl restart docker
+    sleep 2
+    systemctl daemon-reload
+    systemctl stop docker
+    systemctl start docker
     systemctl enable docker &> /dev/null
 
     echo_info docker已部署成功，版本信息如下：
@@ -63,7 +66,7 @@ EOF
 
 function install_docker() {
     if [[ $os == 'centos' || $os == 'rocky' || $os == 'alma' ]];then
-        echo_info 清理之前安装的docker（如果有）
+        echo_info 卸载之前安装的docker（如果有）
         yum remove docker \
             docker-client \
             docker-client-latest \
@@ -107,27 +110,14 @@ function install_docker() {
         echo_warning 非root用户要使用docker命令的话，请执行命令：
         echo 'gpasswd -a 用户名 docker'
     elif [[ $os == 'ubuntu' ]];then
-        echo_info 清理之前安装的docker（如果有）
+        echo_info 卸载之前安装的docker（如果有）
         for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get -y remove $pkg; done
         rm -rf /var/lib/docker
         rm -rf /var/lib/containerd
 
-        echo_info 配置docker仓库
+        echo_info 安装docker、docker-compose
         apt-get update -y
-        apt-get install ca-certificates curl gnupg -y
-        echo_info 添加docker官方gpg key
-        install -m 0755 -d /etc/apt/keyrings
-        [ -f /etc/apt/keyrings/docker.gpg ] && rm -f /etc/apt/keyrings/docker.gpg
-        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-        chmod a+r /etc/apt/keyrings/docker.gpg
-        echo \
-"deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-"$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
-        tee /etc/apt/sources.list.d/docker.list > /dev/null
-        apt-get update -y
-
-        echo_info 安装docker-ce
-        apt-get -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+        apt-get install -y docker.io docker-compose
 
         adjust_docker_configuration
         echo_warning 非root用户要使用docker命令的话，请执行命令：
@@ -291,10 +281,12 @@ function gen_show_container_ip_command_confirm() {
 
 ################################ 安装 ##############
 install_docker
-echo_warning "docker已自带compose插件，是否还单独安装docker-compose（${docker_compose_version}）?"
-echo [1] 不安装
-echo [2] 安装
-install_docker_compose_confirm
+if [[ $os == 'centos' || $os == 'rocky' || $os == 'alma' ]];then
+    echo_warning "docker已自带compose插件，是否还单独安装docker-compose（${docker_compose_version}）?"
+    echo [1] 不安装
+    echo [2] 安装
+    install_docker_compose_confirm
+fi
 
 echo_warning "是否生成查看容器ip的命令（/usr/bin/show-container-ip）?"
 echo [1] 不生成
