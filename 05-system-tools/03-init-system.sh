@@ -240,7 +240,7 @@ function yum_install_basic_packages() {
         yum update -y
         yum install -y vim wget net-tools telnet bash-completion lsof gdisk cloud-utils-growpart
     elif [[ $os == 'ubuntu' ]];then
-        apt update -yje
+        apt update -y
         apt upgrade -y
         apt install -y net-tools
     elif [[ $os == 'rocky' ]];then
@@ -267,6 +267,15 @@ export HISTTIMEFORMAT="${USER_IP} $$ > %F %T [$(whoami)@$(hostname)] "
 export HISTORY_FILE=/data/logs/history/${LOGNAME}-$(date '+%Y-%m-%d-%H-%M-%S')-session-$$.log
 export PROMPT_COMMAND='{ date +" $(history 1 | { read x cmd; echo "$cmd"; })"; } >> $HISTORY_FILE'
 _EOF_
+
+    if [[ $os == 'ubuntu' ]];then
+        cat >> /etc/profile.d/devops.sh << _EOF_
+# 阻止配置更新弹窗
+export UCF_FORCE_CONFFOLD=1
+# 阻止应用重启弹窗
+export NEEDRESTART_SUSPEND=1
+_EOF_
+    fi
 
     source /etc/profile.d/devops.sh
     # l.命令排除.和..
