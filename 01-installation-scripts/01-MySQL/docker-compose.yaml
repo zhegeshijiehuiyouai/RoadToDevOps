@@ -2,11 +2,11 @@ version: '3'
 services:
   mysql:
     container_name: mysql
-    image: mysql:5.7.38
+    # image: mysql:5.7.44  # 切换版本，修改image即可
+    image: mysql:8.4.5
     restart: always
     command:
       --lower_case_table_names=1
-      --default-authentication-plugin=mysql_native_password
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_general_ci
     environment:

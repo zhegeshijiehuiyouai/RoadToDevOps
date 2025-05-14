@@ -307,7 +307,7 @@ function variable_preparation(){
                 else
                     mysql_tgz=mysql-${mysql_version}-linux-glibc2.12-x86_64.tar.gz
                     mysql_untgz=mysql-${mysql_version}-linux-glibc2.12-x86_64
-                    download_url=https://mirrors.aliyun.com/mysql/MySQL-5.7/${mysql_tgz}
+                    download_url=https://mirrors.aliyun.com/mysql/MySQL-8.0/${mysql_tgz}
                 fi
             elif [[ $os == 'rocky' || $os == "alma" ]];then
                 # 二进制安装
@@ -361,7 +361,7 @@ function before_install(){
         fi
 
         echo_info 安装相关依赖
-        apt install -y libtinfo5 libmecab2 libncurses5
+        apt install -y libtinfo5 libmecab2 libncurses5 libaio1 libaio-dev
     fi
 }
 
