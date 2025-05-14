@@ -295,8 +295,16 @@ function variable_preparation(){
         # 8.0版本
         if [[ $user_input_install_type -eq 1 ]];then
             # 预制包安装
-            echo_warning 预制包安装msyql8待完善
-            exit 100
+            if [[ $os == 'ubuntu' ]];then
+                main_version=$(echo $os_version | cut -d '.' -f 1)
+                if [[ $main_version -eq 18 ]];then
+                    echo_error ubuntu18没有mysql8的deb包，请用二进制包部署
+                    exit 100
+                fi
+            else
+                echo_warning 预制包安装msyql8待完善
+                exit 100
+            fi
         elif [[ $user_input_install_type -eq 2 ]];then
             # 二进制安装
             if [[ $os == 'centos' ]];then
