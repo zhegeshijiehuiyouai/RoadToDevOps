@@ -139,6 +139,7 @@ function download_tar_gz(){
 }
 
 function pre_make() {
+    echo_info 安装gcc
     if [[ $os == "centos" ]];then
         yum install -y gcc
     elif [[ $os == "ubuntu" ]];then
@@ -153,6 +154,7 @@ function multi_core_compile(){
     # 检查make存不存在
     make --version &> /dev/null
     if [ $? -ne 0 ];then
+        echo_info 按照make命令
         if [[ $os == "centos" ]];then
             yum install -y make
         elif [[ $os == "ubuntu" ]];then
@@ -191,10 +193,20 @@ echo_info 获取ngx_http_geoip2_module最新版本号
 geoip2_module_version=$(curl -s "https://api.github.com/repos/leev/ngx_http_geoip2_module/releases/latest" | awk -F'"' '/tag_name/ {print $4}')
 echo ${geoip2_module_version}
 
+echo_info 下载GeoLite.mmdb
+download_tar_gz ${src_dir} https://cors.isteed.cc/https://github.com/P3TERX/GeoLite.mmdb/releases/download/${GeoLitemmdb_version}/GeoLite2-Country.mmdb
+download_tar_gz ${src_dir} https://cors.isteed.cc/https://github.com/P3TERX/GeoLite.mmdb/releases/download/${GeoLitemmdb_version}/GeoLite2-City.mmdb
+
+echo_info 下载ngx_http_geoip2_module
+download_tar_gz ${src_dir} https://cors.isteed.cc/https://github.com/leev/ngx_http_geoip2_module/archive/refs/tags/${geoip2_module_version}.tar.gz
+cd ${file_in_the_dir}
+mv ${geoip2_module_version}.tar.gz ngx_http_geoip2_module_${geoip2_module_version}.tar.gz
+
 
 echo_info 安装libmaxminddb
 download_tar_gz ${src_dir} https://cors.isteed.cc/https://github.com/maxmind/libmaxminddb/releases/download/${libmaxminddb_version}/libmaxminddb-${libmaxminddb_version}.tar.gz
 cd ${file_in_the_dir}
+untar_tgz libmaxminddb-${libmaxminddb_version}.tar.gz
 pre_make
 cd libmaxminddb-${libmaxminddb_version}
 ./configure
@@ -218,10 +230,5 @@ else
 fi
 ldconfig
 echo_info libmaxminddb安装成功
+echo_info "可以用 mmdblookup 命令再次确认是否安装成功，有这个命令就表示确实安装成功了"
 
-echo_info 下载GeoLite.mmdb
-download_tar_gz ${src_dir} https://cors.isteed.cc/https://github.com/P3TERX/GeoLite.mmdb/releases/download/${GeoLitemmdb_version}/GeoLite2-Country.mmdb
-download_tar_gz ${src_dir} https://cors.isteed.cc/https://github.com/P3TERX/GeoLite.mmdb/releases/download/${GeoLitemmdb_version}/GeoLite2-City.mmdb
-
-echo_info 下载ngx_http_geoip2_module
-download_tar_gz ${src_dir} https://cors.isteed.cc/https://github.com/leev/ngx_http_geoip2_module/archive/refs/tags/${geoip2_module_version}.tar.gz
