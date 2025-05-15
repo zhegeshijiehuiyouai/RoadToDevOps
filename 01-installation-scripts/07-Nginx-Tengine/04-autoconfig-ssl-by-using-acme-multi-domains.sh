@@ -50,6 +50,11 @@ function echo_error() {
 # ============ 0) 必须是 root ============================
 [[ $(id -u) -eq 0 ]] || { echo_error "请使用 root 执行"; exit 99; }
 
+if [[ ! -d $NGINX_CONF_DIR ]];then
+    echo_error "nginx配置目录 ${NGINX_CONF_DIR} 不存在！退出"
+    exit 2
+fi
+
 # ============ 1) 发行版检测 + git 安装 ===================
 if ! command -v git &>/dev/null; then
     if grep -qi "ubuntu" /etc/os-release; then
@@ -86,7 +91,7 @@ detect_nginx_bin() {
     exit 1
 }
 NGINX_BIN=$(detect_nginx_bin)
-echo_info "nginx -> $NGINX_BIN"
+echo_info "找到nginx二进制文件 -> $NGINX_BIN"
 
 reload_nginx() {
     if "$NGINX_BIN" -t >/dev/null 2>&1 && "$NGINX_BIN" -s reload; then
@@ -118,6 +123,8 @@ else
     echo
 fi
 # ========================================================
+
+mkdir -p "$WEBROOT" "$NGINX_SSL_DIR"
 
 # ============ 4) 生成 / 修改 Nginx 配置 =================
 ACME_TEMP_CONF="${NGINX_CONF_DIR}/__acme_${PRIMARY//\*/_}.conf"      ### >>> MULTI <<<
