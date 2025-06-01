@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# docker-compose v2命令和v1不一样了，故使用老版本
+# docker-compose >= 1.28 需要将 .env 拷贝到 compose 目录，目前 docker 官方尚未对此问题进行定义是否属于 bug ，使用 1.27 版本，可以避免此问题
+docker_compose_version=1.27.4
+
 # 带格式的echo函数
 function echo_info() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m$@\033[0m"
@@ -140,10 +144,6 @@ function install_docker_compose() {
     #     exit 10
     # fi
     # sed -i '$d' /etc/resolv.conf
-
-    # docker-compose v2命令和v1不一样了，故使用老版本
-    # docker-compose >= 1.28 需要将 .env 拷贝到 compose 目录，目前 docker 官方尚未对此问题进行定义是否属于 bug ，使用 1.27 版本，可以避免此问题
-    docker_compose_version=1.27.4
 
     back_task=/tmp/.display_dot_to_show_aliviness
     # 显示变化小点，表示没有卡死
