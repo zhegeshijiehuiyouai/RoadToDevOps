@@ -53,6 +53,27 @@ else
 	true
 fi
 
+# 首先判断当前目录是否有压缩包：
+#   I. 如果有压缩包，那么就在当前目录解压；
+#   II.如果没有压缩包，那么就检查有没有 ${src_dir} 表示的目录;
+#       1) 如果有目录，那么检查有没有压缩包
+#           ① 有压缩包就解压
+#           ② 没有压缩包则下载压缩包
+#       2) 如果没有,那么就创建这个目录，然后 cd 到目录中，然后下载压缩包，然
+#       后解压
+# 解压的步骤都在后面，故此处只做下载
+
+# 语法： download_tar_gz 保存的目录 下载链接
+# 使用示例： download_tar_gz /data/openssh-update https://mirrors.cloud.tencent.com/openssl/source/openssl-1.1.1h.tar.gz
+function check_downloadfile() {
+    # 检测下载文件在服务器上是否存在
+    http_code=$(curl -IksS $1 | head -1 | awk '{print $2}')
+    if [ $http_code -eq 404 ];then
+        echo_error $1
+        echo_error 服务端文件不存在，退出
+        exit 98
+    fi
+}
 function download_tar_gz(){
     download_file_name=$(echo $2 |  awk -F"/" '{print $NF}')
     back_dir=$(pwd)
@@ -327,7 +348,7 @@ echo_info "开始下载 Easysearch ${EASYSEARCH_VERSION} 包"
 download_tar_gz ${src_dir} ${download_url}
 cd ${src_dir}
 echo_info "解压 Easysearch ${EASYSEARCH_VERSION} 包"
-tar -zxf easysearch-${EASYSEARCH_VERSION}-linux-amd64-bundle.tar.gz -C ${EASYSEARCH_HOME}
+tar -xf easysearch-${EASYSEARCH_VERSION}-linux-amd64-bundle.tar.gz -C ${EASYSEARCH_HOME}
 
 gen_unitfile
 config_easysearch

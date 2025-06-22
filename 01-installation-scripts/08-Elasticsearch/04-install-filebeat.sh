@@ -1,14 +1,11 @@
 #!/bin/bash
-# 该脚本用于安装 Infinilabs Easysearch 控制台
 
-
-CONSOLE_VERSION=1.29.6-2148
-CONSOLE_HOME=/data/console
-CONSOLE_PORT=9000
+FILEBEAT_VERSION=7.10.0
+FILEBEAT_HOME=/data/filebeat
 # 包下载目录
 src_dir=$(pwd)/00src00
 
-download_url=https://release.infinilabs.com/console/stable/console-${CONSOLE_VERSION}-linux-amd64.tar.gz
+download_url=https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.10.0-linux-x86_64.tar.gz
 
 # 带格式的echo函数
 function echo_info() {
@@ -47,7 +44,6 @@ elif [[ -e /etc/almalinux-release ]]; then
 else
 	true
 fi
-
 
 # 首先判断当前目录是否有压缩包：
 #   I. 如果有压缩包，那么就在当前目录解压；
@@ -143,66 +139,59 @@ function download_tar_gz(){
     fi
 }
 
-#-------------------------------------------------
-function input_machine_ip_fun() {
-    read input_machine_ip
-    machine_ip=${input_machine_ip}
-    if [[ ! $machine_ip =~ ^([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))(\.([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))){3} ]];then
-        echo_error 错误的ip格式，退出
-        exit 1
+# 解压
+function untar_tgz(){
+    echo_info 解压 $1 中
+    tar xf $1
+    if [ $? -ne 0 ];then
+        echo_error 解压出错，请检查！
+        exit 2
     fi
 }
-function get_machine_ip() {
-    ip a | grep -E "bond" &> /dev/null
-    if [ $? -eq 0 ];then
-        echo_warning 检测到绑定网卡（bond），请手动输入使用的 ip ：
-        input_machine_ip_fun
-    elif [ $(ip a | grep -E "inet.*e(ns|np|th).*[[:digit:]]+.*" | awk '{print $2}' | cut -d / -f 1 | wc -l) -gt 1 ];then
-        echo_warning 检测到多个 ip，请手动输入使用的 ip ：
-        input_machine_ip_fun
-    else
-        machine_ip=$(ip a | grep -E "inet.*e(ns|np|th).*[[:digit:]]+.*" | awk '{print $2}' | cut -d / -f 1)
-    fi
-}
-#-------------------------------------------------
 
-function config_console() {
-    echo_info "配置 console"
-    console_yml_file=${CONSOLE_HOME}/console.yml
-    get_machine_ip
-    sed -i 's/^    binding: 0.0.0.0:.*/    binding: 0.0.0.0:'${CONSOLE_PORT}'/g' ${console_yml_file}
+
+function gen_unitfile() {
+    echo_info 生成 filebeat 服务单元文件
+    cat > /etc/systemd/system/filebeat.service << EOF
+[Unit]
+Description=Filebeat sends log files to Logstash or directly to Elasticsearch.
+Documentation=https://www.elastic.co/products/beats/filebeat
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=${FILEBEAT_HOME}/filebeat -e -c ${FILEBEAT_HOME}/filebeat.yml
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
 }
 
 
 function echo_summary() {
-    echo_info console 已部署完毕，以下是相关信息：
-    echo -e "\033[37m                  启动命令：systemctl start console\033[0m"
-    echo -e "\033[37m                  console地址：http://${machine_ip}:${CONSOLE_PORT}\033[0m"
+    echo_info filebeat 已部署完毕，请配置文件${FILEBEAT_HOME}/filebeat.yml后，启动服务
+    echo -e "\033[37m                  启动命令：systemctl start filebeat\033[0m"
     echo
 }
 
-if [[ -d ${CONSOLE_HOME} ]]; then
-    echo_error "目录 ${CONSOLE_HOME} 已存在，可能之前安装过 console 服务，请检查"
+if [[ -d ${FILEBEAT_HOME} ]]; then
+    echo_error "目录 ${FILEBEAT_HOME} 已存在，可能之前安装过 filebeat 服务，请检查"
     exit 2
-else
-    echo_info "创建 console 安装目录"
-    mkdir -p ${CONSOLE_HOME}
 fi
 
-echo_info "开始下载 console ${CONSOLE_VERSION} 包"
+echo_info "开始下载 filebeat ${FILEBEAT_VERSION} 包"
 download_tar_gz ${src_dir} ${download_url}
 cd ${src_dir}
-echo_info "解压 console ${CONSOLE_VERSION} 包"
-tar -zxf console-${CONSOLE_VERSION}-linux-amd64.tar.gz -C ${CONSOLE_HOME}
+untar_tgz filebeat-${FILEBEAT_VERSION}-linux-x86_64.tar.gz
+mv filebeat-${FILEBEAT_VERSION}-linux-x86_64 ${FILEBEAT_HOME}
 
-cd ${CONSOLE_HOME}
-echo_info "配置服务后台运行"
-./console-linux-amd64 -service install
+gen_unitfile
 
-config_console
-
-echo_info "启动 console"
 systemctl daemon-reload
-systemctl start console
 
 echo_summary
