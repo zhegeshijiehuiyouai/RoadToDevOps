@@ -36,6 +36,33 @@ function check_dir() {
     fi
 }
 
+# 脚本执行用户检测
+if [[ $(whoami) != 'root' ]];then
+    echo_error 请使用root用户执行
+    exit 99
+fi
+
+# 检测操作系统
+if grep -qs "ubuntu" /etc/os-release; then
+	os="ubuntu"
+    os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
+    # 阻止配置更新弹窗
+    export UCF_FORCE_CONFFOLD=1
+    # 阻止应用重启弹窗
+    export NEEDRESTART_SUSPEND=1
+elif [[ -e /etc/centos-release ]]; then
+    os="centos"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/centos-release)
+elif [[ -e /etc/rocky-release ]]; then
+    os="rocky"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+elif [[ -e /etc/almalinux-release ]]; then
+    os="alma"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/almalinux-release)
+else
+	true
+fi
+
 # 解压
 function untar_tgz(){
     echo_info 解压 $1 中
