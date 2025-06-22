@@ -5,7 +5,7 @@ FILEBEAT_HOME=/data/filebeat
 # 包下载目录
 src_dir=$(pwd)/00src00
 
-download_url=https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.10.0-linux-x86_64.tar.gz
+download_url=https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-${FILEBEAT_VERSION}-linux-x86_64.tar.gz
 
 # 带格式的echo函数
 function echo_info() {
