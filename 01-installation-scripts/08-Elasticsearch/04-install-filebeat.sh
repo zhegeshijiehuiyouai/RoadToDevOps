@@ -5,8 +5,6 @@ FILEBEAT_HOME=/data/filebeat
 # 包下载目录
 src_dir=$(pwd)/00src00
 
-download_url=https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-${FILEBEAT_VERSION}-linux-x86_64.tar.gz
-
 # 带格式的echo函数
 function echo_info() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[32mINFO\033[0m] \033[37m$@\033[0m"
@@ -149,6 +147,28 @@ function untar_tgz(){
     fi
 }
 
+function is_use_oss_confirm(){
+    read -p "请输入：" is_use_oss_confirm_input
+    case ${is_use_oss_confirm_input} in
+    Y|y)
+        # OSS（Open Source Software）版本下载地址
+        download_url=https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-oss-${FILEBEAT_VERSION}-linux-x86_64.tar.gz
+        ;;
+    N|n)
+        download_url=https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-${FILEBEAT_VERSION}-linux-x86_64.tar.gz
+        ;;
+    *)
+        echo_warning 请输入y或n
+        is_use_oss_confirm
+        ;;
+    esac
+}
+
+function is_use_oss(){
+    echo_warning "标准发行版无法连接 Elasticsearch 以外的 ES衍生版，但是 OSS版本可以。是否使用 OSS（开源版本）？[y/N]"
+    is_use_oss_confirm
+}
+
 
 function gen_unitfile() {
     echo_info 生成 filebeat 服务单元文件
@@ -184,10 +204,15 @@ if [[ -d ${FILEBEAT_HOME} ]]; then
     exit 2
 fi
 
+is_use_oss
 echo_info "开始下载 filebeat ${FILEBEAT_VERSION} 包"
 download_tar_gz ${src_dir} ${download_url}
 cd ${src_dir}
-untar_tgz filebeat-${FILEBEAT_VERSION}-linux-x86_64.tar.gz
+if [[ ${is_use_oss_confirm_input} == 'Y' || ${is_use_oss_confirm_input} == 'y' ]];then
+    untar_tgz filebeat-oss-${FILEBEAT_VERSION}-linux-x86_64.tar.gz
+else
+    untar_tgz filebeat-${FILEBEAT_VERSION}-linux-x86_64.tar.gz
+fi
 mv filebeat-${FILEBEAT_VERSION}-linux-x86_64 ${FILEBEAT_HOME}
 
 gen_unitfile
