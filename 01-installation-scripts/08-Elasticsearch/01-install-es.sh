@@ -431,8 +431,8 @@ function echo_summary() {
     echo
     echo_info "---下面配置只能通过接口更新，请待ES启动后执行---"
     echo_warning "注意，以下是针对索引的设置，需要集群中存在索引，没有索引时执行会报错"
-    echo "创建索引：curl -X PUT 'http://localhost:9200/test_index'"
-    echo "删除索引：curl -X DELETE 'http://127.0.0.1:9200/test_index'"
+    echo "创建索引：curl -X PUT 'http://localhost:${es_port}/test_index'"
+    echo "删除索引：curl -X DELETE 'http://127.0.0.1:${es_port}/test_index'"
     echo
     cat << _EOF_
 curl -X PUT 'http://127.0.0.1:9200/_all/_settings?preserve_existing=true' -H 'Content-Type: application/json' -d '{
