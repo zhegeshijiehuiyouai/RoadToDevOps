@@ -370,6 +370,13 @@ http {
     ssi_silent_errors off;
     ssi_types text/shtml;
 
+########## 定义上游服务器组
+#    upstream backend_servers {
+#        # 权重，默认为1
+#        server 192.168.1.1:8080 weight=5;
+#        server 192.168.1.2:8080 max_fails=3 fail_timeout=30s;
+#    }
+
 #############该server作用为防恶意解析#####
     server { 
         listen 80 default;
@@ -436,6 +443,8 @@ http {
 #            proxy_pass http://ip:port/proxy_url/;
 #            #这个头有时很关键
 #            proxy_set_header Host \$http_host;
+#            # 当发生错误、超时或收到特定的HTTP错误码时，尝试下一个服务器，而不是直接给客户返回错误
+#            proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
 #        }
 
 
