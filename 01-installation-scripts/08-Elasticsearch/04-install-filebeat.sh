@@ -147,6 +147,41 @@ function untar_tgz(){
     fi
 }
 
+function add_custom_config() {
+    echo_info "向 filebeat.yml 添加自定义配置：max_procs 和 queue.mem"
+    local config_file="${FILEBEAT_HOME}/filebeat.yml"
+    local temp_file="${FILEBEAT_HOME}/filebeat.yml.tmp"
+
+    # 使用cat和heredoc生成要添加的配置
+    cat > ${temp_file} << EOF
+#================================ 自定义核心配置 =================================
+# 设置可以同时使用的最大CPU数。如果为0，则使用所有可用的CPU。
+max_procs: 1
+
+# 配置内存队列 (这是默认队列类型)
+# 当输出（如Kafka、Elasticsearch）暂时不可用时，事件会在这里缓冲。
+# 参考: https://www.elastic.co/guide/en/beats/filebeat/7.10/queue-mem.html
+queue.mem:
+  # 内存队列中可存储的最大事件数。
+  # 这是控制Filebeat内存消耗和缓冲能力的关键参数。
+  # 当队列满时，Filebeat会施加反压，暂停从源头读取新日志，直到队列有可用空间。
+  events: 4096
+
+  # 建议的刷新阈值。当队列中的事件数达到此值时，会触发一次批量发送。
+  flush.min_events: 2048
+
+  # 如果事件数未达到flush.min_events，这是强制发送前的最长等待超时。
+  flush.timeout: 1s
+#================================================================================
+
+EOF
+    
+    # 将新配置与旧配置文件内容合并，然后覆盖原文件
+    cat ${config_file} >> ${temp_file}
+    mv ${temp_file} ${config_file}
+}
+
+
 function is_use_oss_confirm(){
     read -p "请输入：" is_use_oss_confirm_input
     case ${is_use_oss_confirm_input} in
@@ -214,6 +249,8 @@ else
     untar_tgz filebeat-${FILEBEAT_VERSION}-linux-x86_64.tar.gz
 fi
 mv filebeat-${FILEBEAT_VERSION}-linux-x86_64 ${FILEBEAT_HOME}
+
+add_custom_config
 
 gen_unitfile
 
