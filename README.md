@@ -104,6 +104,8 @@ rpm -Uvh ./*rpm
 │   └── 02-ini
 ├── 10-pve-vmware-tools
 │   └── 01-pve-to-vmware
+├── 11-k8s-tools
+│   └── 01-create-k8s-admin-user.sh
 └── README.md
 
 ```
