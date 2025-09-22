@@ -166,24 +166,7 @@ function is_run_jenkins() {
 }
 
 function get_machine_ip() {
-    function input_machine_ip_fun() {
-        read input_machine_ip
-        machine_ip=${input_machine_ip}
-        if [[ ! $machine_ip =~ ^([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))(\.([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))){3} ]];then
-            echo_error 错误的ip格式，退出
-            exit 7
-        fi
-    }
-    ip a | grep -E "bond" &> /dev/null
-    if [ $? -eq 0 ];then
-        echo_warning 检测到绑定网卡（bond），请手动输入使用的 ip ：
-        input_machine_ip_fun
-    elif [ $(ip a | grep -E "inet.*e(ns|np|th).*[[:digit:]]+.*" | awk '{print $2}' | cut -d / -f 1 | wc -l) -gt 1 ];then
-        echo_warning 检测到多个 ip，请手动输入使用的 ip ：
-        input_machine_ip_fun
-    else
-        machine_ip=$(ip a | grep -E "inet.*e(ns|np|th).*[[:digit:]]+.*" | awk '{print $2}' | cut -d / -f 1)
-    fi
+    machine_ip=$(ip route get 1.1.1.1 | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}')
 }
 
 function generate_unit_file_and_start() {
