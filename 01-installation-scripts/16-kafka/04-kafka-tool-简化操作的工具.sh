@@ -115,7 +115,6 @@ _get_cluster_default_retention() {
     CLUSTER_DEFAULT_RETENTION_SOURCE=${SOURCE}
 }
 
-
 # 自动发现 Kafka Home 和 Zookeeper Connect
 discover_kafka_env() {
     echo "步骤 1: 正在自动发现 Kafka 环境..."
@@ -152,8 +151,8 @@ discover_kafka_env() {
         exit 1
     fi
 
-    # 3. 从进程信息中提取 ZK_CONNECT (仅取第一个节点)
-    local OVERRIDE_ZK=$(echo "$KAFKA_PROCESS_INFO" | grep -oE 'zookeeper.connect=[^ ]+' | cut -d'=' -f2- | cut -d',' -f1)
+    # 3. 从进程信息中提取 ZK_CONNECT
+    local OVERRIDE_ZK=$(echo "$KAFKA_PROCESS_INFO" | grep -oE 'zookeeper.connect=[^ ]+' | cut -d'=' -f2-)
     if [ -n "$OVERRIDE_ZK" ]; then
         ZK_CONNECT_DISCOVERED=$OVERRIDE_ZK
     else
@@ -161,7 +160,7 @@ discover_kafka_env() {
         [ -z "$SERVER_PROPS_PATH" ] && SERVER_PROPS_PATH="${KAFKA_HOME_DISCOVERED}/config/server.properties"
 
         if [ -f "$SERVER_PROPS_PATH" ]; then
-            ZK_CONNECT_DISCOVERED=$(grep -E "^zookeeper.connect=" "$SERVER_PROPS_PATH" | cut -d'=' -f2 | tr -d '[:space:]' | cut -d',' -f1)
+            ZK_CONNECT_DISCOVERED=$(grep -E "^zookeeper.connect=" "$SERVER_PROPS_PATH" | cut -d'=' -f2 | tr -d '[:space:]')
             if [ -z "$ZK_CONNECT_DISCOVERED" ]; then
                 echo "错误: 在配置文件 ${SERVER_PROPS_PATH} 中未找到 'zookeeper.connect' 配置。" >&2
                 exit 1
@@ -176,13 +175,11 @@ discover_kafka_env() {
     KAFKA_HOME=${KAFKA_HOME_DISCOVERED}
     ZK_CONNECT=${ZK_CONNECT_DISCOVERED}
     
-    echo "  > 环境发现成功!"
 }
 
 # 将发现的配置持久化到脚本自身
 persist_config() {
     local script_path="$0"
-    echo "步骤 2: 正在将配置持久化到脚本 (${script_path})..."
 
     # 使用 sed -i.bak 创建备份，以防万一
     sed -i.bak \
@@ -192,11 +189,6 @@ persist_config() {
 
     if [ $? -eq 0 ]; then
         rm "${script_path}.bak" # 成功后删除备份
-        echo "  > 配置已成功更新并持久化。"
-        echo "    - KAFKA_HOME: ${KAFKA_HOME}"
-        echo "    - ZK_CONNECT: ${ZK_CONNECT}"
-        echo ""
-        echo "现在您可以直接运行其他命令了。"
     else
         echo "错误: 自动更新脚本配置失败。备份文件保留为 ${script_path}.bak" >&2
         exit 1
@@ -280,6 +272,29 @@ cmd_retention() {
         exit 0
     fi
 
+    # --- 删除操作 ---
+    if [ "$1" == "--delete" ]; then
+        echo "正在删除 '${topic_name}' 的保留时间配置..."
+        local output
+        output=$(${KAFKA_HOME}/bin/kafka-configs.sh --zookeeper ${ZK_CONNECT} --entity-type topics --entity-name "${topic_name}" \
+            --alter --delete-config retention.ms 2>&1)
+        local exit_code=$?
+
+        if [ ${exit_code} -eq 0 ]; then
+            echo "  > 删除成功, topic将使用集群默认值。"
+        # The command fails if the config is not set. We treat this as a success.
+        elif [[ "${output}" == *"Invalid config(s): retention.ms"* ]]; then
+            echo "  > 配置本未设置, 无需删除。"
+        else
+            echo "错误: 删除 Topic 配置失败。" >&2
+            echo "--- Kafka 命令输出 ---" >&2
+            echo "${output}" >&2
+            echo "-----------------------" >&2
+            exit 1
+        fi
+        exit 0
+    fi
+
     # --- 查看操作 ---
     echo "正在查询 Topic '${topic_name}' 的数据保留时间..."
     local topic_config=$(${KAFKA_HOME}/bin/kafka-configs.sh --zookeeper ${ZK_CONNECT} --describe --entity-type topics --entity-name "${topic_name}" 2>/dev/null)
@@ -287,11 +302,17 @@ cmd_retention() {
     local retention_ms=$(echo "${topic_config}" | grep "retention.ms" | sed 's/.*retention.ms=\([0-9]*\).*/\1/')
     local retention_str=""
 
+    _get_cluster_default_retention # 确保默认值已被加载
+
     if [[ -n "$retention_ms" && "$retention_ms" =~ ^[0-9]+$ && "$retention_ms" -gt 0 ]]; then
         local retention_hours=$((retention_ms / 1000 / 60 / 60))
         retention_str="retention.ms=${retention_ms}（${retention_hours}小时）"
+        # 如果当前topic的保留时间和集群默认值相同，则添加[默认]标记
+        if [[ "$retention_ms" == "$CLUSTER_DEFAULT_RETENTION_MS" ]]; then
+            retention_str="${retention_str}[默认]"
+        fi
     else
-        _get_cluster_default_retention # 确保默认值已被加载
+        # Fallback in case retention.ms is not found, which is unlikely but safe to keep
         local default_hours=$((CLUSTER_DEFAULT_RETENTION_MS / 1000 / 60 / 60))
         retention_str="retention.ms=${CLUSTER_DEFAULT_RETENTION_MS}（${default_hours}小时）[默认]"
     fi
@@ -306,8 +327,16 @@ cmd_retention() {
 # 命令: init
 # 功能: 初始化脚本配置
 cmd_init() {
+    if [[ "$1" == "show" ]]; then
+        check_config
+        echo "KAFKA_HOME: ${KAFKA_HOME}"
+        echo "ZK_CONNECT: ${ZK_CONNECT}"
+        exit 0
+    fi
     discover_kafka_env
     persist_config
+    echo "KAFKA_HOME: ${KAFKA_HOME}"
+    echo "ZK_CONNECT: ${ZK_CONNECT}"
 }
 
 # 命令: stats (原脚本核心功能)
@@ -348,7 +377,46 @@ cmd_stats() {
 
     check_config # 每个业务命令前都检查配置
 
-    echo "步骤 1: 正在从 Zookeeper ($ZK_CONNECT) 发现 Broker 列表..."
+    echo "步骤 1: 正在查询 Zookeeper ($ZK_CONNECT) 集群状态..."
+    
+    # 从 ZK_CONNECT 中提取服务器列表, 移除可能存在的 chroot 路径
+    local zk_servers_with_chroot=$(echo "$ZK_CONNECT" | cut -d'/' -f1)
+    # 将逗号替换为空格, 以便在 for 循环中迭代
+    local zk_server_list=$(echo "$zk_servers_with_chroot" | tr ',' ' ')
+
+    if [ -n "$zk_server_list" ]; then
+        echo "Zookeeper 集群信息:"
+        
+        # 检查 nc (netcat) 命令是否存在
+        if ! command -v nc &> /dev/null; then
+            echo "警告: 'nc' (netcat) 命令未找到。无法查询 Zookeeper 主从状态。" >&2
+            echo "${ZK_CONNECT}"
+        else
+            for server in ${zk_server_list}; do
+                # Zookeeper 服务器字符串格式为 host:port
+                local server_host=$(echo "$server" | cut -d':' -f1)
+                local server_port=$(echo "$server" | cut -d':' -f2)
+                [ -z "$server_port" ] && server_port="2181"
+                
+                # 使用 'srvr' 四字命令获取状态
+                # 为 nc 设置一个较短的超时时间 (-w 2), 避免因节点无法连接而导致脚本长时间等待
+                local mode=$(echo "srvr" | nc -w 2 ${server_host} ${server_port} 2>/dev/null | grep "Mode:")
+                
+                if [ -n "$mode" ]; then
+                    mode=$(echo "$mode" | sed 's/Mode: //')
+                    printf "%-22s (%s)\n" "${server_host}:${server_port}" "${mode}"
+                else
+                    printf "%-22s (状态未知)\n" "${server_host}:${server_port}"
+                fi
+            done
+        fi
+        echo ""
+    else
+        echo "Zookeeper 集群信息: ${ZK_CONNECT} (无法解析服务器列表)"
+        echo ""
+    fi
+
+    echo "步骤 2: 正在从 Zookeeper ($ZK_CONNECT) 发现 Broker 列表并统计日志信息..."
     BROKER_IDS_RAW=$(echo "ls /brokers/ids" | ${KAFKA_HOME}/bin/zookeeper-shell.sh ${ZK_CONNECT} 2>/dev/null | sed -n 's/.*\[\(.*\)\].*/\1/p')
     BROKER_IDS=$(echo ${BROKER_IDS_RAW} | tr ',' ' ')
     if [ -z "$BROKER_IDS" ]; then
@@ -356,25 +424,91 @@ cmd_stats() {
         exit 1
     fi
 
-    echo "发现 Broker 列表:"
-    BROKER_ENDPOINTS=()
+    local broker_endpoints_str=""
     for id in ${BROKER_IDS}; do
       endpoint=$(${KAFKA_HOME}/bin/zookeeper-shell.sh ${ZK_CONNECT} 2>/dev/null <<< "get /brokers/ids/$id" | grep -oP 'PLAINTEXT://\K[^"]+')
       if [ -n "$endpoint" ]; then
-        printf "  Broker %-3s => %s\n" "$id" "$endpoint"
-        BROKER_ENDPOINTS+=("$endpoint")
+        broker_endpoints_str="${broker_endpoints_str}${endpoint},"
       fi
     done
+    BROKER_LIST=${broker_endpoints_str%,} # 移除末尾的逗号
 
-    if [ ${#BROKER_ENDPOINTS[@]} -eq 0 ]; then
-        echo "错误: 未能从 Zookeeper 中发现任何 Broker。"
-        exit 1
-    fi
+    LOG_DIRS_DATA=$(${KAFKA_HOME}/bin/kafka-log-dirs.sh --bootstrap-server ${BROKER_LIST} --describe 2>/dev/null)
+    
+    declare -A BROKER_SIZES
+    declare -A BROKER_LOG_DIRS
+    
+    # 使用 AWK 解析 JSON 输出, 汇总每个 Broker 的总大小和 Log 目录
+    # 使用进程替换 < <(...) 来避免在 subshell 中运行 while 循环, 确保数组变量在循环外可用
+    while read -r id size_bytes dirs; do
+        BROKER_SIZES[$id]=$size_bytes
+        BROKER_LOG_DIRS[$id]=$dirs
+    done < <(echo "$LOG_DIRS_DATA" | \
+    awk 'BEGIN { RS="\"broker\":" } NR > 1 {
+        broker_id = substr($0, 1, index($0, ",")-1);
+        total_size = 0;
+        
+        record_for_size = $0;
+        while (match(record_for_size, /"size":([0-9]+)/)) {
+            total_size += substr(record_for_size, RSTART+7, RLENGTH-7);
+            record_for_size = substr(record_for_size, RSTART+RLENGTH);
+        }
+        
+        delete dirs;
+        record_for_dirs = $0;
+        while (match(record_for_dirs, /"logDir":"([^"]+)"/)) {
+            dir = substr(record_for_dirs, RSTART+10, RLENGTH-11);
+            dirs[dir] = 1;
+            record_for_dirs = substr(record_for_dirs, RSTART+RLENGTH);
+        }
 
-    BROKER_LIST=$(IFS=,; echo "${BROKER_ENDPOINTS[*]}")
+        dir_list = "";
+        for (d in dirs) {
+            dir_list = (dir_list == "" ? d : dir_list "," d);
+        }
+        
+        printf "%s %s %s\n", broker_id, total_size, dir_list
+    }')
+
+    # 获取本机所有 IP 地址, 用于识别本地 Broker
+    local local_ips
+    local_ips=$(hostname -I 2>/dev/null || ip -4 addr | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | tr '\n' ' ')
+
+    (
+        echo "BrokerID|Endpoint|总日志大小|本机磁盘使用率"
+        for id in ${BROKER_IDS}; do
+            endpoint=$(${KAFKA_HOME}/bin/zookeeper-shell.sh ${ZK_CONNECT} 2>/dev/null <<< "get /brokers/ids/$id" | grep -oP 'PLAINTEXT://\K[^"]+')
+            if [ -n "$endpoint" ]; then
+                size_bytes=${BROKER_SIZES[$id]:-0}
+                log_dirs=${BROKER_LOG_DIRS[$id]}
+                size_gb=$(awk -v size="$size_bytes" 'BEGIN { printf "%.1fG", size/1024/1024/1024 }')
+                
+                disk_usage=""
+                local broker_ip=$(echo "$endpoint" | cut -d':' -f1)
+
+                # 检查当前 Broker 是否为本机
+                if [[ -n "$log_dirs" && "$local_ips" == *"$broker_ip"* ]]; then
+                    # 如果有多个日志目录, 以第一个为准计算磁盘使用率
+                    local first_log_dir=$(echo "$log_dirs" | cut -d',' -f1)
+                    if [ -d "$first_log_dir" ]; then
+                        local df_info
+                        df_info=$(df -h --output=pcent,used,size,target "$first_log_dir" 2>/dev/null | tail -n 1)
+                        if [ -n "$df_info" ]; then
+                            local pcent used size target
+                            read -r pcent used size target <<< "$df_info"
+                            pcent=$(echo "$pcent" | tr -d '[:space:]')
+                            disk_usage="${pcent} [${used}/${size}] ${target}"
+                        fi
+                    fi
+                fi
+
+                echo "$id|$endpoint|$size_gb|$disk_usage"
+            fi
+        done
+    ) | column -t -s '|' -o '  '
     echo ""
 
-    echo "步骤 2: 正在查询集群默认日志保留时间 (按优先级 ms > minutes > hours)..."
+    echo "步骤 3: 正在查询集群默认日志保留时间 (按优先级 ms > minutes > hours)..."
     _get_cluster_default_retention # 调用新的公共函数
     
     DEFAULT_RETENTION_STR=""
@@ -388,9 +522,9 @@ cmd_stats() {
     fi
     echo ""
     
-    echo "步骤 3: 正在计算 Top ${current_top_n} Topic 的磁盘占用..."
+    echo "步骤 4: 正在计算 Top ${current_top_n} Topic 的磁盘占用..."
     
-    TOP_TOPICS_DATA=$(${KAFKA_HOME}/bin/kafka-log-dirs.sh --bootstrap-server ${BROKER_LIST} --describe 2>/dev/null | \
+    TOP_TOPICS_DATA=$(echo "$LOG_DIRS_DATA" | \
     sed -e 's/},{/}\n{/g' | \
     grep '"partition":' | \
     sed -e 's/.*"partition":"\([^"]*\)","size":\([0-9]*\).*/\1 \2/' | \
@@ -416,7 +550,14 @@ cmd_stats() {
         if [[ -n "$RETENTION_MS" && "$RETENTION_MS" =~ ^[0-9]+$ && "$RETENTION_MS" -gt 0 ]]; then
             RETENTION_HOURS=$((RETENTION_MS / 1000 / 60 / 60))
             RETENTION_STR="retention.ms=${RETENTION_MS}（${RETENTION_HOURS}小时）"
+            # 如果当前topic的保留时间和集群默认值相同，则添加[默认]标记
+            # 注意: 此处的 CLUSTER_DEFAULT_RETENTION_MS 已经在循环外由 _get_cluster_default_retention 获取并设置了
+            if [[ "$RETENTION_MS" == "$CLUSTER_DEFAULT_RETENTION_MS" ]]; then
+                RETENTION_STR="${RETENTION_STR}[默认]"
+            fi
         else
+            # Fallback for topics without a specific or default retention.ms found.
+            # It will use the pre-formatted default string from the stats command's initial setup.
             RETENTION_STR="${DEFAULT_RETENTION_STR}"
         fi
     
@@ -428,7 +569,7 @@ cmd_stats() {
 show_stats_help() {
     echo "用法: ${SCRIPT_NAME} stats [选项]"
     echo ""
-    echo "显示集群的常用统计数据：broker节点、topic磁盘占用 Top N、这些topic的保留时间"
+    echo "显示集群的全面统计信息，包括 Zookeeper 状态、Broker 列表（含总日志大小和本机磁盘使用率）、Topic 磁盘占用 Top N 及其保留策略。"
     echo ""
     echo "选项:"
     echo "  --top <N>    指定显示的 Topic 数量。默认为 ${TOP_N}。"
@@ -446,13 +587,13 @@ show_retention_help() {
     echo ""
     echo "选项:"
     echo "  --set <时间>   设置新的数据保留时间。支持的单位: d(天), h(小时), min(分钟), ms(或纯数字)。"
+    echo "  --delete       删除自定义保留时间, 使用集群默认值。"
     echo "  -h, --help     显示此帮助信息。"
     echo ""
     echo "示例:"
     echo "  ${SCRIPT_NAME} retention my-topic              # 查看 'my-topic' 的保留时间"
-    echo "  ${SCRIPT_NAME} retention my-topic --set 7d       # 将 'my-topic' 的保留时间设置为 7 天"
-    echo "  ${SCRIPT_NAME} retention my-topic --set 12h      # 设置为 12 小时"
-    echo "  ${SCRIPT_NAME} retention my-topic --set 86400000 # 设置为 86400000 毫秒"
+    echo "  ${SCRIPT_NAME} retention my-topic --set 7d     # 将 'my-topic' 的保留时间设置为 7 天"
+    echo "  ${SCRIPT_NAME} retention my-topic --delete     # 删除 'my-topic' 的自定义保留时间"
 }
 
 show_help() {
@@ -462,9 +603,9 @@ show_help() {
     echo "  ${SCRIPT_NAME} <命令> [选项...]"
     echo ""
     echo "可用命令:"
-    echo "  init         自动发现并持久化 Kafka 环境配置到脚本中 (首次使用必须运行此命令)"
+    echo "  init [show]  自动发现、持久化或显示 Kafka 环境配置 (首次使用必须运行 init)"
     echo "  retention    查看或修改指定 Topic 的数据保留时间"
-    echo "  stats        显示集群的常用统计数据：broker节点、topic磁盘占用Top N、这些topic的保留时间"
+    echo "  stats        显示常用的集群统计信息 (ZK, Broker, 磁盘占用前N的topic、topic保留时间等)"
     echo "  help         显示此帮助信息"
     echo ""
 }
@@ -478,7 +619,7 @@ shift || true # 如果没有参数, shift 会失败, `|| true` 可以防止脚�
 
 case "$COMMAND" in
     init)
-        cmd_init
+        cmd_init "$@"
         ;;
 
     stats)
