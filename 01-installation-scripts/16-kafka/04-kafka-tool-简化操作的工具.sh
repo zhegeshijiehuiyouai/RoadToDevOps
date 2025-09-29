@@ -236,6 +236,85 @@ cmd_retention() {
     check_config
 
     # --- retention 命令参数解析 ---
+    if [ "$1" == "--all" ]; then
+        shift # consume --all
+
+        local verbose=false
+        if [ "$1" == "-v" ]; then
+            verbose=true
+            shift # consume -v
+        fi
+
+        echo "正在查询所有 Topic 的数据保留时间..."
+        _get_cluster_default_retention # 确保默认值已被加载
+
+        local default_retention_str=""
+        if [[ -n "$CLUSTER_DEFAULT_RETENTION_MS" && "$CLUSTER_DEFAULT_RETENTION_MS" =~ ^[0-9]+$ ]]; then
+            local default_hours=$((CLUSTER_DEFAULT_RETENTION_MS / 1000 / 60 / 60))
+            default_retention_str="retention.ms=${CLUSTER_DEFAULT_RETENTION_MS}（${default_hours}小时）[默认]"
+            echo "集群默认保留时间: ${default_hours}小时 (${CLUSTER_DEFAULT_RETENTION_MS}ms)${CLUSTER_DEFAULT_RETENTION_SOURCE}"
+        else
+            default_retention_str="retention.ms=无法获取默认值"
+            echo "警告: 未能获取到集群默认日志保留时间。"
+        fi
+        
+        local topics_list
+        topics_list=$(${KAFKA_HOME}/bin/kafka-topics.sh --zookeeper ${ZK_CONNECT} --list | sort)
+        
+        # 过滤掉空行再计数
+        local total_topics
+        total_topics=$(echo "$topics_list" | sed '/^$/d' | wc -l | tr -d ' ')
+
+        if [ "$total_topics" -eq 0 ]; then
+            echo "未发现任何 Topic。"
+            exit 0
+        fi
+        
+        echo "发现 ${total_topics} 个 Topic，开始查询保留策略..."
+        echo ""
+
+        (
+            echo "Topic名称 保留策略"
+            local processed_count=0
+            # 列出并排序所有 topic
+            echo "$topics_list" | while read -r topic; do
+                if [ -z "$topic" ]; then continue; fi
+
+                processed_count=$((processed_count + 1))
+                if [ "$verbose" = true ]; then
+                    # 构造进度条字符串, 并用空格填充以覆盖上一行的内容
+                    local progress_str="查询进度: ${processed_count}/${total_topics} - ${topic}"
+                    printf "\r%-80s" "${progress_str}" >&2
+                fi
+
+                local topic_config=$(${KAFKA_HOME}/bin/kafka-configs.sh --zookeeper ${ZK_CONNECT} --describe --entity-type topics --entity-name "${topic}" 2>/dev/null)
+                local retention_ms=$(echo "${topic_config}" | grep "retention.ms" | sed 's/.*retention.ms=\([0-9]*\).*/\1/')
+                local retention_str=""
+
+                if [[ -n "$retention_ms" && "$retention_ms" =~ ^[0-9]+$ && "$retention_ms" -gt 0 ]]; then
+                    local retention_hours=$((retention_ms / 1000 / 60 / 60))
+                    retention_str="retention.ms=${retention_ms}（${retention_hours}小时）"
+                    # 如果当前topic的保留时间和集群默认值相同，则添加[默认]标记
+                    if [[ -n "$CLUSTER_DEFAULT_RETENTION_MS" && "$retention_ms" == "$CLUSTER_DEFAULT_RETENTION_MS" ]]; then
+                        retention_str="${retention_str}[默认]"
+                    fi
+                else
+                    retention_str="${default_retention_str}"
+                fi
+                echo "${topic} ${retention_str}"
+            done
+        ) | column -t
+        
+        if [ "$verbose" = true ]; then
+            # 结束时，用完成信息覆盖进度条并换行
+            printf "\r查询完成。共处理 %d 个 Topic。%-20s\n" "$total_topics" "" >&2
+        else
+            echo "查询完成。" >&2
+        fi
+
+        exit 0
+    fi
+
     if [ -z "$1" ] || [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
         show_retention_help
         exit 0
@@ -324,6 +403,30 @@ cmd_retention() {
     ) | column -t
 }
 
+# 命令: topic
+# 功能: Topic 相关操作
+cmd_topic() {
+    check_config
+
+    local sub_command="$1"
+    shift || true
+
+    case "$sub_command" in
+        list)
+            echo "正在查询集群所有 Topic..."
+            ${KAFKA_HOME}/bin/kafka-topics.sh --zookeeper ${ZK_CONNECT} --list
+            ;;
+        "" | "-h" | "--help")
+            show_topic_help
+            ;;
+        *)
+            echo "错误: 'topic' 命令不支持子命令 '$sub_command'" >&2
+            show_topic_help
+            exit 1
+            ;;
+    esac
+}
+
 # 命令: init
 # 功能: 初始化脚本配置
 cmd_init() {
@@ -387,28 +490,97 @@ cmd_stats() {
     if [ -n "$zk_server_list" ]; then
         echo "Zookeeper 集群信息:"
         
-        # 检查 nc (netcat) 命令是否存在
         if ! command -v nc &> /dev/null; then
             echo "警告: 'nc' (netcat) 命令未找到。无法查询 Zookeeper 主从状态。" >&2
             echo "${ZK_CONNECT}"
         else
+            # 阶段 1: 收集所有节点的状态和名称
+            declare -a server_full_names
+            declare -a server_hosts
+            declare -a server_modes
+            declare -a leader_indices
+            local max_len=0
+            
+            local i=0
             for server in ${zk_server_list}; do
-                # Zookeeper 服务器字符串格式为 host:port
                 local server_host=$(echo "$server" | cut -d':' -f1)
                 local server_port=$(echo "$server" | cut -d':' -f2)
                 [ -z "$server_port" ] && server_port="2181"
                 
-                # 使用 'srvr' 四字命令获取状态
-                # 为 nc 设置一个较短的超时时间 (-w 2), 避免因节点无法连接而导致脚本长时间等待
-                local mode=$(echo "srvr" | nc -w 2 ${server_host} ${server_port} 2>/dev/null | grep "Mode:")
-                
-                if [ -n "$mode" ]; then
-                    mode=$(echo "$mode" | sed 's/Mode: //')
-                    printf "%-22s (%s)\n" "${server_host}:${server_port}" "${mode}"
-                else
-                    printf "%-22s (状态未知)\n" "${server_host}:${server_port}"
+                local full_name="${server_host}:${server_port}"
+                server_full_names[i]=$full_name
+                server_hosts[i]=$server_host
+
+                if [ ${#full_name} -gt $max_len ]; then
+                    max_len=${#full_name}
                 fi
+
+                local mode_line=$(echo "srvr" | nc -w 2 ${server_host} ${server_port} 2>/dev/null | grep "Mode:")
+                local mode="状态未知"
+                if [ -n "$mode_line" ]; then
+                    mode=$(echo "$mode_line" | sed 's/Mode: //')
+                fi
+                server_modes[i]=$mode
+
+                if [[ "$mode" == "leader" ]]; then
+                    leader_indices+=($i)
+                fi
+                i=$((i+1))
             done
+            
+            # 阶段 2: 根据 leader 数量决定输出格式
+            local leader_count=${#leader_indices[@]}
+            
+            if [ ${leader_count} -le 1 ]; then
+                # --- 简单模式: 0 或 1 个 leader, 保持原有风格 ---
+                for ((j=0; j<${#server_full_names[@]}; j++)); do
+                    printf "%-${max_len}s (%s)\n" "${server_full_names[j]}" "${server_modes[j]}"
+                done
+            else
+                # --- 诊断模式: 多于 1 个 leader, 解析 IP 并添加备注 ---
+                declare -a server_ips
+                declare -A ip_to_first_host
+                local output_data="Zookeeper节点 角色 备注\n"
+
+                for ((j=0; j<${#server_hosts[@]}; j++)); do
+                    local ip_addr=$(ping -c 1 ${server_hosts[j]} 2>/dev/null | head -n 1 | grep -oE '\([0-9\.]+\)' | tr -d '()')
+                    [ -z "$ip_addr" ] && ip_addr="无法解析"
+                    server_ips[j]=$ip_addr
+
+                    if [[ "$ip_addr" != "无法解析" && -z "${ip_to_first_host[$ip_addr]}" ]]; then
+                        ip_to_first_host[$ip_addr]="${server_hosts[j]}"
+                    fi
+                done
+
+                for ((j=0; j<${#server_full_names[@]}; j++)); do
+                    local note="-"
+                    local ip_addr=${server_ips[j]}
+                    if [[ "$ip_addr" != "无法解析" ]]; then
+                        local first_host_for_ip=${ip_to_first_host[$ip_addr]}
+                        if [[ "${server_hosts[j]}" != "$first_host_for_ip" ]]; then
+                            note="IP同${first_host_for_ip}"
+                        fi
+                    fi
+                    output_data+="${server_full_names[j]} ${server_modes[j]} ${note}\n"
+                done
+
+                printf "%b" "${output_data}" | column -t
+                
+                # 精准告警: 仅当 leader 的 IP 不同时才告警
+                declare -A unique_leader_ips
+                for leader_index in "${leader_indices[@]}"; do
+                    local leader_ip=${server_ips[leader_index]}
+                    if [[ "$leader_ip" != "无法解析" ]]; then
+                        unique_leader_ips[$leader_ip]=1
+                    fi
+                done
+                
+                if [ ${#unique_leader_ips[@]} -ge 2 ]; then
+                    echo ""
+                    echo "警告: 在不同 IP 上检测到 ${#unique_leader_ips[@]} 个 Zookeeper Leader，可能存在脑裂风险！" >&2
+                    echo "Leader IP 列表: ${!unique_leader_ips[@]}" >&2
+                fi
+            fi
         fi
         echo ""
     else
@@ -581,19 +753,39 @@ show_stats_help() {
 }
 
 show_retention_help() {
-    echo "用法: ${SCRIPT_NAME} retention <topic名称> [选项]"
+    echo "用法: ${SCRIPT_NAME} retention {<topic名称> [选项] | --all [-v]}"
     echo ""
-    echo "查看或修改指定 Topic 的数据保留时间。"
+    echo "查看或修改 Topic 的数据保留时间。"
+    echo ""
+    echo "模式:"
+    echo "  <topic名称>      操作单个 Topic。需要提供 Topic 名称。"
+    echo "  --all            显示所有 Topic 的保留时间。"
     echo ""
     echo "选项:"
-    echo "  --set <时间>   设置新的数据保留时间。支持的单位: d(天), h(小时), min(分钟), ms(或纯数字)。"
-    echo "  --delete       删除自定义保留时间, 使用集群默认值。"
+    echo "  -v             当与 --all 一起使用时，显示详细的查询进度。"
+    echo "  --set <时间>   [单Topic模式] 设置新的数据保留时间。支持的单位: d(天), h(小时), min(分钟), ms(或纯数字)。"
+    echo "  --delete       [单Topic模式] 删除自定义保留时间, 使用集群默认值。"
     echo "  -h, --help     显示此帮助信息。"
     echo ""
     echo "示例:"
+    echo "  ${SCRIPT_NAME} retention --all                 # 查看所有 Topic 的保留时间"
+    echo "  ${SCRIPT_NAME} retention --all -v              # 查看所有 Topic 的保留时间并显示进度"
     echo "  ${SCRIPT_NAME} retention my-topic              # 查看 'my-topic' 的保留时间"
     echo "  ${SCRIPT_NAME} retention my-topic --set 7d     # 将 'my-topic' 的保留时间设置为 7 天"
     echo "  ${SCRIPT_NAME} retention my-topic --delete     # 删除 'my-topic' 的自定义保留时间"
+}
+
+show_topic_help() {
+    echo "用法: ${SCRIPT_NAME} topic <子命令> [选项]"
+    echo ""
+    echo "Topic 相关操作。"
+    echo ""
+    echo "可用子命令:"
+    echo "  list           列出集群中所有的 Topic。"
+    echo "  -h, --help     显示此帮助信息。"
+    echo ""
+    echo "示例:"
+    echo "  ${SCRIPT_NAME} topic list"
 }
 
 show_help() {
@@ -606,6 +798,7 @@ show_help() {
     echo "  init [show]  自动发现、持久化或显示 Kafka 环境配置 (首次使用必须运行 init)"
     echo "  retention    查看或修改指定 Topic 的数据保留时间"
     echo "  stats        显示常用的集群统计信息 (ZK, Broker, 磁盘占用前N的topic、topic保留时间等)"
+    echo "  topic        Topic 相关操作 (例如: list)"
     echo "  help         显示此帮助信息"
     echo ""
 }
@@ -628,6 +821,10 @@ case "$COMMAND" in
 
     retention)
         cmd_retention "$@"
+        ;;
+
+    topic)
+        cmd_topic "$@"
         ;;
 
     "" | "help" | "-h" | "--help")
