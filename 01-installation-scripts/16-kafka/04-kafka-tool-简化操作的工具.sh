@@ -427,6 +427,138 @@ cmd_topic() {
     esac
 }
 
+# 命令: isr
+# 功能: 查询 Topic 分区的 ISR (In-Sync Replicas) 状态
+cmd_isr() {
+    check_config
+
+    local show_all=false
+    local verbose=false
+    local under_replicated_only=false
+    local topic_name=""
+
+    # --- isr 命令参数解析 ---
+    local args=("$@") # 复制参数以安全地进行操作
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --all)
+                show_all=true
+                shift
+                ;;
+            -v)
+                verbose=true
+                shift
+                ;;
+            --under-replicated-only)
+                under_replicated_only=true
+                shift
+                ;;
+            -h|--help)
+                show_isr_help
+                exit 0
+                ;;
+            *)
+                if [[ -z "$topic_name" && ! "$1" =~ ^- ]]; then
+                    topic_name="$1"
+                    shift
+                else
+                    echo "错误: 未知或无效的选项 '$1'" >&2
+                    show_isr_help
+                    exit 1
+                fi
+                ;;
+        esac
+    done
+
+    if ! $show_all && [ -z "$topic_name" ]; then
+        show_isr_help
+        exit 0
+    fi
+
+    if $show_all && [ -n "$topic_name" ]; then
+        echo "错误: 不能同时指定 Topic 名称和 --all 选项。" >&2
+        show_isr_help
+        exit 1
+    fi
+
+    # --- AWK 脚本用于解析和格式化 describe 命令的输出 ---
+    local awk_script='
+        # 只处理包含 Partition 关键字的行
+        /Partition:/ {
+            topic = $2;
+            partition = $4;
+            leader = $6;
+            replicas = $8;
+            isr = $10;
+
+            # 计算 Replicas 和 Isr 列表中的元素数量
+            n_replicas = split(replicas, r_arr, ",");
+            n_isr = split(isr, i_arr, ",");
+            
+            status = (n_isr < n_replicas) ? "UNDER-REPLICATED" : "OK";
+
+            # 根据 --under-replicated-only 标志进行过滤
+            if (under_replicated == "true" && status == "OK") {
+                next;
+            }
+
+            printf "%s %s %s %s %s %s\n", topic, partition, leader, replicas, isr, status;
+        }
+    '
+
+    # --- 逻辑执行 ---
+    if ! $show_all; then
+        echo "正在查询 Topic '${topic_name}' 的 ISR 状态..."
+        (
+            echo "Topic Partition Leader Replicas Isr Status"
+            ${KAFKA_HOME}/bin/kafka-topics.sh --zookeeper ${ZK_CONNECT} --describe --topic "${topic_name}" 2>/dev/null | \
+                awk -v under_replicated="${under_replicated_only}" "${awk_script}"
+        ) | column -t
+    else
+        local topics_list
+        topics_list=$(${KAFKA_HOME}/bin/kafka-topics.sh --zookeeper ${ZK_CONNECT} --list | sort)
+        
+        local total_topics
+        total_topics=$(echo "$topics_list" | sed '/^$/d' | wc -l | tr -d ' ')
+
+        if [ "$total_topics" -eq 0 ]; then
+            echo "未发现任何 Topic。"
+            exit 0
+        fi
+
+        echo "发现 ${total_topics} 个 Topic，开始查询 ISR 状态..."
+        
+        (
+            echo "Topic Partition Leader Replicas Isr Status"
+            local processed_count=0
+            
+            echo "$topics_list" | while read -r topic; do
+                if [ -z "$topic" ]; then continue; fi
+
+                processed_count=$((processed_count + 1))
+                if [ "$verbose" = true ]; then
+                    local progress_str="查询进度: ${processed_count}/${total_topics} - ${topic}"
+                    printf "\r%-80s" "${progress_str}" >&2
+                fi
+
+                ${KAFKA_HOME}/bin/kafka-topics.sh --zookeeper ${ZK_CONNECT} --describe --topic "${topic}" 2>/dev/null | \
+                    awk -v under_replicated="${under_replicated_only}" "${awk_script}"
+            done
+            
+            # 清空进度条行，避免与输出混在一起
+            if [ "$verbose" = true ]; then
+                printf "\r%-80s\r" "" >&2
+            fi
+        ) | column -t
+
+        if [ "$verbose" = true ]; then
+            printf "\r查询完成。共处理 %d 个 Topic。%-20s\n" "$total_topics" "" >&2
+        else
+            echo "查询完成。" >&2
+        fi
+    fi
+}
+
 # 命令: init
 # 功能: 初始化脚本配置
 cmd_init() {
@@ -788,6 +920,27 @@ show_topic_help() {
     echo "  ${SCRIPT_NAME} topic list"
 }
 
+show_isr_help() {
+    echo "用法: ${SCRIPT_NAME} isr {<topic名称> | --all} [选项]"
+    echo ""
+    echo "查询并显示 Topic 分区的 ISR (In-Sync Replicas) 状态。"
+    echo "关键指标是 '状态' 一列，'UNDER-REPLICATED' 表示该分区的同步副本数少于总副本数，存在数据丢失风险，需要运维关注。"
+    echo ""
+    echo "模式:"
+    echo "  <topic名称>      查询单个 Topic。"
+    echo "  --all            查询所有 Topic。"
+    echo ""
+    echo "选项:"
+    echo "  -v                     当与 --all 一起使用时，显示详细的查询进度。"
+    echo "  --under-replicated-only  仅显示状态为 'UNDER-REPLICATED' 的分区。"
+    echo "  -h, --help             显示此帮助信息。"
+    echo ""
+    echo "示例:"
+    echo "  ${SCRIPT_NAME} isr my-topic"
+    echo "  ${SCRIPT_NAME} isr --all -v"
+    echo "  ${SCRIPT_NAME} isr --all --under-replicated-only"
+}
+
 show_help() {
     echo "${SCRIPT_NAME} - 一个用于简化 Kafka 日常运维的命令行工具。"
     echo ""
@@ -799,6 +952,7 @@ show_help() {
     echo "  retention    查看或修改指定 Topic 的数据保留时间"
     echo "  stats        显示常用的集群统计信息 (ZK, Broker, 磁盘占用前N的topic、topic保留时间等)"
     echo "  topic        Topic 相关操作 (例如: list)"
+    echo "  isr          查询 Topic 分区的 ISR (In-Sync Replicas) 状态"
     echo "  help         显示此帮助信息"
     echo ""
 }
@@ -825,6 +979,10 @@ case "$COMMAND" in
 
     topic)
         cmd_topic "$@"
+        ;;
+
+    isr)
+        cmd_isr "$@"
         ;;
 
     "" | "help" | "-h" | "--help")
