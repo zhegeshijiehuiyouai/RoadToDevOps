@@ -239,12 +239,6 @@ cmd_retention() {
     if [ "$1" == "--all" ]; then
         shift # consume --all
 
-        local verbose=false
-        if [ "$1" == "-v" ]; then
-            verbose=true
-            shift # consume -v
-        fi
-
         echo "正在查询所有 Topic 的数据保留时间..."
         _get_cluster_default_retention # 确保默认值已被加载
 
@@ -271,7 +265,6 @@ cmd_retention() {
         fi
         
         echo "发现 ${total_topics} 个 Topic，开始查询保留策略..."
-        echo ""
 
         (
             echo "Topic名称 保留策略"
@@ -281,11 +274,9 @@ cmd_retention() {
                 if [ -z "$topic" ]; then continue; fi
 
                 processed_count=$((processed_count + 1))
-                if [ "$verbose" = true ]; then
-                    # 构造进度条字符串, 并用空格填充以覆盖上一行的内容
-                    local progress_str="查询进度: ${processed_count}/${total_topics} - ${topic}"
-                    printf "\r%-80s" "${progress_str}" >&2
-                fi
+                # 查询所有 topic 时默认显示进度
+                local progress_str="查询进度: ${processed_count}/${total_topics} - ${topic}"
+                printf "\r%-80s" "${progress_str}" >&2
 
                 local topic_config=$(${KAFKA_HOME}/bin/kafka-configs.sh --zookeeper ${ZK_CONNECT} --describe --entity-type topics --entity-name "${topic}" 2>/dev/null)
                 local retention_ms=$(echo "${topic_config}" | grep "retention.ms" | sed 's/.*retention.ms=\([0-9]*\).*/\1/')
@@ -303,14 +294,13 @@ cmd_retention() {
                 fi
                 echo "${topic} ${retention_str}"
             done
+            
+            # 清空进度条行，避免与输出混在一起
+            printf "\r%-80s\r" "" >&2
         ) | column -t
         
-        if [ "$verbose" = true ]; then
-            # 结束时，用完成信息覆盖进度条并换行
-            printf "\r查询完成。共处理 %d 个 Topic。%-20s\n" "$total_topics" "" >&2
-        else
-            echo "查询完成。" >&2
-        fi
+        # 结束时，用完成信息覆盖进度条并换行
+        printf "查询完成。共处理 %d 个 Topic。\n" "$total_topics" >&2
 
         exit 0
     fi
@@ -433,7 +423,6 @@ cmd_isr() {
     check_config
 
     local show_all=false
-    local verbose=false
     local under_replicated_only=false
     local topic_name=""
 
@@ -445,12 +434,9 @@ cmd_isr() {
                 show_all=true
                 shift
                 ;;
-            -v)
-                verbose=true
-                shift
-                ;;
             --under-replicated-only)
                 under_replicated_only=true
+                show_all=true  # --under-replicated-only 隐含查询所有 topic
                 shift
                 ;;
             -h|--help)
@@ -509,11 +495,20 @@ cmd_isr() {
     # --- 逻辑执行 ---
     if ! $show_all; then
         echo "正在查询 Topic '${topic_name}' 的 ISR 状态..."
-        (
-            echo "Topic Partition Leader Replicas Isr Status"
-            ${KAFKA_HOME}/bin/kafka-topics.sh --zookeeper ${ZK_CONNECT} --describe --topic "${topic_name}" 2>/dev/null | \
-                awk -v under_replicated="${under_replicated_only}" "${awk_script}"
-        ) | column -t
+        local isr_output
+        isr_output=$(${KAFKA_HOME}/bin/kafka-topics.sh --zookeeper ${ZK_CONNECT} --describe --topic "${topic_name}" 2>/dev/null | \
+            awk -v under_replicated="${under_replicated_only}" "${awk_script}")
+        
+        if [ -z "$isr_output" ]; then
+            if [ "$under_replicated_only" = true ]; then
+                echo "所有分区的 ISR 状态均正常。"
+            fi
+        else
+            (
+                echo "Topic Partition Leader Replicas Isr Status"
+                echo "$isr_output"
+            ) | column -t
+        fi
     else
         local topics_list
         topics_list=$(${KAFKA_HOME}/bin/kafka-topics.sh --zookeeper ${ZK_CONNECT} --list | sort)
@@ -528,34 +523,43 @@ cmd_isr() {
 
         echo "发现 ${total_topics} 个 Topic，开始查询 ISR 状态..."
         
+        # 临时文件用于存储输出
+        local temp_output=$(mktemp)
+        
         (
-            echo "Topic Partition Leader Replicas Isr Status"
             local processed_count=0
             
             echo "$topics_list" | while read -r topic; do
                 if [ -z "$topic" ]; then continue; fi
 
                 processed_count=$((processed_count + 1))
-                if [ "$verbose" = true ]; then
-                    local progress_str="查询进度: ${processed_count}/${total_topics} - ${topic}"
-                    printf "\r%-80s" "${progress_str}" >&2
-                fi
+                # 查询所有 topic 时默认显示进度
+                local progress_str="查询进度: ${processed_count}/${total_topics} - ${topic}"
+                printf "\r%-80s" "${progress_str}" >&2
 
                 ${KAFKA_HOME}/bin/kafka-topics.sh --zookeeper ${ZK_CONNECT} --describe --topic "${topic}" 2>/dev/null | \
                     awk -v under_replicated="${under_replicated_only}" "${awk_script}"
             done
-            
-            # 清空进度条行，避免与输出混在一起
-            if [ "$verbose" = true ]; then
-                printf "\r%-80s\r" "" >&2
-            fi
-        ) | column -t
-
-        if [ "$verbose" = true ]; then
-            printf "\r查询完成。共处理 %d 个 Topic。%-20s\n" "$total_topics" "" >&2
+        ) > "$temp_output"
+        
+        # 清空进度条行
+        printf "\r%-80s\r" "" >&2
+        
+        # 检查是否有数据
+        if [ -s "$temp_output" ]; then
+            (
+                echo "Topic Partition Leader Replicas Isr Status"
+                cat "$temp_output"
+            ) | column -t
         else
-            echo "查询完成。" >&2
+            if [ "$under_replicated_only" = true ]; then
+                echo "所有分区的 ISR 状态均正常。"
+            fi
         fi
+        
+        rm -f "$temp_output"
+        
+        printf "查询完成。共处理 %d 个 Topic。\n" "$total_topics" >&2
     fi
 }
 
@@ -572,6 +576,219 @@ cmd_init() {
     persist_config
     echo "KAFKA_HOME: ${KAFKA_HOME}"
     echo "ZK_CONNECT: ${ZK_CONNECT}"
+}
+
+# 内部函数: 格式化字节大小为人类可读格式
+_format_size() {
+    local bytes="$1"
+    
+    # 处理空值或无效值
+    if [ -z "$bytes" ]; then
+        echo "0.00M"
+        return
+    fi
+    
+    # 确保是数字
+    if ! [[ "$bytes" =~ ^[0-9]+$ ]]; then
+        echo "0.00M"
+        return
+    fi
+    
+    # 处理 0
+    if [ "$bytes" -eq 0 ]; then
+        echo "0.00M"
+        return
+    fi
+    
+    # 使用 AWK 来判断并格式化，避免 bash 整数溢出问题
+    awk -v bytes="$bytes" 'BEGIN {
+        tb = 1024 * 1024 * 1024 * 1024;
+        gb = 1024 * 1024 * 1024;
+        
+        if (bytes >= tb) {
+            printf "%.2fT", bytes / tb;
+        } else if (bytes >= gb) {
+            printf "%.2fG", bytes / gb;
+        } else {
+            printf "%.2fM", bytes / (1024 * 1024);
+        }
+    }'
+}
+
+# 命令: size
+# 功能: 查询 Topic 的磁盘占用大小
+cmd_size() {
+    check_config
+
+    local show_all=false
+    local topic_name=""
+    local top_n=""
+
+    # --- size 命令参数解析 ---
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --all)
+                show_all=true
+                shift
+                ;;
+            --top)
+                if [[ -n "$2" && "$2" =~ ^[0-9]+$ ]]; then
+                    top_n="$2"
+                    show_all=true  # --top 隐含 --all
+                    shift 2
+                else
+                    echo "错误: --top 选项需要一个有效的数字参数。" >&2
+                    echo "示例: ${SCRIPT_NAME} size --top 10" >&2
+                    exit 1
+                fi
+                ;;
+            -h|--help)
+                show_size_help
+                exit 0
+                ;;
+            *)
+                if [[ -z "$topic_name" && ! "$1" =~ ^- ]]; then
+                    topic_name="$1"
+                    shift
+                else
+                    echo "错误: 未知或无效的选项 '$1'" >&2
+                    show_size_help
+                    exit 1
+                fi
+                ;;
+        esac
+    done
+
+    if ! $show_all && [ -z "$topic_name" ]; then
+        show_size_help
+        exit 0
+    fi
+
+    if $show_all && [ -n "$topic_name" ]; then
+        echo "错误: 不能同时指定 Topic 名称和 --all/--top 选项。" >&2
+        show_size_help
+        exit 1
+    fi
+
+    # 获取 Broker 列表
+    echo "正在从 Zookeeper 获取 Broker 信息..."
+    BROKER_IDS_RAW=$(echo "ls /brokers/ids" | ${KAFKA_HOME}/bin/zookeeper-shell.sh ${ZK_CONNECT} 2>/dev/null | sed -n 's/.*\[\(.*\)\].*/\1/p')
+    BROKER_IDS=$(echo ${BROKER_IDS_RAW} | tr ',' ' ')
+    
+    if [ -z "$BROKER_IDS" ]; then
+        echo "错误: 未能从 Zookeeper 中发现任何 Broker ID。" >&2
+        exit 1
+    fi
+
+    local broker_endpoints_str=""
+    for id in ${BROKER_IDS}; do
+        endpoint=$(${KAFKA_HOME}/bin/zookeeper-shell.sh ${ZK_CONNECT} 2>/dev/null <<< "get /brokers/ids/$id" | grep -oP 'PLAINTEXT://\K[^"]+')
+        if [ -n "$endpoint" ]; then
+            broker_endpoints_str="${broker_endpoints_str}${endpoint},"
+        fi
+    done
+    BROKER_LIST=${broker_endpoints_str%,}
+
+    echo "正在查询 Topic 磁盘占用信息..."
+    LOG_DIRS_DATA=$(${KAFKA_HOME}/bin/kafka-log-dirs.sh --bootstrap-server ${BROKER_LIST} --describe 2>/dev/null)
+
+    if [ -z "$LOG_DIRS_DATA" ]; then
+        echo "错误: 未能获取日志目录数据。" >&2
+        exit 1
+    fi
+
+    # 解析所有 topic 的大小
+    declare -A TOPIC_SIZES
+    while read -r topic size_bytes; do
+        TOPIC_SIZES[$topic]=$size_bytes
+    done < <(echo "$LOG_DIRS_DATA" | \
+        sed -e 's/},{/}\n{/g' | \
+        grep '"partition":' | \
+        sed -e 's/.*"partition":"\([^"]*\)","size":\([0-9]*\).*/\1 \2/' | \
+        awk '{
+            topic_partition=$1;
+            size_in_bytes=$2;
+            sub(/-[0-9]+$/, "", topic_partition);
+            sum[topic_partition] += size_in_bytes;
+        }
+        END {
+            for(t in sum) printf "%s %s\n", t, sum[t]
+        }')
+
+    # --- 逻辑执行 ---
+    if ! $show_all; then
+        # 查询单个 topic
+        echo "正在查询 Topic '${topic_name}' 的磁盘占用..."
+        
+        local size_bytes=${TOPIC_SIZES[$topic_name]}
+        if [ -z "$size_bytes" ]; then
+            echo "错误: Topic '${topic_name}' 不存在或没有数据。" >&2
+            exit 1
+        fi
+        
+        local size_formatted=$(_format_size "$size_bytes")
+        
+        (
+            echo "Topic名称 磁盘占用"
+            echo "${topic_name} ${size_formatted}"
+        ) | column -t
+    else
+        # 查询所有 topic
+        local topics_list
+        topics_list=$(${KAFKA_HOME}/bin/kafka-topics.sh --zookeeper ${ZK_CONNECT} --list | sort)
+        
+        local total_topics
+        total_topics=$(echo "$topics_list" | sed '/^$/d' | wc -l | tr -d ' ')
+
+        if [ "$total_topics" -eq 0 ]; then
+            echo "未发现任何 Topic。"
+            exit 0
+        fi
+
+        local display_count=${top_n:-$total_topics}
+        if [ -n "$top_n" ]; then
+            echo "发现 ${total_topics} 个 Topic，正在统计磁盘占用（显示 Top ${top_n}）..."
+        else
+            echo "发现 ${total_topics} 个 Topic，正在统计磁盘占用..."
+        fi
+        
+        # 临时文件用于存储和排序
+        local temp_output=$(mktemp)
+        
+        local processed_count=0
+        for topic in $(echo "$topics_list"); do
+            if [ -z "$topic" ]; then continue; fi
+            
+            processed_count=$((processed_count + 1))
+            local progress_str="统计进度: ${processed_count}/${total_topics}"
+            printf "\r%-80s" "${progress_str}" >&2
+            
+            local size_bytes=${TOPIC_SIZES[$topic]:-0}
+            
+            # 存储原始字节数用于排序，topic名称
+            echo "${size_bytes} ${topic}" >> "$temp_output"
+        done
+        
+        # 清空进度条行
+        printf "\r%-80s\r" "" >&2
+        
+        (
+            echo "磁盘占用 Topic名称"
+            # 按字节数排序（数值排序，降序），然后格式化显示
+            sort -rn "$temp_output" | head -n ${display_count} | while read -r bytes topic; do
+                local formatted_size=$(_format_size "$bytes")
+                echo "${formatted_size} ${topic}"
+            done
+        ) | column -t
+        
+        rm -f "$temp_output"
+        
+        if [ -n "$top_n" ]; then
+            printf "查询完成。共处理 %d 个 Topic，显示前 %d 个。\n" "$total_topics" "$display_count" >&2
+        else
+            printf "查询完成。共处理 %d 个 Topic。\n" "$total_topics" >&2
+        fi
+    fi
 }
 
 # 命令: stats (原脚本核心功能)
@@ -785,7 +1002,7 @@ cmd_stats() {
             if [ -n "$endpoint" ]; then
                 size_bytes=${BROKER_SIZES[$id]:-0}
                 log_dirs=${BROKER_LOG_DIRS[$id]}
-                size_gb=$(awk -v size="$size_bytes" 'BEGIN { printf "%.1fG", size/1024/1024/1024 }')
+                size_formatted=$(_format_size "$size_bytes")
                 
                 disk_usage=""
                 local broker_ip=$(echo "$endpoint" | cut -d':' -f1)
@@ -806,7 +1023,7 @@ cmd_stats() {
                     fi
                 fi
 
-                echo "$id|$endpoint|$size_gb|$disk_usage"
+                echo "$id|$endpoint|$size_formatted|$disk_usage"
             fi
         done
     ) | column -t -s '|' -o '  '
@@ -828,6 +1045,7 @@ cmd_stats() {
     
     echo "步骤 4: 正在计算 Top ${current_top_n} Topic 的磁盘占用..."
     
+    # 先计算每个 topic 的字节数，按字节数排序后取 Top N
     TOP_TOPICS_DATA=$(echo "$LOG_DIRS_DATA" | \
     sed -e 's/},{/}\n{/g' | \
     grep '"partition":' | \
@@ -839,15 +1057,18 @@ cmd_stats() {
            sum[topic_partition] += size_in_bytes;
          }
          END {
-           for(t in sum) printf "%.1fG\t%s\n", sum[t]/1024/1024/1024, t
+           for(t in sum) printf "%s\t%s\n", sum[t], t
          }' | \
-    sort -hr | \
+    sort -rn | \
     head -n ${current_top_n})
     
     (
-    echo "大小 Topic名称 保留策略"
+    echo "磁盘占用 Topic名称 保留策略"
     
-    echo "$TOP_TOPICS_DATA" | while read -r size topic; do
+    echo "$TOP_TOPICS_DATA" | while read -r size_bytes topic; do
+        # 格式化大小显示
+        size_formatted=$(_format_size "$size_bytes")
+        
         RETENTION_MS=$(${KAFKA_HOME}/bin/kafka-configs.sh --zookeeper ${ZK_CONNECT} --describe --entity-type topics --entity-name ${topic} 2>/dev/null | grep "retention.ms" | sed 's/.*retention.ms=\([0-9]*\).*/\1/')
     
         RETENTION_STR=""
@@ -865,7 +1086,7 @@ cmd_stats() {
             RETENTION_STR="${DEFAULT_RETENTION_STR}"
         fi
     
-        echo "${size} ${topic} ${RETENTION_STR}"
+        echo "${size_formatted} ${topic} ${RETENTION_STR}"
     done
     ) | column -t
 }
@@ -885,23 +1106,21 @@ show_stats_help() {
 }
 
 show_retention_help() {
-    echo "用法: ${SCRIPT_NAME} retention {<topic名称> [选项] | --all [-v]}"
+    echo "用法: ${SCRIPT_NAME} retention {<topic名称> [选项] | --all}"
     echo ""
     echo "查看或修改 Topic 的数据保留时间。"
     echo ""
     echo "模式:"
     echo "  <topic名称>      操作单个 Topic。需要提供 Topic 名称。"
-    echo "  --all            显示所有 Topic 的保留时间。"
+    echo "  --all            显示所有 Topic 的保留时间（自动显示查询进度）。"
     echo ""
     echo "选项:"
-    echo "  -v             当与 --all 一起使用时，显示详细的查询进度。"
     echo "  --set <时间>   [单Topic模式] 设置新的数据保留时间。支持的单位: d(天), h(小时), min(分钟), ms(或纯数字)。"
     echo "  --delete       [单Topic模式] 删除自定义保留时间, 使用集群默认值。"
     echo "  -h, --help     显示此帮助信息。"
     echo ""
     echo "示例:"
     echo "  ${SCRIPT_NAME} retention --all                 # 查看所有 Topic 的保留时间"
-    echo "  ${SCRIPT_NAME} retention --all -v              # 查看所有 Topic 的保留时间并显示进度"
     echo "  ${SCRIPT_NAME} retention my-topic              # 查看 'my-topic' 的保留时间"
     echo "  ${SCRIPT_NAME} retention my-topic --set 7d     # 将 'my-topic' 的保留时间设置为 7 天"
     echo "  ${SCRIPT_NAME} retention my-topic --delete     # 删除 'my-topic' 的自定义保留时间"
@@ -921,24 +1140,42 @@ show_topic_help() {
 }
 
 show_isr_help() {
-    echo "用法: ${SCRIPT_NAME} isr {<topic名称> | --all} [选项]"
+    echo "用法: ${SCRIPT_NAME} isr {<topic名称> | --all | --under-replicated-only}"
     echo ""
     echo "查询并显示 Topic 分区的 ISR (In-Sync Replicas) 状态。"
     echo "关键指标是 '状态' 一列，'UNDER-REPLICATED' 表示该分区的同步副本数少于总副本数，存在数据丢失风险，需要运维关注。"
     echo ""
     echo "模式:"
-    echo "  <topic名称>      查询单个 Topic。"
-    echo "  --all            查询所有 Topic。"
+    echo "  <topic名称>               查询单个 Topic。"
+    echo "  --all                     查询所有 Topic（自动显示查询进度）。"
+    echo "  --under-replicated-only   仅显示状态为 'UNDER-REPLICATED' 的分区（自动查询所有 Topic）。"
     echo ""
     echo "选项:"
-    echo "  -v                     当与 --all 一起使用时，显示详细的查询进度。"
-    echo "  --under-replicated-only  仅显示状态为 'UNDER-REPLICATED' 的分区。"
-    echo "  -h, --help             显示此帮助信息。"
+    echo "  -h, --help   显示此帮助信息。"
     echo ""
     echo "示例:"
-    echo "  ${SCRIPT_NAME} isr my-topic"
-    echo "  ${SCRIPT_NAME} isr --all -v"
-    echo "  ${SCRIPT_NAME} isr --all --under-replicated-only"
+    echo "  ${SCRIPT_NAME} isr my-topic                  # 查询单个 Topic 的 ISR 状态"
+    echo "  ${SCRIPT_NAME} isr --all                     # 查询所有 Topic 的 ISR 状态"
+    echo "  ${SCRIPT_NAME} isr --under-replicated-only   # 仅显示有问题的分区"
+}
+
+show_size_help() {
+    echo "用法: ${SCRIPT_NAME} size {<topic名称> | --all | --top <N>}"
+    echo ""
+    echo "查询并显示 Topic 的磁盘占用大小。磁盘占用大小会根据实际大小自动选择合适的单位（M/G/T）显示。"
+    echo ""
+    echo "模式:"
+    echo "  <topic名称>   查询单个 Topic 的磁盘占用。"
+    echo "  --all         查询所有 Topic 的磁盘占用（自动显示统计进度，按大小降序排列）。"
+    echo "  --top <N>     查询所有 Topic 并显示磁盘占用最大的前 N 个（自动按大小降序排列）。"
+    echo ""
+    echo "选项:"
+    echo "  -h, --help   显示此帮助信息。"
+    echo ""
+    echo "示例:"
+    echo "  ${SCRIPT_NAME} size my-topic   # 查询单个 Topic 的磁盘占用"
+    echo "  ${SCRIPT_NAME} size --all      # 查询所有 Topic 的磁盘占用"
+    echo "  ${SCRIPT_NAME} size --top 10   # 查询磁盘占用最大的前 10 个 Topic"
 }
 
 show_help() {
@@ -950,9 +1187,10 @@ show_help() {
     echo "可用命令:"
     echo "  init [show]  自动发现、持久化或显示 Kafka 环境配置 (首次使用必须运行 init)"
     echo "  retention    查看或修改指定 Topic 的数据保留时间"
+    echo "  size         查询 Topic 的磁盘占用大小"
+    echo "  isr          查询 Topic 分区的 ISR (In-Sync Replicas) 状态"
     echo "  stats        显示常用的集群统计信息 (ZK, Broker, 磁盘占用前N的topic、topic保留时间等)"
     echo "  topic        Topic 相关操作 (例如: list)"
-    echo "  isr          查询 Topic 分区的 ISR (In-Sync Replicas) 状态"
     echo "  help         显示此帮助信息"
     echo ""
 }
@@ -975,6 +1213,10 @@ case "$COMMAND" in
 
     retention)
         cmd_retention "$@"
+        ;;
+
+    size)
+        cmd_size "$@"
         ;;
 
     topic)
