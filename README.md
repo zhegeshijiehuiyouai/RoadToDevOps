@@ -67,7 +67,8 @@ rpm -Uvh ./*rpm
 │   └── 44-shc
 ├── 02-elasticsearch-tools
 │   ├── 01-clean-single-es-index-by-date.sh
-│   └── 02-clean-date-format-es-index-by-date.sh
+│   ├── 02-clean-date-format-es-index-by-date.sh
+│   └── 03-es-top.sh
 ├── 03-Dockerfile
 │   ├── 01-nacos
 │   ├── 02-feely-sys
