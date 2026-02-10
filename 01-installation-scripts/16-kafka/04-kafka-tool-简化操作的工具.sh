@@ -36,39 +36,65 @@ _get_cluster_default_retention() {
     
     local ANY_BROKER_ID=""
     local BROKER_CONFIGS=""
+    local DYNAMIC_SOURCE=""
     
     if [ "$KAFKA_MODE" == "zk" ]; then
-        ANY_BROKER_ID=$(${KAFKA_HOME}/bin/kafka-run-class.sh kafka.tools.ZooKeeperMainServer --zookeeper-connect ${ZK_CONNECT} ls /brokers/ids 2>/dev/null | tail -n 1 | grep -oE '[0-9]+' | head -n 1)
-        if [ -z "$ANY_BROKER_ID" ]; then
-            ANY_BROKER_ID=$(echo "ls /brokers/ids" | ${KAFKA_HOME}/bin/zookeeper-shell.sh ${ZK_CONNECT} 2>/dev/null | sed -n 's/.*\[\([^]]*\)\].*/\1/p' | tr ',' ' ' | cut -d' ' -f1)
+        # 优先尝试读取 Broker 默认动态配置（Kafka 2.4+ 支持 --entity-default）
+        BROKER_CONFIGS=$(_run_kafka_tool "kafka-configs.sh" --zookeeper ${ZK_CONNECT} --describe --entity-type brokers --entity-default 2>/dev/null)
+        if [ -n "$BROKER_CONFIGS" ]; then
+            DYNAMIC_SOURCE="(来自 Broker 默认动态配置)"
         fi
-        BROKER_CONFIGS=$(${KAFKA_HOME}/bin/kafka-configs.sh --zookeeper ${ZK_CONNECT} --describe --entity-type brokers --entity-name ${ANY_BROKER_ID} 2>/dev/null)
+
+        # 回退：随机取一个 Broker ID 读取动态配置
+        if [ -z "$BROKER_CONFIGS" ]; then
+            ANY_BROKER_ID=$(_run_zk_cmd "${ZK_CONNECT}" "ls /brokers/ids" | sed -n 's/.*\[\([^]]*\)\].*/\1/p' | tr ',' ' ' | awk '{print $1}')
+            if [ -n "$ANY_BROKER_ID" ]; then
+                BROKER_CONFIGS=$(_run_kafka_tool "kafka-configs.sh" --zookeeper ${ZK_CONNECT} --describe --entity-type brokers --entity-name ${ANY_BROKER_ID} 2>/dev/null)
+                DYNAMIC_SOURCE="(来自 Broker ${ANY_BROKER_ID} 动态配置)"
+            fi
+        fi
     elif [ "$KAFKA_MODE" == "kraft" ]; then
-        ANY_BROKER_ID="1"
-        BROKER_CONFIGS=$(${KAFKA_HOME}/bin/kafka-configs.sh --bootstrap-server ${BOOTSTRAP_SERVERS} --describe --entity-type brokers --entity-name ${ANY_BROKER_ID} 2>/dev/null)
+        BROKER_CONFIGS=$(_run_kafka_tool "kafka-configs.sh" --bootstrap-server ${BOOTSTRAP_SERVERS} --describe --entity-type brokers --entity-default 2>/dev/null)
+        if [ -n "$BROKER_CONFIGS" ]; then
+            DYNAMIC_SOURCE="(来自 Broker 默认动态配置)"
+        fi
+
+        # 回退：假设至少存在一个 broker
+        if [ -z "$BROKER_CONFIGS" ]; then
+            ANY_BROKER_ID="1"
+            BROKER_CONFIGS=$(_run_kafka_tool "kafka-configs.sh" --bootstrap-server ${BOOTSTRAP_SERVERS} --describe --entity-type brokers --entity-name ${ANY_BROKER_ID} 2>/dev/null)
+            if [ -n "$BROKER_CONFIGS" ]; then
+                DYNAMIC_SOURCE="(来自 Broker ${ANY_BROKER_ID} 动态配置)"
+            fi
+        fi
     fi
     
     local RETENTION_MS=""
     local SOURCE=""
-    local VALUE=$(echo "${BROKER_CONFIGS}" | grep "log.retention.ms" | sed 's/.*log.retention.ms=\([0-9]*\).*/\1/')
-    if [[ -n "$VALUE" && "$VALUE" =~ ^[0-9]+$ ]]; then
+    local SOURCE_FROM_BROKER_CONFIGS="${DYNAMIC_SOURCE}"
+    if [ -z "$SOURCE_FROM_BROKER_CONFIGS" ] && [ -n "$BROKER_CONFIGS" ]; then
+        SOURCE_FROM_BROKER_CONFIGS="(来自 Broker 动态配置)"
+    fi
+
+    local VALUE=$(echo "${BROKER_CONFIGS}" | grep -oE 'log.retention.ms=-?[0-9]+' | head -n 1 | cut -d'=' -f2)
+    if [[ -n "$VALUE" && "$VALUE" =~ ^-?[0-9]+$ ]]; then
         RETENTION_MS=${VALUE}
-        SOURCE="(来自 Broker ${ANY_BROKER_ID} 动态配置)"
+        SOURCE="${SOURCE_FROM_BROKER_CONFIGS}"
     fi
     
     if [ -z "$RETENTION_MS" ]; then
-        VALUE=$(echo "${BROKER_CONFIGS}" | grep "log.retention.minutes" | sed 's/.*log.retention.minutes=\([0-9]*\).*/\1/')
+        VALUE=$(echo "${BROKER_CONFIGS}" | grep -oE 'log.retention.minutes=[0-9]+' | head -n 1 | cut -d'=' -f2)
         if [[ -n "$VALUE" && "$VALUE" =~ ^[0-9]+$ ]]; then
             RETENTION_MS=$((VALUE * 60 * 1000))
-            SOURCE="(来自 Broker ${ANY_BROKER_ID} 动态配置)"
+            SOURCE="${SOURCE_FROM_BROKER_CONFIGS}"
         fi
     fi
     
     if [ -z "$RETENTION_MS" ]; then
-        VALUE=$(echo "${BROKER_CONFIGS}" | grep "log.retention.hours" | sed 's/.*log.retention.hours=\([0-9]*\).*/\1/')
+        VALUE=$(echo "${BROKER_CONFIGS}" | grep -oE 'log.retention.hours=[0-9]+' | head -n 1 | cut -d'=' -f2)
         if [[ -n "$VALUE" && "$VALUE" =~ ^[0-9]+$ ]]; then
             RETENTION_MS=$((VALUE * 60 * 60 * 1000))
-            SOURCE="(来自 Broker ${ANY_BROKER_ID} 动态配置)"
+            SOURCE="${SOURCE_FROM_BROKER_CONFIGS}"
         fi
     fi
     
@@ -77,17 +103,20 @@ _get_cluster_default_retention() {
         CONFIG_FILE="${KAFKA_HOME}/config/server.properties"
     elif [ "$KAFKA_MODE" == "kraft" ]; then
         CONFIG_FILE="${KAFKA_HOME}/config/kraft/server.properties"
+        if [ ! -f "${CONFIG_FILE}" ]; then
+            CONFIG_FILE="${KAFKA_HOME}/config/server.properties"
+        fi
     fi
     
     if [[ -z "$RETENTION_MS" && -f "${CONFIG_FILE}" ]]; then
-        VALUE=$(grep -E "^log.retention.ms=" ${CONFIG_FILE} | cut -d'=' -f2 | tr -d '[:space:]')
-        if [[ -n "$VALUE" && "$VALUE" =~ ^[0-9]+$ ]]; then
+        VALUE=$(grep -E "^log.retention.ms=" ${CONFIG_FILE} | tail -n 1 | cut -d'=' -f2- | tr -d '[:space:]')
+        if [[ -n "$VALUE" && "$VALUE" =~ ^-?[0-9]+$ ]]; then
             RETENTION_MS=${VALUE}
             SOURCE="(来自 server.properties)"
         fi
     
         if [ -z "$RETENTION_MS" ]; then
-            VALUE=$(grep -E "^log.retention.minutes=" ${CONFIG_FILE} | cut -d'=' -f2 | tr -d '[:space:]')
+            VALUE=$(grep -E "^log.retention.minutes=" ${CONFIG_FILE} | tail -n 1 | cut -d'=' -f2- | tr -d '[:space:]')
             if [[ -n "$VALUE" && "$VALUE" =~ ^[0-9]+$ ]]; then
                 RETENTION_MS=$((VALUE * 60 * 1000))
                 SOURCE="(来自 server.properties)"
@@ -95,7 +124,7 @@ _get_cluster_default_retention() {
         fi
     
         if [ -z "$RETENTION_MS" ]; then
-            VALUE=$(grep -E "^log.retention.hours=" ${CONFIG_FILE} | cut -d'=' -f2 | tr -d '[:space:]')
+            VALUE=$(grep -E "^log.retention.hours=" ${CONFIG_FILE} | tail -n 1 | cut -d'=' -f2- | tr -d '[:space:]')
             if [[ -n "$VALUE" && "$VALUE" =~ ^[0-9]+$ ]]; then
                 RETENTION_MS=$((VALUE * 60 * 60 * 1000))
                 SOURCE="(来自 server.properties)"
@@ -170,12 +199,13 @@ discover_kafka_env() {
         MODE_DISCOVERED="kraft"
         local advertised_listener=$(grep -E "^advertised.listeners=" "$CONFIG_FILE_PATH" | cut -d'=' -f2 | tr -d '[:space:]')
         if [ -n "$advertised_listener" ]; then
-            BOOTSTRAP_SERVERS_DISCOVERED=$(echo "$advertised_listener" | grep -oE 'PLAINTEXT://[^,]+' | sed 's/PLAINTEXT:\/\///' | head -n 1)
+            BOOTSTRAP_SERVERS_DISCOVERED=$(echo "$advertised_listener" | grep -oE '[A-Z0-9_]+://[^,]+' | head -n 1 | sed 's#^[A-Z0-9_]*://##')
         fi
         
         if [ -z "$BOOTSTRAP_SERVERS_DISCOVERED" ]; then
             local listener=$(grep -E "^listeners=" "$CONFIG_FILE_PATH" | cut -d'=' -f2 | tr -d '[:space:]')
-            local listener_port=$(echo "$listener" | grep -oE 'PLAINTEXT://[^,]+' | sed 's/PLAINTEXT:\/\/://' | grep -oE '[0-9]+' | head -n 1)
+            local first_listener=$(echo "$listener" | grep -oE '[A-Z0-9_]+://[^,]+' | head -n 1 | sed 's#^[A-Z0-9_]*://##')
+            local listener_port=$(echo "$first_listener" | grep -oE ':[0-9]+$' | tr -d ':')
             if [ -n "$listener_port" ]; then
                 local host_ip=$(ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}')
                 [ -z "$host_ip" ] && host_ip="localhost"
@@ -195,6 +225,23 @@ discover_kafka_env() {
         if [ -z "$ZK_CONNECT_DISCOVERED" ]; then
             echo "错误: 配置文件中未找到有效的 'zookeeper.connect' 配置" >&2
             exit 1
+        fi
+
+        # 尝试发现 Bootstrap Server (作为 ZK 工具失效时的兜底)
+        local advertised_listener=$(grep -E "^advertised.listeners=" "$CONFIG_FILE_PATH" | cut -d'=' -f2 | tr -d '[:space:]')
+        if [ -n "$advertised_listener" ]; then
+            BOOTSTRAP_SERVERS_DISCOVERED=$(echo "$advertised_listener" | grep -oE '[A-Z0-9_]+://[^,]+' | head -n 1 | sed 's#^[A-Z0-9_]*://##')
+        fi
+        
+        if [ -z "$BOOTSTRAP_SERVERS_DISCOVERED" ]; then
+            local listener=$(grep -E "^listeners=" "$CONFIG_FILE_PATH" | cut -d'=' -f2 | tr -d '[:space:]')
+            local first_listener=$(echo "$listener" | grep -oE '[A-Z0-9_]+://[^,]+' | head -n 1 | sed 's#^[A-Z0-9_]*://##')
+            local listener_port=$(echo "$first_listener" | grep -oE ':[0-9]+$' | tr -d ':')
+            if [ -n "$listener_port" ]; then
+                local host_ip=$(ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}')
+                [ -z "$host_ip" ] && host_ip="localhost"
+                BOOTSTRAP_SERVERS_DISCOVERED="${host_ip}:${listener_port}"
+            fi
         fi
         
     else
@@ -226,12 +273,86 @@ persist_config() {
     fi
 }
 
+# 内部函数: 执行 ZK 命令
+# 优先尝试使用 java 直接调用 org.apache.zookeeper.ZooKeeperMain，并限制堆内存为 256M
+# 以解决直接调用 kafka 脚本可能因默认内存设置过大(如 3G)导致的 OOM 问题
+_run_zk_cmd() {
+    local zk_connect="$1"
+    local zk_cmd="$2"
+    
+    # 方案 A: 直接 Java 调用 (轻量级)
+    # 检查 java 命令是否存在以及 libs 目录是否存在
+    if command -v java >/dev/null 2>&1 && [ -d "${KAFKA_HOME}/libs" ]; then
+        local result
+        # 捕获输出和错误 (ZooKeeperMain 的输出包括日志，均在 stderr/stdout)
+        # 使用 256M 内存限制
+        # 注意: classpath 通配符由 java 处理 (引号内)
+        result=$(java -Xmx256M -cp "${KAFKA_HOME}/libs/*" org.apache.zookeeper.ZooKeeperMain -server "${zk_connect}" ${zk_cmd} 2>&1)
+        local ret=$?
+        
+        # 检查关键错误标识，如果没有类加载错误，则认为尝试有效(即使 ZK 命令本身失败，也返回结果供上层解析)
+        if [[ ! "$result" =~ "ClassNotFoundException" ]] && \
+           [[ ! "$result" =~ "NoClassDefFoundError" ]] && \
+           [[ ! "$result" =~ "Could not find or load main class" ]]; then
+            echo "$result"
+            return $ret
+        fi
+        # 如果 Java 调用失败 (如 classpath 不对)，则回退
+    fi
+    
+    # 方案 B: 回退到原生脚本
+    # 使用 echo 管道以保持最大的兼容性
+    echo "${zk_cmd}" | ${KAFKA_HOME}/bin/zookeeper-shell.sh "${zk_connect}" 2>&1
+}
+
+# 内部函数: 执行 Kafka 工具命令 (优先使用低内存模式)
+# 用法: _run_kafka_tool <script_name> <args...>
+# 示例: _run_kafka_tool "kafka-log-dirs.sh" --bootstrap-server ...
+_run_kafka_tool() {
+    local script_name="$1"
+    shift
+    
+    # 尝试直接使用 java
+    if command -v java >/dev/null 2>&1 && [ -d "${KAFKA_HOME}/libs" ]; then
+        local main_class=""
+        case "$script_name" in
+            "kafka-log-dirs.sh") main_class="kafka.admin.LogDirsCommand" ;;
+            "kafka-topics.sh") main_class="kafka.admin.TopicCommand" ;;
+            "kafka-configs.sh") main_class="kafka.admin.ConfigCommand" ;;
+            "kafka-broker-api-versions.sh") main_class="kafka.admin.BrokerApiVersionsCommand" ;;
+        esac
+        
+        if [ -n "$main_class" ]; then
+            local result
+            # 使用 256M 内存限制
+            result=$(java -Xmx256M -cp "${KAFKA_HOME}/libs/*" ${main_class} "$@" 2>&1)
+            local ret=$?
+            
+            # 宽松检查：只要没有严重的 Java 环境错误，就使用结果
+            if [[ ! "$result" =~ "ClassNotFoundException" ]] && \
+               [[ ! "$result" =~ "NoClassDefFoundError" ]] && \
+               [[ ! "$result" =~ "Could not find or load main class" ]]; then
+                echo "$result"
+                return $ret
+            fi
+        fi
+    fi
+    
+    # 回退到原始脚本
+    ${KAFKA_HOME}/bin/${script_name} "$@" 2>&1
+}
 
 # 内部函数: 将时间字符串 (如 3d, 12h) 转换为毫秒
 _parse_time_to_ms() {
     local time_str="$1"
+    if [ "$time_str" == "-1" ]; then
+        echo "-1"
+        return 0
+    fi
+
     local unit=$(echo "$time_str" | tr -d '0-9')
     local value=$(echo "$time_str" | tr -d 'a-zA-Z')
+    unit=$(echo "$unit" | tr '[:upper:]' '[:lower:]')
 
     if ! [[ "$value" =~ ^[0-9]+$ ]]; then
         echo "错误: 无效的时间数值 '$value'" >&2
@@ -245,17 +366,39 @@ _parse_time_to_ms() {
         h)
             echo $((value * 60 * 60 * 1000))
             ;;
-        min)
+        min|m)
             echo $((value * 60 * 1000))
             ;;
         ms|"") # 允许纯数字作为毫秒
             echo "$value"
             ;;
         *)
-            echo "错误: 不支持的时间单位 '$unit'。请使用 d, h, min 或 ms。" >&2
+            echo "错误: 不支持的时间单位 '$unit'。请使用 d, h, m/min 或 ms，或使用 -1 表示无限保留。" >&2
             return 1
             ;;
     esac
+}
+
+# 内部函数: 格式化 retention.ms 为人类可读字符串
+# -1 表示无限保留
+_format_retention_ms() {
+    local retention_ms="$1"
+
+    if [[ -z "$retention_ms" || ! "$retention_ms" =~ ^-?[0-9]+$ ]]; then
+        return 1
+    fi
+
+    if [ "$retention_ms" == "-1" ]; then
+        echo "retention.ms=-1（无限）"
+        return 0
+    fi
+
+    if [ "$retention_ms" -lt 0 ]; then
+        return 1
+    fi
+
+    local retention_hours=$((retention_ms / 1000 / 60 / 60))
+    echo "retention.ms=${retention_ms}（${retention_hours}小时）"
 }
 
 # 内部函数: 获取 Bootstrap Servers 列表
@@ -266,27 +409,160 @@ _get_bootstrap_servers() {
         echo "$BOOTSTRAP_SERVERS"
     elif [ "$KAFKA_MODE" == "zk" ]; then
         # 从 ZooKeeper 中发现 Broker 列表
-        local broker_ids_raw=$(echo "ls /brokers/ids" | ${KAFKA_HOME}/bin/zookeeper-shell.sh ${ZK_CONNECT} 2>/dev/null | sed -n 's/.*\[\(.*\)\].*/\1/p')
-        local broker_ids=$(echo ${broker_ids_raw} | tr ',' ' ')
+        local broker_ids_raw=""
+        # 尝试使用 zookeeper-shell.sh，捕获标准输出和标准错误
+        local zk_output
+        zk_output=$(_run_zk_cmd "${ZK_CONNECT}" "ls /brokers/ids")
+        local zk_exit_code=$?
         
-        if [ -z "$broker_ids" ]; then
-            echo "错误: 未能从 ZooKeeper 中发现任何 Broker。" >&2
-            return 1
+        # 检查是否成功且无异常 (因为 zookeeper-shell 即使报错也可能返回 0，所以需检查 output 内容)
+        if [ $zk_exit_code -eq 0 ] && [[ ! "$zk_output" =~ "Exception" ]] && [[ ! "$zk_output" =~ "Error" ]]; then
+             broker_ids_raw=$(echo "$zk_output" | sed -n 's/.*\[\(.*\)\].*/\1/p')
         fi
-        
-        local broker_endpoints_str=""
-        for id in ${broker_ids}; do
-            local endpoint=$(${KAFKA_HOME}/bin/zookeeper-shell.sh ${ZK_CONNECT} 2>/dev/null <<< "get /brokers/ids/$id" | grep -oP 'PLAINTEXT://\K[^"]+')
-            if [ -n "$endpoint" ]; then
-                broker_endpoints_str="${broker_endpoints_str}${endpoint},"
+
+        if [ -n "$broker_ids_raw" ]; then
+            # ZK 方案成功
+            local broker_ids=$(echo ${broker_ids_raw} | tr ',' ' ')
+            local broker_endpoints_str=""
+            for id in ${broker_ids}; do
+                local endpoint=$(_run_zk_cmd "${ZK_CONNECT}" "get /brokers/ids/$id" | \
+                    grep -oE '[A-Z0-9_]+://[^"]+' | head -n 1 | sed 's#^[A-Z0-9_]*://##')
+                if [ -n "$endpoint" ]; then
+                    broker_endpoints_str="${broker_endpoints_str}${endpoint},"
+                fi
+            done
+            echo "${broker_endpoints_str%,}"
+        else
+            # ZK 方案失败，降级到 API 方案
+            # 依赖 BOOTSTRAP_SERVERS 变量 (由 init 发现并保存)
+            if [ -z "$BOOTSTRAP_SERVERS" ]; then
+                echo "错误: ZooKeeper 工具不可用，且未配置 BOOTSTRAP_SERVERS。请重新运行 './${SCRIPT_NAME} init' 以更新配置。" >&2
+                return 1
             fi
-        done
-        
-        # 移除末尾的逗号
-        echo "${broker_endpoints_str%,}"
+            
+            # 使用 kafka-broker-api-versions.sh 获取所有节点地址
+            local api_output
+            api_output=$(_run_kafka_tool "kafka-broker-api-versions.sh" --bootstrap-server ${BOOTSTRAP_SERVERS} 2>/dev/null)
+            
+            if [ -z "$api_output" ]; then
+                echo "错误: 无法通过 ZooKeeper 发现 Broker，也无法连接到 Bootstrap Server ($BOOTSTRAP_SERVERS)。" >&2
+                return 1
+            fi
+
+            # 解析输出格式: "host:port (id: 1 rack: null) -> ..."
+            local endpoints=$(echo "$api_output" | grep -oE '^\S+:[0-9]+ \(id: [0-9]+' | awk '{print $1}' | tr '\n' ',' | sed 's/,$//')
+            echo "$endpoints"
+        fi
     else
         echo "错误: 未知的 Kafka 模式 '$KAFKA_MODE'。" >&2
         return 1
+    fi
+}
+
+# 内部函数: 获取本机 Broker/Node ID（用于判断“本机磁盘使用率”应显示在哪一行）
+_get_local_node_id() {
+    local config_file=""
+    local key=""
+
+    if [ "$KAFKA_MODE" == "zk" ]; then
+        config_file="${KAFKA_HOME}/config/server.properties"
+        key="broker.id"
+    elif [ "$KAFKA_MODE" == "kraft" ]; then
+        config_file="${KAFKA_HOME}/config/kraft/server.properties"
+        key="node.id"
+        if [ ! -f "${config_file}" ]; then
+            config_file="${KAFKA_HOME}/config/server.properties"
+        fi
+    else
+        return 0
+    fi
+
+    if [ ! -f "${config_file}" ]; then
+        return 0
+    fi
+
+    local value
+    value=$(grep -E "^[[:space:]]*${key}[[:space:]]*=" "${config_file}" 2>/dev/null | tail -n 1 | cut -d'=' -f2- | tr -d '[:space:]')
+    if [[ -n "$value" && "$value" =~ ^[0-9]+$ ]]; then
+        echo "$value"
+    fi
+}
+
+# 内部函数: 获取本机 IPv4 列表（空格分隔）
+_get_local_ipv4_addrs() {
+    local ips=""
+
+    if command -v ip >/dev/null 2>&1; then
+        ips=$(ip -4 -o addr show 2>/dev/null | awk '{print $4}' | cut -d'/' -f1 | tr '\n' ' ')
+    fi
+
+    if [ -z "$ips" ] && command -v hostname >/dev/null 2>&1; then
+        ips=$(hostname -I 2>/dev/null | tr '\n' ' ')
+    fi
+
+    echo "$ips"
+}
+
+# 内部函数: 解析 endpoint（host:port 或 [ipv6]:port）里的 host
+_endpoint_to_host() {
+    local endpoint="$1"
+    if [[ "$endpoint" =~ ^\\[([^\\]]+)\\]:(.+)$ ]]; then
+        echo "${BASH_REMATCH[1]}"
+    else
+        echo "${endpoint%%:*}"
+    fi
+}
+
+# 内部函数: 解析 host 的 IPv4（空格分隔）；若入参已是 IPv4 则原样返回
+_resolve_ipv4_addrs() {
+    local host="$1"
+    if [[ -z "$host" ]]; then
+        return 0
+    fi
+
+    if [[ "$host" =~ ^([0-9]{1,3}\\.){3}[0-9]{1,3}$ ]]; then
+        echo "$host"
+        return 0
+    fi
+
+    local ips=""
+
+    if command -v getent >/dev/null 2>&1; then
+        ips=$(getent ahostsv4 "$host" 2>/dev/null | awk '{print $1}' | grep -E '^([0-9]{1,3}\\.){3}[0-9]{1,3}$' | sort -u | tr '\n' ' ')
+        if [ -n "$ips" ]; then
+            echo "$ips"
+            return 0
+        fi
+
+        ips=$(getent hosts "$host" 2>/dev/null | awk '{print $1}' | grep -E '^([0-9]{1,3}\\.){3}[0-9]{1,3}$' | sort -u | tr '\n' ' ')
+        if [ -n "$ips" ]; then
+            echo "$ips"
+            return 0
+        fi
+    fi
+
+    if command -v dig >/dev/null 2>&1; then
+        ips=$(dig +short A "$host" 2>/dev/null | grep -E '^([0-9]{1,3}\\.){3}[0-9]{1,3}$' | sort -u | tr '\n' ' ')
+        if [ -n "$ips" ]; then
+            echo "$ips"
+            return 0
+        fi
+    fi
+
+    if command -v host >/dev/null 2>&1; then
+        ips=$(host -t A "$host" 2>/dev/null | awk '/has address/ {print $NF}' | sort -u | tr '\n' ' ')
+        if [ -n "$ips" ]; then
+            echo "$ips"
+            return 0
+        fi
+    fi
+
+    if command -v nslookup >/dev/null 2>&1; then
+        ips=$(nslookup "$host" 2>/dev/null | awk '/^Address: / {print $2}' | grep -E '^([0-9]{1,3}\\.){3}[0-9]{1,3}$' | sort -u | tr '\n' ' ')
+        if [ -n "$ips" ]; then
+            echo "$ips"
+            return 0
+        fi
     fi
 }
 
@@ -302,10 +578,16 @@ cmd_retention() {
         _get_cluster_default_retention # 确保默认值已被加载
 
         local default_retention_str=""
-        if [[ -n "$CLUSTER_DEFAULT_RETENTION_MS" && "$CLUSTER_DEFAULT_RETENTION_MS" =~ ^[0-9]+$ ]]; then
-            local default_hours=$((CLUSTER_DEFAULT_RETENTION_MS / 1000 / 60 / 60))
-            default_retention_str="retention.ms=${CLUSTER_DEFAULT_RETENTION_MS}（${default_hours}小时）[默认]"
-            echo "集群默认保留时间: ${default_hours}小时 (${CLUSTER_DEFAULT_RETENTION_MS}ms)${CLUSTER_DEFAULT_RETENTION_SOURCE}"
+        local default_retention_fmt
+        default_retention_fmt=$(_format_retention_ms "$CLUSTER_DEFAULT_RETENTION_MS")
+        if [ $? -eq 0 ]; then
+            default_retention_str="${default_retention_fmt}[默认]"
+            if [ "$CLUSTER_DEFAULT_RETENTION_MS" == "-1" ]; then
+                echo "集群默认保留时间: 无限 (-1ms)${CLUSTER_DEFAULT_RETENTION_SOURCE}"
+            else
+                local default_hours=$((CLUSTER_DEFAULT_RETENTION_MS / 1000 / 60 / 60))
+                echo "集群默认保留时间: ${default_hours}小时 (${CLUSTER_DEFAULT_RETENTION_MS}ms)${CLUSTER_DEFAULT_RETENTION_SOURCE}"
+            fi
         else
             default_retention_str="retention.ms=无法获取默认值"
             echo "警告: 未能获取到集群默认日志保留时间。"
@@ -313,9 +595,9 @@ cmd_retention() {
         
         local topics_list
         if [ "$KAFKA_MODE" == "zk" ]; then
-            topics_list=$(${KAFKA_HOME}/bin/kafka-topics.sh --zookeeper ${ZK_CONNECT} --list | sort)
+            topics_list=$(_run_kafka_tool "kafka-topics.sh" --zookeeper ${ZK_CONNECT} --list | sort)
         elif [ "$KAFKA_MODE" == "kraft" ]; then
-            topics_list=$(${KAFKA_HOME}/bin/kafka-topics.sh --bootstrap-server ${BOOTSTRAP_SERVERS} --list | sort)
+            topics_list=$(_run_kafka_tool "kafka-topics.sh" --bootstrap-server ${BOOTSTRAP_SERVERS} --list | sort)
         fi
         
         # 过滤掉空行再计数
@@ -328,7 +610,7 @@ cmd_retention() {
         fi
 
         (
-            echo "Topic名称 保留策略"
+            echo "Topic名称|保留策略"
             local processed_count=0
             # 列出并排序所有 topic
             echo "$topics_list" | while read -r topic; do
@@ -341,29 +623,29 @@ cmd_retention() {
 
                 local topic_config
                 if [ "$KAFKA_MODE" == "zk" ]; then
-                    topic_config=$(${KAFKA_HOME}/bin/kafka-configs.sh --zookeeper ${ZK_CONNECT} --describe --entity-type topics --entity-name "${topic}" 2>/dev/null)
+                    topic_config=$(_run_kafka_tool "kafka-configs.sh" --zookeeper ${ZK_CONNECT} --describe --entity-type topics --entity-name "${topic}" 2>/dev/null)
                 elif [ "$KAFKA_MODE" == "kraft" ]; then
-                    topic_config=$(${KAFKA_HOME}/bin/kafka-configs.sh --bootstrap-server ${BOOTSTRAP_SERVERS} --describe --entity-type topics --entity-name "${topic}" 2>/dev/null)
+                    topic_config=$(_run_kafka_tool "kafka-configs.sh" --bootstrap-server ${BOOTSTRAP_SERVERS} --describe --entity-type topics --entity-name "${topic}" 2>/dev/null)
                 fi
-                local retention_ms=$(echo "${topic_config}" | grep "retention.ms" | sed 's/.*retention.ms=\([0-9]*\).*/\1/')
+                local retention_ms=$(echo "${topic_config}" | tr ',' ' ' | awk -v key="retention.ms" 'BEGIN { prefix = key "=" } { for (i=1; i<=NF; i++) { if (substr($i, 1, length(prefix)) == prefix) { print substr($i, length(prefix) + 1); exit } } }')
                 local retention_str=""
 
-                if [[ -n "$retention_ms" && "$retention_ms" =~ ^[0-9]+$ && "$retention_ms" -gt 0 ]]; then
-                    local retention_hours=$((retention_ms / 1000 / 60 / 60))
-                    retention_str="retention.ms=${retention_ms}（${retention_hours}小时）"
-                    # 如果当前topic的保留时间和集群默认值相同，则添加[默认]标记
+                local retention_fmt
+                retention_fmt=$(_format_retention_ms "$retention_ms")
+                if [ $? -eq 0 ]; then
+                    retention_str="${retention_fmt}"
                     if [[ -n "$CLUSTER_DEFAULT_RETENTION_MS" && "$retention_ms" == "$CLUSTER_DEFAULT_RETENTION_MS" ]]; then
                         retention_str="${retention_str}[默认]"
                     fi
                 else
                     retention_str="${default_retention_str}"
                 fi
-                echo "${topic} ${retention_str}"
+                echo "${topic}|${retention_str}"
             done
             
             # 清空进度条行，避免与输出混在一起
             printf "\r%-80s\r" "" >&2
-        ) | column -t
+        ) | _print_table_pipe
         
         # 结束时，用完成信息覆盖进度条并换行
         printf "查询完成。共处理 %d 个 Topic。\n" "$total_topics" >&2
@@ -395,10 +677,10 @@ cmd_retention() {
 
         echo "正在修改 Topic '${topic_name}' 的保留时间为 ${new_retention_str} (${new_retention_ms}ms)..."
         if [ "$KAFKA_MODE" == "zk" ]; then
-            ${KAFKA_HOME}/bin/kafka-configs.sh --zookeeper ${ZK_CONNECT} --entity-type topics --entity-name "${topic_name}" \
+            _run_kafka_tool "kafka-configs.sh" --zookeeper ${ZK_CONNECT} --entity-type topics --entity-name "${topic_name}" \
                 --alter --add-config retention.ms=${new_retention_ms} &>/dev/null
         elif [ "$KAFKA_MODE" == "kraft" ]; then
-            ${KAFKA_HOME}/bin/kafka-configs.sh --bootstrap-server ${BOOTSTRAP_SERVERS} --entity-type topics --entity-name "${topic_name}" \
+            _run_kafka_tool "kafka-configs.sh" --bootstrap-server ${BOOTSTRAP_SERVERS} --entity-type topics --entity-name "${topic_name}" \
                 --alter --add-config retention.ms=${new_retention_ms} &>/dev/null
         fi
         
@@ -417,10 +699,10 @@ cmd_retention() {
         echo "正在删除 '${topic_name}' 的保留时间配置..."
         local output
         if [ "$KAFKA_MODE" == "zk" ]; then
-            output=$(${KAFKA_HOME}/bin/kafka-configs.sh --zookeeper ${ZK_CONNECT} --entity-type topics --entity-name "${topic_name}" \
+            output=$(_run_kafka_tool "kafka-configs.sh" --zookeeper ${ZK_CONNECT} --entity-type topics --entity-name "${topic_name}" \
                 --alter --delete-config retention.ms 2>&1)
         elif [ "$KAFKA_MODE" == "kraft" ]; then
-            output=$(${KAFKA_HOME}/bin/kafka-configs.sh --bootstrap-server ${BOOTSTRAP_SERVERS} --entity-type topics --entity-name "${topic_name}" \
+            output=$(_run_kafka_tool "kafka-configs.sh" --bootstrap-server ${BOOTSTRAP_SERVERS} --entity-type topics --entity-name "${topic_name}" \
                 --alter --delete-config retention.ms 2>&1)
         fi
         local exit_code=$?
@@ -443,34 +725,38 @@ cmd_retention() {
     # --- 查看操作 ---
     local topic_config
     if [ "$KAFKA_MODE" == "zk" ]; then
-        topic_config=$(${KAFKA_HOME}/bin/kafka-configs.sh --zookeeper ${ZK_CONNECT} --describe --entity-type topics --entity-name "${topic_name}" 2>/dev/null)
+        topic_config=$(_run_kafka_tool "kafka-configs.sh" --zookeeper ${ZK_CONNECT} --describe --entity-type topics --entity-name "${topic_name}" 2>/dev/null)
     elif [ "$KAFKA_MODE" == "kraft" ]; then
-        topic_config=$(${KAFKA_HOME}/bin/kafka-configs.sh --bootstrap-server ${BOOTSTRAP_SERVERS} --describe --entity-type topics --entity-name "${topic_name}" 2>/dev/null)
+        topic_config=$(_run_kafka_tool "kafka-configs.sh" --bootstrap-server ${BOOTSTRAP_SERVERS} --describe --entity-type topics --entity-name "${topic_name}" 2>/dev/null)
     fi
     
-    local retention_ms=$(echo "${topic_config}" | grep "retention.ms" | sed 's/.*retention.ms=\([0-9]*\).*/\1/')
+    local retention_ms=$(echo "${topic_config}" | tr ',' ' ' | awk -v key="retention.ms" 'BEGIN { prefix = key "=" } { for (i=1; i<=NF; i++) { if (substr($i, 1, length(prefix)) == prefix) { print substr($i, length(prefix) + 1); exit } } }')
     local retention_str=""
 
     _get_cluster_default_retention # 确保默认值已被加载
 
-    if [[ -n "$retention_ms" && "$retention_ms" =~ ^[0-9]+$ && "$retention_ms" -gt 0 ]]; then
-        local retention_hours=$((retention_ms / 1000 / 60 / 60))
-        retention_str="retention.ms=${retention_ms}（${retention_hours}小时）"
-        # 如果当前topic的保留时间和集群默认值相同，则添加[默认]标记
+    local retention_fmt
+    retention_fmt=$(_format_retention_ms "$retention_ms")
+    if [ $? -eq 0 ]; then
+        retention_str="${retention_fmt}"
         if [[ "$retention_ms" == "$CLUSTER_DEFAULT_RETENTION_MS" ]]; then
             retention_str="${retention_str}[默认]"
         fi
     else
-        # Fallback in case retention.ms is not found, which is unlikely but safe to keep
-        local default_hours=$((CLUSTER_DEFAULT_RETENTION_MS / 1000 / 60 / 60))
-        retention_str="retention.ms=${CLUSTER_DEFAULT_RETENTION_MS}（${default_hours}小时）[默认]"
+        local default_retention_fmt
+        default_retention_fmt=$(_format_retention_ms "$CLUSTER_DEFAULT_RETENTION_MS")
+        if [ $? -eq 0 ]; then
+            retention_str="${default_retention_fmt}[默认]"
+        else
+            retention_str="retention.ms=无法获取默认值"
+        fi
     fi
     
     # 模仿 stats 的输出格式以实现对齐
     (
-      echo "Topic名称 保留策略"
-      echo "${topic_name} ${retention_str}"
-    ) | column -t
+      echo "Topic名称|保留策略"
+      echo "${topic_name}|${retention_str}"
+    ) | _print_table_pipe
 }
 
 # 命令: topic
@@ -484,9 +770,9 @@ cmd_topic() {
     case "$sub_command" in
         list)
             if [ "$KAFKA_MODE" == "zk" ]; then
-                ${KAFKA_HOME}/bin/kafka-topics.sh --zookeeper ${ZK_CONNECT} --list
+                _run_kafka_tool "kafka-topics.sh" --zookeeper ${ZK_CONNECT} --list
             elif [ "$KAFKA_MODE" == "kraft" ]; then
-                ${KAFKA_HOME}/bin/kafka-topics.sh --bootstrap-server ${BOOTSTRAP_SERVERS} --list
+                _run_kafka_tool "kafka-topics.sh" --bootstrap-server ${BOOTSTRAP_SERVERS} --list
             fi
             ;;
         "" | "-h" | "--help")
@@ -510,7 +796,6 @@ cmd_isr() {
     local topic_name=""
 
     # --- isr 命令参数解析 ---
-    local args=("$@") # 复制参数以安全地进行操作
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --all)
@@ -571,7 +856,7 @@ cmd_isr() {
                 next;
             }
 
-            printf "%s %s %s %s %s %s\n", topic, partition, leader, replicas, isr, status;
+            printf "%s|%s|%s|%s|%s|%s\n", topic, partition, leader, replicas, isr, status;
         }
     '
 
@@ -579,10 +864,10 @@ cmd_isr() {
     if ! $show_all; then
         local isr_output
         if [ "$KAFKA_MODE" == "zk" ]; then
-            isr_output=$(${KAFKA_HOME}/bin/kafka-topics.sh --zookeeper ${ZK_CONNECT} --describe --topic "${topic_name}" 2>/dev/null | \
+            isr_output=$(_run_kafka_tool "kafka-topics.sh" --zookeeper ${ZK_CONNECT} --describe --topic "${topic_name}" 2>/dev/null | \
                 awk -v under_replicated="${under_replicated_only}" "${awk_script}")
         elif [ "$KAFKA_MODE" == "kraft" ]; then
-            isr_output=$(${KAFKA_HOME}/bin/kafka-topics.sh --bootstrap-server ${BOOTSTRAP_SERVERS} --describe --topic "${topic_name}" 2>/dev/null | \
+            isr_output=$(_run_kafka_tool "kafka-topics.sh" --bootstrap-server ${BOOTSTRAP_SERVERS} --describe --topic "${topic_name}" 2>/dev/null | \
                 awk -v under_replicated="${under_replicated_only}" "${awk_script}")
         fi
         
@@ -592,16 +877,16 @@ cmd_isr() {
             fi
         else
             (
-                echo "Topic Partition Leader Replicas Isr Status"
+                echo "Topic|Partition|Leader|Replicas|Isr|Status"
                 echo "$isr_output"
-            ) | column -t
+            ) | _print_table_pipe
         fi
     else
         local topics_list
         if [ "$KAFKA_MODE" == "zk" ]; then
-            topics_list=$(${KAFKA_HOME}/bin/kafka-topics.sh --zookeeper ${ZK_CONNECT} --list | sort)
+            topics_list=$(_run_kafka_tool "kafka-topics.sh" --zookeeper ${ZK_CONNECT} --list | sort)
         elif [ "$KAFKA_MODE" == "kraft" ]; then
-            topics_list=$(${KAFKA_HOME}/bin/kafka-topics.sh --bootstrap-server ${BOOTSTRAP_SERVERS} --list | sort)
+            topics_list=$(_run_kafka_tool "kafka-topics.sh" --bootstrap-server ${BOOTSTRAP_SERVERS} --list | sort)
         fi
         
         local total_topics
@@ -627,10 +912,10 @@ cmd_isr() {
                 printf "\r%-80s" "${progress_str}" >&2
 
                 if [ "$KAFKA_MODE" == "zk" ]; then
-                    ${KAFKA_HOME}/bin/kafka-topics.sh --zookeeper ${ZK_CONNECT} --describe --topic "${topic}" 2>/dev/null | \
+                    _run_kafka_tool "kafka-topics.sh" --zookeeper ${ZK_CONNECT} --describe --topic "${topic}" 2>/dev/null | \
                         awk -v under_replicated="${under_replicated_only}" "${awk_script}"
                 elif [ "$KAFKA_MODE" == "kraft" ]; then
-                    ${KAFKA_HOME}/bin/kafka-topics.sh --bootstrap-server ${BOOTSTRAP_SERVERS} --describe --topic "${topic}" 2>/dev/null | \
+                    _run_kafka_tool "kafka-topics.sh" --bootstrap-server ${BOOTSTRAP_SERVERS} --describe --topic "${topic}" 2>/dev/null | \
                         awk -v under_replicated="${under_replicated_only}" "${awk_script}"
                 fi
             done
@@ -642,9 +927,9 @@ cmd_isr() {
         # 检查是否有数据
         if [ -s "$temp_output" ]; then
             (
-                echo "Topic Partition Leader Replicas Isr Status"
+                echo "Topic|Partition|Leader|Replicas|Isr|Status"
                 cat "$temp_output"
-            ) | column -t
+            ) | _print_table_pipe
         else
             if [ "$under_replicated_only" = true ]; then
                 echo "所有分区的 ISR 状态均正常。"
@@ -722,6 +1007,25 @@ _format_size() {
     }'
 }
 
+# 内部函数: 打印对齐表格（首行视为表头；字段分隔符为 |）
+# 说明:
+# - 统一全左对齐、列间距固定（2 个空格），不输出表头分隔线
+# - 不做截断：字段过长时由终端自然换行（建议将易超长字段放在最后一列以减少视觉错位）
+# - 依赖 util-linux 的 column；若不存在，则仅把分隔符替换为空格（不保证对齐）
+_print_table_pipe() {
+    if command -v column >/dev/null 2>&1; then
+        column -t -s '|' -o '  '
+        return
+    fi
+
+    if command -v sed >/dev/null 2>&1; then
+        sed 's/|/  /g'
+        return
+    fi
+
+    cat
+}
+
 # 命令: size
 # 功能: 查询 Topic 的磁盘占用大小
 cmd_size() {
@@ -783,7 +1087,7 @@ cmd_size() {
         echo "错误: 未能获取 Broker 列表" >&2
         exit 1
     fi
-    LOG_DIRS_DATA=$(${KAFKA_HOME}/bin/kafka-log-dirs.sh --bootstrap-server ${BROKER_LIST} --describe 2>/dev/null)
+    LOG_DIRS_DATA=$(_run_kafka_tool "kafka-log-dirs.sh" --bootstrap-server ${BROKER_LIST} --describe 2>/dev/null)
 
     if [ -z "$LOG_DIRS_DATA" ]; then
         echo "错误: 未能获取日志目录数据" >&2
@@ -820,16 +1124,16 @@ cmd_size() {
         local size_formatted=$(_format_size "$size_bytes")
         
         (
-            echo "Topic名称 磁盘占用"
-            echo "${topic_name} ${size_formatted}"
-        ) | column -t
+            echo "磁盘占用|Topic名称"
+            echo "${size_formatted}|${topic_name}"
+        ) | _print_table_pipe
     else
         # 查询所有 topic
         local topics_list
         if [ "$KAFKA_MODE" == "zk" ]; then
-            topics_list=$(${KAFKA_HOME}/bin/kafka-topics.sh --zookeeper ${ZK_CONNECT} --list | sort)
+            topics_list=$(_run_kafka_tool "kafka-topics.sh" --zookeeper ${ZK_CONNECT} --list | sort)
         elif [ "$KAFKA_MODE" == "kraft" ]; then
-            topics_list=$(${KAFKA_HOME}/bin/kafka-topics.sh --bootstrap-server ${BOOTSTRAP_SERVERS} --list | sort)
+            topics_list=$(_run_kafka_tool "kafka-topics.sh" --bootstrap-server ${BOOTSTRAP_SERVERS} --list | sort)
         fi
         
         local total_topics
@@ -863,13 +1167,13 @@ cmd_size() {
         printf "\r%-80s\r" "" >&2
         
         (
-            echo "磁盘占用 Topic名称"
+            echo "磁盘占用|Topic名称"
             # 按字节数排序（数值排序，降序），然后格式化显示
             sort -rn "$temp_output" | head -n ${display_count} | while read -r bytes topic; do
                 local formatted_size=$(_format_size "$bytes")
-                echo "${formatted_size} ${topic}"
+                echo "${formatted_size}|${topic}"
             done
-        ) | column -t
+        ) | _print_table_pipe
         
         rm -f "$temp_output"
         
@@ -887,7 +1191,6 @@ cmd_stats() {
     # --- stats 命令专属的参数解析 ---
     local TOP_N_OVERRIDE=""
     # 在循环外复制一份参数，以便安全地移位(shift)
-    local args=("$@") 
     while [[ $# -gt 0 ]]; do
         key="$1"
         case $key in
@@ -981,7 +1284,7 @@ cmd_stats() {
                 # --- 诊断模式: 多于 1 个 leader, 解析 IP 并添加备注 ---
                 declare -a server_ips
                 declare -A ip_to_first_host
-                local output_data="Zookeeper节点 角色 备注\n"
+                local output_data="Zookeeper节点|角色|备注\n"
 
                 for ((j=0; j<${#server_hosts[@]}; j++)); do
                     local ip_addr=$(ping -c 1 ${server_hosts[j]} 2>/dev/null | head -n 1 | grep -oE '\([0-9\.]+\)' | tr -d '()')
@@ -1002,10 +1305,10 @@ cmd_stats() {
                             note="IP同${first_host_for_ip}"
                         fi
                     fi
-                    output_data+="${server_full_names[j]} ${server_modes[j]} ${note}\n"
+                    output_data+="${server_full_names[j]}|${server_modes[j]}|${note}\n"
                 done
 
-                printf "%b" "${output_data}" | column -t
+                printf "%b" "${output_data}" | _print_table_pipe
                 
                 # 精准告警: 仅当 leader 的 IP 不同时才告警
                 declare -A unique_leader_ips
@@ -1038,27 +1341,52 @@ cmd_stats() {
     
     # 获取 Broker IDs（用于后续显示）
     if [ "$KAFKA_MODE" == "zk" ]; then
-        BROKER_IDS_RAW=$(echo "ls /brokers/ids" | ${KAFKA_HOME}/bin/zookeeper-shell.sh ${ZK_CONNECT} 2>/dev/null | sed -n 's/.*\[\(.*\)\].*/\1/p')
-        BROKER_IDS=$(echo ${BROKER_IDS_RAW} | tr ',' ' ')
+        # 尝试使用 ZK
+        local zk_output
+        zk_output=$(_run_zk_cmd "${ZK_CONNECT}" "ls /brokers/ids")
+        local zk_exit_code=$?
+        
+        if [ $zk_exit_code -eq 0 ] && [[ ! "$zk_output" =~ "Exception" ]] && [[ ! "$zk_output" =~ "Error" ]]; then
+            BROKER_IDS_RAW=$(echo "$zk_output" | sed -n 's/.*\[\(.*\)\].*/\1/p')
+            BROKER_IDS=$(echo ${BROKER_IDS_RAW} | tr ',' ' ')
+        fi
+        
+        # 如果 ZK 失败，尝试使用 API
+        if [ -z "$BROKER_IDS" ]; then
+            if [ -n "$BOOTSTRAP_SERVERS" ]; then
+                 BROKER_IDS=$(_run_kafka_tool "kafka-broker-api-versions.sh" --bootstrap-server ${BOOTSTRAP_SERVERS} 2>/dev/null | grep -oE '^\S+:[0-9]+ \(id: [0-9]+' | sed 's/.*(id: \([0-9]*\).*/\1/' | sort -u)
+            fi
+        fi
+
+        if [ -z "$BROKER_IDS" ]; then
+            echo "错误: 无法获取 Broker ID 列表 (ZK 和 API 均失败)" >&2
+            exit 1
+        fi
     elif [ "$KAFKA_MODE" == "kraft" ]; then
         # KRaft 模式下，从 kafka-broker-api-versions 命令获取 broker 列表
-        BROKER_IDS=$(${KAFKA_HOME}/bin/kafka-broker-api-versions.sh --bootstrap-server ${BROKER_LIST} 2>/dev/null | grep -oE '^\S+:[0-9]+ \(id: [0-9]+' | sed 's/.*(id: \([0-9]*\).*/\1/' | sort -u)
+        BROKER_IDS=$(_run_kafka_tool "kafka-broker-api-versions.sh" --bootstrap-server ${BROKER_LIST} 2>/dev/null | grep -oE '^\S+:[0-9]+ \(id: [0-9]+' | sed 's/.*(id: \([0-9]*\).*/\1/' | sort -u)
         if [ -z "$BROKER_IDS" ]; then
             # 备用方案：假设至少有一个broker
             BROKER_IDS="1"
         fi
     fi
 
-    LOG_DIRS_DATA=$(${KAFKA_HOME}/bin/kafka-log-dirs.sh --bootstrap-server ${BROKER_LIST} --describe 2>/dev/null)
+    LOG_DIRS_DATA=$(_run_kafka_tool "kafka-log-dirs.sh" --bootstrap-server ${BROKER_LIST} --describe 2>/dev/null)
     
     declare -A BROKER_SIZES
     declare -A BROKER_LOG_DIRS
+    declare -A BROKER_VOLUME_TOTAL_BYTES
+    declare -A BROKER_VOLUME_USABLE_BYTES
+    declare -A BROKER_VOLUME_REF_DIR
     
     # 使用 AWK 解析 JSON 输出, 汇总每个 Broker 的总大小和 Log 目录
     # 使用进程替换 < <(...) 来避免在 subshell 中运行 while 循环, 确保数组变量在循环外可用
-    while read -r id size_bytes dirs; do
+    while IFS=$'\t' read -r id size_bytes dirs vol_total_bytes vol_usable_bytes vol_ref_dir; do
         BROKER_SIZES[$id]=$size_bytes
         BROKER_LOG_DIRS[$id]=$dirs
+        BROKER_VOLUME_TOTAL_BYTES[$id]=$vol_total_bytes
+        BROKER_VOLUME_USABLE_BYTES[$id]=$vol_usable_bytes
+        BROKER_VOLUME_REF_DIR[$id]=$vol_ref_dir
     done < <(echo "$LOG_DIRS_DATA" | \
     awk 'BEGIN { RS="\"broker\":" } NR > 1 {
         broker_id = substr($0, 1, index($0, ",")-1);
@@ -1072,10 +1400,39 @@ cmd_stats() {
         
         delete dirs;
         record_for_dirs = $0;
+        first_log_dir = "";
         while (match(record_for_dirs, /"logDir":"([^"]+)"/)) {
             dir = substr(record_for_dirs, RSTART+10, RLENGTH-11);
+            if (first_log_dir == "") {
+                first_log_dir = dir;
+            }
             dirs[dir] = 1;
             record_for_dirs = substr(record_for_dirs, RSTART+RLENGTH);
+        }
+
+        total_bytes = -1;
+        usable_bytes = -1;
+
+        record_for_vol = $0;
+        if (match(record_for_vol, /"totalBytes":-?[0-9]+/)) {
+            v = substr(record_for_vol, RSTART, RLENGTH);
+            sub(/"totalBytes":/, "", v);
+            total_bytes = v;
+        } else if (match(record_for_vol, /"total_bytes":-?[0-9]+/)) {
+            v = substr(record_for_vol, RSTART, RLENGTH);
+            sub(/"total_bytes":/, "", v);
+            total_bytes = v;
+        }
+
+        record_for_vol = $0;
+        if (match(record_for_vol, /"usableBytes":-?[0-9]+/)) {
+            v = substr(record_for_vol, RSTART, RLENGTH);
+            sub(/"usableBytes":/, "", v);
+            usable_bytes = v;
+        } else if (match(record_for_vol, /"usable_bytes":-?[0-9]+/)) {
+            v = substr(record_for_vol, RSTART, RLENGTH);
+            sub(/"usable_bytes":/, "", v);
+            usable_bytes = v;
         }
 
         dir_list = "";
@@ -1083,27 +1440,62 @@ cmd_stats() {
             dir_list = (dir_list == "" ? d : dir_list "," d);
         }
         
-        printf "%s %s %s\n", broker_id, total_size, dir_list
+        printf "%s\t%s\t%s\t%s\t%s\t%s\n", broker_id, total_size, dir_list, total_bytes, usable_bytes, first_log_dir
     }')
 
-    local local_ips
-    local_ips=$(ip -4 addr show 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | tr '\n' ' ')
-    [ -z "$local_ips" ] && local_ips=$(ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}')
+    local local_node_id
+    local_node_id=$(_get_local_node_id)
+
+    local local_ipv4s
+    local_ipv4s=$(_get_local_ipv4_addrs)
+    if [ -z "$local_ipv4s" ] && command -v ip >/dev/null 2>&1; then
+        local_ipv4s=$(ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}' | tr '\n' ' ')
+    fi
+
+    declare -A local_ipv4_set
+    for ip in $local_ipv4s; do
+        local_ipv4_set["$ip"]=1
+    done
 
     local id_column_name="BrokerID"
     if [ "$KAFKA_MODE" == "kraft" ]; then
         id_column_name="NodeID"
     fi
 
+    # 预先获取 API 版本的 Endpoint 映射 (用于 ZK 降级或 KRaft 模式)
+    declare -A API_ENDPOINTS_MAP
+    if [ "$KAFKA_MODE" == "kraft" ] || [ -z "$BROKER_IDS_RAW" ]; then
+        # 如果是 KRaft 模式，或者 ZK 获取 ID 失败（意味着 ZK 不可用），则加载 API 数据
+        local api_data
+        api_data=$(_run_kafka_tool "kafka-broker-api-versions.sh" --bootstrap-server ${BROKER_LIST} 2>/dev/null | grep -oE '^\S+:[0-9]+ \(id: [0-9]+')
+        while read -r line; do
+             # line 格式: host:port (id: 1
+             local ep=$(echo "$line" | awk '{print $1}')
+             local bid=$(echo "$line" | grep -oE 'id: [0-9]+' | awk '{print $2}')
+             if [ -n "$bid" ]; then
+                 API_ENDPOINTS_MAP[$bid]=$ep
+             fi
+        done <<< "$api_data"
+    fi
+
     (
-        echo "${id_column_name}|Endpoint|总日志大小|本机磁盘使用率"
+        echo "${id_column_name}|Endpoint|总日志大小|日志盘使用率"
         for id in ${BROKER_IDS}; do
             local endpoint=""
             if [ "$KAFKA_MODE" == "zk" ]; then
-                endpoint=$(${KAFKA_HOME}/bin/zookeeper-shell.sh ${ZK_CONNECT} 2>/dev/null <<< "get /brokers/ids/$id" | grep -oP 'PLAINTEXT://\K[^"]+')
+                # 尝试 ZK
+                if [ -n "$BROKER_IDS_RAW" ]; then # 只有当 ZK 之前成功获取了 ID 列表时才尝试用 ZK 获取 endpoint
+                    endpoint=$(_run_zk_cmd "${ZK_CONNECT}" "get /brokers/ids/$id" | \
+                        grep -oE '[A-Z0-9_]+://[^"]+' | head -n 1 | sed 's#^[A-Z0-9_]*://##')
+                fi
+                
+                # 降级：如果 ZK 没获取到，查 API 缓存
+                if [ -z "$endpoint" ]; then
+                    endpoint=${API_ENDPOINTS_MAP[$id]}
+                fi
             elif [ "$KAFKA_MODE" == "kraft" ]; then
-                # KRaft 模式下，尝试从 kafka-broker-api-versions 获取
-                endpoint=$(${KAFKA_HOME}/bin/kafka-broker-api-versions.sh --bootstrap-server ${BROKER_LIST} 2>/dev/null | grep -E "^\S+:[0-9]+ \(id: ${id} " | awk '{print $1}')
+                # KRaft 模式下，优先查 API 缓存
+                endpoint=${API_ENDPOINTS_MAP[$id]}
                 if [ -z "$endpoint" ]; then
                     # 如果无法获取，使用 BOOTSTRAP_SERVERS
                     endpoint=${BOOTSTRAP_SERVERS}
@@ -1114,21 +1506,51 @@ cmd_stats() {
                 log_dirs=${BROKER_LOG_DIRS[$id]}
                 size_formatted=$(_format_size "$size_bytes")
                 
-                disk_usage=""
-                local broker_ip=$(echo "$endpoint" | cut -d':' -f1)
+                disk_usage="--"
+                local vol_total_bytes=${BROKER_VOLUME_TOTAL_BYTES[$id]:--1}
+                local vol_usable_bytes=${BROKER_VOLUME_USABLE_BYTES[$id]:--1}
+                local vol_ref_dir=${BROKER_VOLUME_REF_DIR[$id]}
 
-                # 检查当前 Broker 是否为本机
-                if [[ -n "$log_dirs" && "$local_ips" == *"$broker_ip"* ]]; then
-                    # 如果有多个日志目录, 以第一个为准计算磁盘使用率
-                    local first_log_dir=$(echo "$log_dirs" | cut -d',' -f1)
-                    if [ -d "$first_log_dir" ]; then
-                        local df_info
-                        df_info=$(df -h --output=pcent,used,size,target "$first_log_dir" 2>/dev/null | tail -n 1)
-                        if [ -n "$df_info" ]; then
-                            local pcent used size target
-                            read -r pcent used size target <<< "$df_info"
-                            pcent=$(echo "$pcent" | tr -d '[:space:]')
-                            disk_usage="${pcent} [${used}/${size}] ${target}"
+                # 优先使用 Kafka 返回的磁盘信息（若 kafka-log-dirs 输出中包含 totalBytes/usableBytes）
+                if [[ "$vol_total_bytes" =~ ^[0-9]+$ && "$vol_total_bytes" -gt 0 && "$vol_usable_bytes" =~ ^[0-9]+$ && "$vol_usable_bytes" -ge 0 ]]; then
+                    local vol_used_bytes
+                    vol_used_bytes=$((vol_total_bytes - vol_usable_bytes))
+                    if [ "$vol_used_bytes" -lt 0 ]; then
+                        vol_used_bytes=0
+                    fi
+                    local pcent
+                    pcent=$(awk -v used="$vol_used_bytes" -v total="$vol_total_bytes" 'BEGIN { if (total <= 0) { print "" } else { printf "%.0f", (used/total)*100 } }')
+                    disk_usage="${pcent}% [$(_format_size "$vol_used_bytes")/$(_format_size "$vol_total_bytes")] ${vol_ref_dir}"
+                else
+                    local is_local=0
+                    if [[ -n "$local_node_id" && "$id" == "$local_node_id" ]]; then
+                        is_local=1
+                    else
+                        local broker_host
+                        broker_host=$(_endpoint_to_host "$endpoint")
+                        local broker_ipv4s
+                        broker_ipv4s=$(_resolve_ipv4_addrs "$broker_host")
+                        for ip in $broker_ipv4s; do
+                            if [[ -n "${local_ipv4_set[$ip]}" ]]; then
+                                is_local=1
+                                break
+                            fi
+                        done
+                    fi
+
+                    # 回退: 仅对本机 broker 用 df 计算
+                    if [[ -n "$log_dirs" && "$is_local" -eq 1 ]]; then
+                        # 如果有多个日志目录, 以第一个为准计算磁盘使用率
+                        local first_log_dir=$(echo "$log_dirs" | cut -d',' -f1)
+                        if [ -d "$first_log_dir" ]; then
+                            local df_info
+                            df_info=$(df -h --output=pcent,used,size,target "$first_log_dir" 2>/dev/null | tail -n 1)
+                            if [ -n "$df_info" ]; then
+                                local pcent used size target
+                                read -r pcent used size target <<< "$df_info"
+                                pcent=$(echo "$pcent" | tr -d '[:space:]')
+                                disk_usage="${pcent} [${used}/${size}] ${target}"
+                            fi
                         fi
                     fi
                 fi
@@ -1136,17 +1558,23 @@ cmd_stats() {
                 echo "$id|$endpoint|$size_formatted|$disk_usage"
             fi
         done
-    ) | column -t -s '|' -o '  '
+    ) | _print_table_pipe
     echo ""
 
     # 获取集群默认保留时间
     _get_cluster_default_retention # 调用新的公共函数
     
     DEFAULT_RETENTION_STR=""
-    if [[ -n "$CLUSTER_DEFAULT_RETENTION_MS" && "$CLUSTER_DEFAULT_RETENTION_MS" =~ ^[0-9]+$ ]]; then
-        DEFAULT_RETENTION_HOURS=$((CLUSTER_DEFAULT_RETENTION_MS / 1000 / 60 / 60))
-        DEFAULT_RETENTION_STR="retention.ms=${CLUSTER_DEFAULT_RETENTION_MS}（${DEFAULT_RETENTION_HOURS}小时）[默认]"
-        echo "集群默认保留时间: ${DEFAULT_RETENTION_HOURS}小时 (${CLUSTER_DEFAULT_RETENTION_MS}ms)${CLUSTER_DEFAULT_RETENTION_SOURCE}"
+    local default_retention_fmt
+    default_retention_fmt=$(_format_retention_ms "$CLUSTER_DEFAULT_RETENTION_MS")
+    if [ $? -eq 0 ]; then
+        DEFAULT_RETENTION_STR="${default_retention_fmt}[默认]"
+        if [ "$CLUSTER_DEFAULT_RETENTION_MS" == "-1" ]; then
+            echo "集群默认保留时间: 无限 (-1ms)${CLUSTER_DEFAULT_RETENTION_SOURCE}"
+        else
+            DEFAULT_RETENTION_HOURS=$((CLUSTER_DEFAULT_RETENTION_MS / 1000 / 60 / 60))
+            echo "集群默认保留时间: ${DEFAULT_RETENTION_HOURS}小时 (${CLUSTER_DEFAULT_RETENTION_MS}ms)${CLUSTER_DEFAULT_RETENTION_SOURCE}"
+        fi
     else
         DEFAULT_RETENTION_STR="retention.ms=无法获取默认值"
     fi
@@ -1172,7 +1600,7 @@ cmd_stats() {
     head -n ${current_top_n})
     
     (
-    echo "磁盘占用 Topic名称 保留策略"
+    echo "磁盘占用|Topic名称|保留策略"
     
     echo "$TOP_TOPICS_DATA" | while read -r size_bytes topic; do
         # 格式化大小显示
@@ -1180,17 +1608,18 @@ cmd_stats() {
         
         local RETENTION_MS
         if [ "$KAFKA_MODE" == "zk" ]; then
-            RETENTION_MS=$(${KAFKA_HOME}/bin/kafka-configs.sh --zookeeper ${ZK_CONNECT} --describe --entity-type topics --entity-name ${topic} 2>/dev/null | grep "retention.ms" | sed 's/.*retention.ms=\([0-9]*\).*/\1/')
+            RETENTION_MS=$(_run_kafka_tool "kafka-configs.sh" --zookeeper ${ZK_CONNECT} --describe --entity-type topics --entity-name ${topic} 2>/dev/null | \
+                tr ',' ' ' | awk -v key="retention.ms" 'BEGIN { prefix = key "=" } { for (i=1; i<=NF; i++) { if (substr($i, 1, length(prefix)) == prefix) { print substr($i, length(prefix) + 1); exit } } }')
         elif [ "$KAFKA_MODE" == "kraft" ]; then
-            RETENTION_MS=$(${KAFKA_HOME}/bin/kafka-configs.sh --bootstrap-server ${BOOTSTRAP_SERVERS} --describe --entity-type topics --entity-name ${topic} 2>/dev/null | grep "retention.ms" | sed 's/.*retention.ms=\([0-9]*\).*/\1/')
+            RETENTION_MS=$(_run_kafka_tool "kafka-configs.sh" --bootstrap-server ${BOOTSTRAP_SERVERS} --describe --entity-type topics --entity-name ${topic} 2>/dev/null | \
+                tr ',' ' ' | awk -v key="retention.ms" 'BEGIN { prefix = key "=" } { for (i=1; i<=NF; i++) { if (substr($i, 1, length(prefix)) == prefix) { print substr($i, length(prefix) + 1); exit } } }')
         fi
     
-        RETENTION_STR=""
-        if [[ -n "$RETENTION_MS" && "$RETENTION_MS" =~ ^[0-9]+$ && "$RETENTION_MS" -gt 0 ]]; then
-            RETENTION_HOURS=$((RETENTION_MS / 1000 / 60 / 60))
-            RETENTION_STR="retention.ms=${RETENTION_MS}（${RETENTION_HOURS}小时）"
-            # 如果当前topic的保留时间和集群默认值相同，则添加[默认]标记
-            # 注意: 此处的 CLUSTER_DEFAULT_RETENTION_MS 已经在循环外由 _get_cluster_default_retention 获取并设置了
+        local RETENTION_STR=""
+        local retention_fmt
+        retention_fmt=$(_format_retention_ms "$RETENTION_MS")
+        if [ $? -eq 0 ]; then
+            RETENTION_STR="${retention_fmt}"
             if [[ "$RETENTION_MS" == "$CLUSTER_DEFAULT_RETENTION_MS" ]]; then
                 RETENTION_STR="${RETENTION_STR}[默认]"
             fi
@@ -1200,15 +1629,15 @@ cmd_stats() {
             RETENTION_STR="${DEFAULT_RETENTION_STR}"
         fi
     
-        echo "${size_formatted} ${topic} ${RETENTION_STR}"
+        echo "${size_formatted}|${topic}|${RETENTION_STR}"
     done
-    ) | column -t
+    ) | _print_table_pipe
 }
 
 show_stats_help() {
     echo "用法: ${SCRIPT_NAME} stats [选项]"
     echo ""
-    echo "显示集群的全面统计信息，包括 Zookeeper 状态、Broker 列表（含总日志大小和本机磁盘使用率）、Topic 磁盘占用 Top N 及其保留策略。"
+    echo "显示集群的全面统计信息，包括 Zookeeper 状态、Broker 列表（含总日志大小和日志盘使用率）、Topic 磁盘占用 Top N 及其保留策略。"
     echo ""
     echo "选项:"
     echo "  --top <N>    指定显示的 Topic 数量。默认为 ${TOP_N}。"
@@ -1229,7 +1658,7 @@ show_retention_help() {
     echo "  --all            显示所有 Topic 的保留时间（自动显示查询进度）。"
     echo ""
     echo "选项:"
-    echo "  --set <时间>   [单Topic模式] 设置新的数据保留时间。支持的单位: d(天), h(小时), min(分钟), ms(或纯数字)。"
+    echo "  --set <时间>   [单Topic模式] 设置新的数据保留时间。支持的单位: d(天), h(小时), m/min(分钟), ms(或纯数字)；也支持 -1 表示无限保留。"
     echo "  --delete       [单Topic模式] 删除自定义保留时间, 使用集群默认值。"
     echo "  -h, --help     显示此帮助信息。"
     echo ""
@@ -1307,7 +1736,6 @@ show_help() {
     echo "  help         显示此帮助信息"
     echo ""
 }
-
 
 COMMAND=$1
 shift || true # 如果没有参数, shift 会失败, `|| true` 可以防止脚本退出
