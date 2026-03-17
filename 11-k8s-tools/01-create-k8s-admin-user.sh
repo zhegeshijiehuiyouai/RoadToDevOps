@@ -21,7 +21,7 @@ function echo_error() {
 
 # 1. 从现有配置中提取集群信息
 echo_info "正在从 ${CONFIG_PATH} 读取集群信息..."
-CERT_AUTH_DATA=$(cat "$CONFIG_PATH" | grep "certificate-authority-data:" | awk '{print $2}' | head -n 1)
+CERT_AUTH_DATA=$(kubectl --kubeconfig "$CONFIG_PATH" config view --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')
 SERVER=$(cat "$CONFIG_PATH" | grep server | awk '{print $2}' | head -n 1)
 CLUSTER_NAME=$(KUBECONFIG="$CONFIG_PATH" kubectl config view --minify -o jsonpath='{.clusters[0].name}')
 

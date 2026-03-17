@@ -398,7 +398,7 @@ function config_es() {
     echo "# 单节点部署" >> ${es_yml_file}
     echo "discovery.type: single-node" >> ${es_yml_file}
     echo "# 缓冲区限制，防止OOM" >> ${es_yml_file}
-    echo "indices.fielddata.cache.size:  40%" >> ${es_yml_file}
+    echo "indices.fielddata.cache.size:  30%" >> ${es_yml_file}
     echo "# 断路器限制，需要比indices.fielddata.cache.size大" >> ${es_yml_file}
     echo "indices.breaker.fielddata.limit:  60%" >> ${es_yml_file}
     
