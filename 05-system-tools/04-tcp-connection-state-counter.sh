@@ -1,64 +1,60 @@
-#!/bin/bash
-# 统计各个TCP连接状态的个数。用于方便排查系统连接负荷问题。
-
+#!/usr/bin/env bash
 # @Function
 # show count of tcp connection stat.
 #
 # @Usage
 #   $ ./tcp-connection-state-counter
 #
-# @online-doc https://github.com/oldratlee/useful-scripts/blob/dev-2.x/docs/shell.md#-tcp-connection-state-counter
+# @online-doc https://github.com/oldratlee/useful-scripts/blob/dev-3.x/docs/shell.md#-tcp-connection-state-counter
 # @author Jerry Lee (oldratlee at gmail dot com)
 # @author @sunuslee (sunuslee at gmail dot com)
 set -eEuo pipefail
 
-# NOTE: DO NOT declare var PROG as readonly, because its value is supplied by subshell.
-PROG="$(basename "$0")"
-readonly PROG_VERSION='2.4.0-dev'
-
-################################################################################
-# util functions
-################################################################################
-
-usage() {
-    cat <<EOF
-Usage: ${PROG} [OPTION]...
-show count of tcp connection stat.
-
-Example:
-    ${PROG}
-
-Options:
-    -h, --help      display this help and exit
-    -V, --version   display version information and exit
-EOF
-    exit
-}
-
-progVersion() {
-    echo "$PROG $PROG_VERSION"
-    exit
-}
+readonly PROG=${0##*/}
+readonly PROG_VERSION='3.x-dev'
 
 ################################################################################
 # parse options
 ################################################################################
 
-for a; do
-    [[ "-h" == "$a" || "--help" == "$a" ]] && usage
-done
+usage() {
+  cat <<EOF
+Usage: $PROG [OPTION]...
+show count of tcp connection stat.
 
-for a; do
-    [[ "-V" == "$a" || "--version" == "$a" ]] && progVersion
+Example:
+    $PROG
+
+Options:
+    -h, --help      display this help and exit
+    -V, --version   display version information and exit
+EOF
+
+  exit
+}
+
+progVersion() {
+  printf '%s\n' "$PROG $PROG_VERSION"
+  exit
+}
+
+args=("$@")
+# check arguments in reverse, so last option wins.
+for ((idx = $# - 1; idx >= 0; --idx)); do
+  [[ "${args[idx]}" = -h || "${args[idx]}" = --help ]] && usage
+  [[ "${args[idx]}" = -V || "${args[idx]}" = --version ]] && progVersion
 done
+unset args idx
 
 ################################################################################
 # biz logic
 ################################################################################
 
 # On MacOS, netstat need to using -p tcp to get only tcp output.
-uname | grep Darwin -q && option_for_mac="-ptcp"
+UNAME=$(uname)
+[[ $UNAME = Darwin* ]] && option_for_mac=-ptcp
 
+# shellcheck disable=SC2086
 netstat -tna ${option_for_mac:-} | awk 'NR > 2 {
     ++s[$NF]
 }
