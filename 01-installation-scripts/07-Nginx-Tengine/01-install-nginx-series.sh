@@ -325,10 +325,10 @@ http {
 #########实现文件传输性能提升###################
 #    sendfile        on;  #开启gzip后，sendfile无效
 #########在keepalive启用情况下提升网络性能##########
-#    tcp_nopush     on;    # 已开启gzip，sendfile失效，故tcp_nopush失效
-    tcp_nodelay    off;
+#    tcp_nopush     on;    # 依赖sendfile，开启gzip后sendfile失效，故tcp_nopush也失效
+    tcp_nodelay    on;     # 禁用Nagle算法，keepalive连接上小包立即发送，降低延迟
 
-    keepalive_timeout  30;
+    keepalive_timeout  30;  # 客户端 ↔ nginx 的空闲连接保持时间，注意区别于upstream中的keepalive_timeout（nginx ↔ 后端）
 
 ##############前台文件上传大小限制################
     client_max_body_size 200M;
@@ -375,6 +375,8 @@ http {
 #        # 权重，默认为1
 #        server 192.168.1.1:8080 weight=5;
 #        server 192.168.1.2:8080 max_fails=3 fail_timeout=30s;
+#        keepalive 64;           # 保持 64 个空闲长连接
+#        keepalive_timeout 60s;  # nginx ↔ 后端的空闲连接超时时间，注意区别于http块中的keepalive_timeout（客户端 ↔ nginx）
 #    }
 
 #############该server作用为防恶意解析#####
@@ -438,10 +440,11 @@ http {
 #             autoindex_localtime on; # 使用服务器文件时间作为显示时间，仅在autoindex_format为html时生效
 #         }
 
-#########反向代理简单配置
+#########反向代理简单配置（需配合upstream的keepalive使用）
 #        location /proxy_url/ {
-#            proxy_pass http://ip:port/proxy_url/;
-#            #这个头有时很关键
+#            proxy_pass http://backend_servers;
+#            proxy_http_version 1.1;            # 必须用 HTTP/1.1 才支持 keepalive
+#            proxy_set_header Connection "";     # 清除 Connection: close 头
 #            proxy_set_header Host \$http_host;
 #            # 当发生错误、超时或收到特定的HTTP错误码时，尝试下一个服务器，而不是直接给客户返回错误
 #            proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
