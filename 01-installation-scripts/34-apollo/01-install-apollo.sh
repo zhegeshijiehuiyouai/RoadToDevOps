@@ -25,6 +25,8 @@ config_admin_mysql_pass=yourpassword
 config_admin_mysql_db=ApolloConfigDB
 # 启动apollo的用户
 sys_user=apollo
+# check_port函数中使用，标记docker-compose版本的apollo是否已存在
+apollo_exist=0
 
 
 
@@ -38,6 +40,34 @@ function echo_warning() {
 function echo_error() {
     echo -e "[\033[36m$(date +%T)\033[0m] [\033[41mERROR\033[0m] \033[1;31m$@\033[0m"
 }
+
+# 脚本执行用户检测
+if [[ $(whoami) != 'root' ]];then
+    echo_error 请使用root用户执行
+    exit 99
+fi
+
+# 检测操作系统
+if grep -qs "ubuntu" /etc/os-release; then
+	os="ubuntu"
+    os_version=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
+    export UCF_FORCE_CONFFOLD=1
+    export NEEDRESTART_SUSPEND=1
+elif [[ -e /etc/centos-release ]]; then
+    os="centos"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/centos-release)
+elif [[ -e /etc/rocky-release ]]; then
+    os="rocky"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/rocky-release)
+elif [[ -e /etc/almalinux-release ]]; then
+    os="alma"
+    os_version=$(grep -oE '([0-9]+\.[0-9]+(\.[0-9]+)?)' /etc/almalinux-release)
+else
+	echo_error 不支持的操作系统
+	exit 99
+fi
+
+echo_warning "操作系统：$os    版本：$os_version"
 
 # 首先判断当前目录是否有压缩包：
 #   I. 如果有压缩包，那么就在当前目录解压；
@@ -54,83 +84,61 @@ function echo_error() {
 function check_downloadfile() {
     # 检测下载文件在服务器上是否存在
     http_code=$(curl -IksS $1 | head -1 | awk '{print $2}')
-    if [ $http_code -eq 404 ];then
+    if [ "${http_code}" == "404" ];then
         echo_error $1
         echo_error 服务端文件不存在，退出
         exit 98
     fi
 }
+
+function install_wget() {
+    if [ ! -f /usr/bin/wget ];then
+        echo_info 安装wget工具
+        if [[ $os == "centos" ]];then
+            yum install -y wget
+        elif [[ $os == "ubuntu" ]];then
+            apt install -y wget
+        elif [[ $os == 'rocky' || $os == 'alma' ]];then
+            dnf install -y wget
+        fi
+    fi
+}
+
 function download_tar_gz(){
     download_file_name=$(echo $2 |  awk -F"/" '{print $NF}')
     back_dir=$(pwd)
     file_in_the_dir=''  # 这个目录是后面编译目录的父目录
 
-    ls $download_file_name &> /dev/null
-    if [ $? -ne 0 ];then
-        # 进入此处表示脚本所在目录没有压缩包
-        ls -d $1 &> /dev/null
-        if [ $? -ne 0 ];then
-            # 进入此处表示没有${src_dir}目录
-            mkdir -p $1 && cd $1
-            echo_info 下载 $download_file_name 至 $(pwd)/
-            # 检测是否有wget工具
-            if [ ! -f /usr/bin/wget ];then
-                echo_info 安装wget工具
-                if [[ $os == "centos" ]];then
-                    yum install -y wget
-                elif [[ $os == "ubuntu" ]];then
-                    apt install -y wget
-                elif [[ $os == 'rocky' || $os == 'alma' ]];then
-                    dnf install -y wget
-                fi
-            fi
-            check_downloadfile $2
-            wget --no-check-certificate $2
-            if [ $? -ne 0 ];then
-                echo_error 下载 $2 失败！
-                exit 1
-            fi
-            file_in_the_dir=$(pwd)
-            # 返回脚本所在目录，这样这个函数才可以多次使用
-            cd ${back_dir}
-        else
-            # 进入此处表示有${src_dir}目录
-            cd $1
-            ls $download_file_name &> /dev/null
-            if [ $? -ne 0 ];then
-            # 进入此处表示${src_dir}目录内没有压缩包
-                echo_info 下载 $download_file_name 至 $(pwd)/
-                # 检测是否有wget工具
-                if [ ! -f /usr/bin/wget ];then
-                    echo_info 安装wget工具
-                    if [[ $os == "centos" ]];then
-                        yum install -y wget
-                    elif [[ $os == "ubuntu" ]];then
-                        apt install -y wget
-                    elif [[ $os == 'rocky' || $os == 'alma' ]];then
-                        dnf install -y wget
-                    fi
-                fi
-                check_downloadfile $2
-                wget --no-check-certificate $2
-                if [ $? -ne 0 ];then
-                    echo_error 下载 $2 失败！
-                    exit 1
-                fi
-                file_in_the_dir=$(pwd)
-                cd ${back_dir}
-            else
-                # 进入此处，表示${src_dir}目录内有压缩包
-                echo_info 发现压缩包$(pwd)/$download_file_name
-                file_in_the_dir=$(pwd)
-                cd ${back_dir}
-            fi
-        fi
-    else
-        # 进入此处表示脚本所在目录有压缩包
+    # 脚本所在目录有压缩包
+    if [ -f "${download_file_name}" ];then
         echo_info 发现压缩包$(pwd)/$download_file_name
         file_in_the_dir=$(pwd)
+        return
     fi
+
+    # 确保目标目录存在
+    [ -d "$1" ] || mkdir -p "$1"
+    cd "$1"
+
+    # 目标目录中有压缩包
+    if [ -f "${download_file_name}" ];then
+        echo_info 发现压缩包$(pwd)/$download_file_name
+        file_in_the_dir=$(pwd)
+        cd "${back_dir}"
+        return
+    fi
+
+    # 需要下载
+    echo_info 下载 $download_file_name 至 $(pwd)/
+    install_wget
+    check_downloadfile $2
+    wget --no-check-certificate $2
+    if [ $? -ne 0 ];then
+        echo_error 下载 $2 失败！
+        exit 1
+    fi
+    file_in_the_dir=$(pwd)
+    cd "${back_dir}"
 }
 
 function add_user_and_group(){
@@ -152,7 +160,7 @@ function add_user_and_group(){
 function input_machine_ip_fun() {
     read -e input_machine_ip
     machine_ip=${input_machine_ip}
-    if [[ ! $machine_ip =~ ^([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))(\.([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))){3} ]];then
+    if [[ ! $machine_ip =~ ^([01]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))(\.([01]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))){3}$ ]];then
         echo_error 错误的ip格式，退出
         exit 7
     fi
@@ -210,7 +218,13 @@ function check_unzip() {
     unzip -h &> /dev/null
     if [ $? -ne 0 ];then
         echo_info 安装unzip
-        yum install -y unzip
+        if [[ $os == "centos" ]];then
+            yum install -y unzip
+        elif [[ $os == "ubuntu" ]];then
+            apt install -y unzip
+        elif [[ $os == 'rocky' || $os == 'alma' ]];then
+            dnf install -y unzip
+        fi
         if [ $? -ne 0 ];then
             echo_error unzip安装失败，请排查原因
             exit 2
@@ -223,7 +237,7 @@ function install_by_docker() {
     if [ -d apollo ];then
         apollo_exist=1    # 这个变量的作用是，针对docker-compose版本的apollo已存在的情况下，在check_port中使用不同的文案
         cd ${my_dir}/${apollo_home}
-        docker-compose ps -a | grep appolo &> /dev/null
+        docker-compose ps -a | grep apollo &> /dev/null
         if [ $? -eq 0 ];then
             echo_info apollo已启动
             exit 0
@@ -256,7 +270,7 @@ function install_by_docker() {
 
     check_unzip
 
-    echo info 解压apollo压缩包
+    echo_info 解压apollo压缩包
     unzip apollo-master.zip &> /dev/null
 
     echo_info 提取docker-compose启动文件
@@ -264,9 +278,9 @@ function install_by_docker() {
     echo_info 配置持久化
     sed -i 's#/var/lib/mysql#./mysql-data:/var/lib/mysql#g' ${my_dir}/${apollo_home}/docker-compose.yml
     echo_info 配置端口映射
-    sed -i 's#".*:8080"#"'${port_portal}':8070"#g' ${my_dir}/${apollo_home}/docker-compose.yml
+    sed -i 's#".*:8070"#"'${port_portal}':8070"#g' ${my_dir}/${apollo_home}/docker-compose.yml
     sed -i 's#".*:8080"#"'${port_config}':8080"#g' ${my_dir}/${apollo_home}/docker-compose.yml
-    sed -i 's#".*:8080"#"'${port_admin}':8090"#g' ${my_dir}/${apollo_home}/docker-compose.yml
+    sed -i 's#".*:8090"#"'${port_admin}':8090"#g' ${my_dir}/${apollo_home}/docker-compose.yml
     echo_info 清理临时文件
     rm -rf apollo-master
 
@@ -314,22 +328,27 @@ function check_mysql() {
     mysql -V &> /dev/null
     if [ $? -ne 0 ];then
         echo_info 安装mysql客户端
-        yum install -y mysql
+        if [[ $os == "centos" ]];then
+            yum install -y mysql
+        elif [[ $os == "ubuntu" ]];then
+            apt install -y mysql-client
+        elif [[ $os == 'rocky' || $os == 'alma' ]];then
+            dnf install -y mysql
+        fi
         if [ $? -ne 0 ];then
             echo_error mysql客户端安装失败
             exit 3
         fi
     fi
-    version=$(mysql -h$1 -P$2 -u$3 -p$4 -e 'select version();' 2>/dev/null | grep "5")
-    if [ $? -ne 0 ];then
-        echo ${version} | grep "^8" &> /dev/null
-        if [ $? -eq 0 ];then
-            true
-        else
-            echo_error mysql $1:$2 连接失败
-            exit 1
-        fi
-    else
+    version=$(mysql -h$1 -P$2 -u$3 -p$4 -e 'select version();' 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+    if [ -z "${version}" ];then
+        echo_error mysql $1:$2 连接失败
+        exit 1
+    fi
+    if [[ ${version} == 8.* || ${version} == 9.* ]];then
+        echo_info "MySQL版本: ${version}"
+        return
+    elif [[ ${version} == 5.* ]];then
         version_2nd=$(echo ${version} | awk -F"." '{print $2}')
         version_3rd=$(echo ${version} | awk -F"." '{print $3}')
         if [ ${version_2nd} -lt 6 ];then
@@ -338,9 +357,12 @@ function check_mysql() {
         elif [ ${version_2nd} -eq 6 ];then
             if [ ${version_3rd} -lt 5 ];then
                 echo_error mysql版本过低，需要5.6.5以上的版本
-                exit 1          
+                exit 1
             fi
         fi
+    else
+        echo_error "不支持的MySQL版本: ${version}"
+        exit 1
     fi
 }
 
@@ -371,7 +393,7 @@ function init_mysql() {
 function is_init_portal_mysql() {
     echo_warning "是否初始化portal数据库？默认不初始化 [y|N]"
     read -e USER_INPUT
-    if [ ! -z ${USER_INPUT} ];then
+    if [ ! -z "${USER_INPUT}" ];then
         case ${USER_INPUT} in
             y|Y|yes)
                 init_mysql portal
@@ -389,7 +411,7 @@ function is_init_portal_mysql() {
 function is_init_config_admin_mysql() {
     echo_warning "是否初始化config/admin数据库？默认不初始化 [y|N]"
     read -e USER_INPUT
-    if [ ! -z ${USER_INPUT} ];then
+    if [ ! -z "${USER_INPUT}" ];then
         case ${USER_INPUT} in
             y|Y|yes)
                 init_mysql config_admin
@@ -429,7 +451,7 @@ function check_ip_legal() {
     if [[ "${1}" == "" ]];then
         USER_INPUT=${machine_ip}
     else
-        if [[ ! ${1} =~ ^([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))(\.([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))){3} ]];then
+        if [[ ! ${1} =~ ^([01]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))(\.([01]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))){3}$ ]];then
             echo_error "错误的ip格式(${1})，请重新输入"
             input_apollo_config_admin_ip
         fi
@@ -604,7 +626,7 @@ function install_portal_only() {
     check_port ${port_portal}
 
     echo_info portal数据库检测
-    check_mysql ${config_admin_mysql_url} ${config_admin_mysql_port} ${config_admin_mysql_user} ${config_admin_mysql_pass}
+    check_mysql ${portal_mysql_url} ${portal_mysql_port} ${portal_mysql_user} ${portal_mysql_pass}
     is_init_portal_mysql
 
     echo_info 下载apollo-portal二进制包
@@ -625,7 +647,7 @@ function install_portal_only() {
 function install_config_admin_only() {
     check_port ${port_config} ${port_admin}
     echo_info config/admin数据库检测
-    check_mysql ${portal_mysql_url} ${portal_mysql_port} ${portal_mysql_user} ${portal_mysql_pass}
+    check_mysql ${config_admin_mysql_url} ${config_admin_mysql_port} ${config_admin_mysql_user} ${config_admin_mysql_pass}
     is_init_config_admin_mysql
 
     echo_info 下载apollo-configservice、apollo-adminservice二进制包
@@ -659,18 +681,20 @@ function main() {
     echo
     read -p "请输入数字选择部署方式：" -e USER_INPUT_INSTALL
 
-    preinstall
     case ${USER_INPUT_INSTALL} in
         1)
             install_by_docker
             ;;
         2)
+            preinstall
             install_by_binary
             ;;
         3)
+            preinstall
             install_portal_only
             ;;
         4)
+            preinstall
             install_config_admin_only
             ;;
         *)

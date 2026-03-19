@@ -61,10 +61,22 @@ fi
 function check_downloadfile() {
     # 检测下载文件在服务器上是否存在
     http_code=$(curl -IksS $1 | head -1 | awk '{print $2}')
-    if [ $http_code -eq 404 ];then
+    if [ "${http_code}" == "404" ];then
         echo_error $1
         echo_error 服务端文件不存在，退出
         exit 98
+    fi
+}
+function install_wget() {
+    if [ ! -f /usr/bin/wget ];then
+        echo_info 安装wget工具
+        if [[ $os == "centos" ]];then
+            yum install -y wget
+        elif [[ $os == "ubuntu" ]];then
+            apt install -y wget
+        elif [[ $os == 'rocky' || $os == 'alma' ]];then
+            dnf install -y wget
+        fi
     fi
 }
 function download_tar_gz(){
@@ -72,72 +84,36 @@ function download_tar_gz(){
     back_dir=$(pwd)
     file_in_the_dir=''  # 这个目录是后面编译目录的父目录
 
-    ls $download_file_name &> /dev/null
-    if [ $? -ne 0 ];then
-        # 进入此处表示脚本所在目录没有压缩包
-        ls -d $1 &> /dev/null
-        if [ $? -ne 0 ];then
-            # 进入此处表示没有${src_dir}目录
-            mkdir -p $1 && cd $1
-            echo_info 下载 $download_file_name 至 $(pwd)/
-            # 检测是否有wget工具
-            if [ ! -f /usr/bin/wget ];then
-                echo_info 安装wget工具
-                if [[ $os == "centos" ]];then
-                    yum install -y wget
-                elif [[ $os == "ubuntu" ]];then
-                    apt install -y wget
-                elif [[ $os == 'rocky' || $os == 'alma' ]];then
-                    dnf install -y wget
-                fi
-            fi
-            check_downloadfile $2
-            wget --no-check-certificate $2
-            if [ $? -ne 0 ];then
-                echo_error 下载 $2 失败！
-                exit 1
-            fi
-            file_in_the_dir=$(pwd)
-            # 返回脚本所在目录，这样这个函数才可以多次使用
-            cd ${back_dir}
-        else
-            # 进入此处表示有${src_dir}目录
-            cd $1
-            ls $download_file_name &> /dev/null
-            if [ $? -ne 0 ];then
-            # 进入此处表示${src_dir}目录内没有压缩包
-                echo_info 下载 $download_file_name 至 $(pwd)/
-                # 检测是否有wget工具
-                if [ ! -f /usr/bin/wget ];then
-                    echo_info 安装wget工具
-                    if [[ $os == "centos" ]];then
-                        yum install -y wget
-                    elif [[ $os == "ubuntu" ]];then
-                        apt install -y wget
-                    elif [[ $os == 'rocky' || $os == 'alma' ]];then
-                        dnf install -y wget
-                    fi
-                fi
-                check_downloadfile $2
-                wget --no-check-certificate $2
-                if [ $? -ne 0 ];then
-                    echo_error 下载 $2 失败！
-                    exit 1
-                fi
-                file_in_the_dir=$(pwd)
-                cd ${back_dir}
-            else
-                # 进入此处，表示${src_dir}目录内有压缩包
-                echo_info 发现压缩包$(pwd)/$download_file_name
-                file_in_the_dir=$(pwd)
-                cd ${back_dir}
-            fi
-        fi
-    else
-        # 进入此处表示脚本所在目录有压缩包
+    # 脚本所在目录有压缩包
+    if [ -f "${download_file_name}" ];then
         echo_info 发现压缩包$(pwd)/$download_file_name
         file_in_the_dir=$(pwd)
+        return
     fi
+
+    # 确保目标目录存在
+    [ -d "$1" ] || mkdir -p "$1"
+    cd "$1"
+
+    # 目标目录中有压缩包
+    if [ -f "${download_file_name}" ];then
+        echo_info 发现压缩包$(pwd)/$download_file_name
+        file_in_the_dir=$(pwd)
+        cd "${back_dir}"
+        return
+    fi
+
+    # 需要下载
+    echo_info 下载 $download_file_name 至 $(pwd)/
+    install_wget
+    check_downloadfile $2
+    wget --no-check-certificate $2
+    if [ $? -ne 0 ];then
+        echo_error 下载 $2 失败！
+        exit 1
+    fi
+    file_in_the_dir=$(pwd)
+    cd "${back_dir}"
 }
 
 # 解压

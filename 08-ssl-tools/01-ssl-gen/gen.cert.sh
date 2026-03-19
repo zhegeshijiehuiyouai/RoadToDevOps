@@ -38,7 +38,7 @@ mkdir -p ${DIR}
 function input_machine_ip_fun() {
     read input_machine_ip
     machine_ip=${input_machine_ip}
-    if [[ ! $machine_ip =~ ^([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))(\.([0,1]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))){3} ]];then
+    if [[ ! $machine_ip =~ ^([01]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))(\.([01]?[0-9]{1,2}|2([0-4][0-9]|5[0-5]))){3}$ ]];then
         echo_error 错误的ip格式，退出
         exit 7
     fi
