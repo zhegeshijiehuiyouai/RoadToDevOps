@@ -351,8 +351,9 @@ http {
 #        # 权重，默认为1
 #        server 192.168.1.1:8080 weight=5;
 #        server 192.168.1.2:8080 max_fails=3 fail_timeout=30s;
-#        keepalive 64;           # 保持 64 个空闲长连接
-#        keepalive_timeout 60s;  # nginx ↔ 后端的空闲连接超时时间，注意区别于http块中的keepalive_timeout（客户端 ↔ nginx）
+#        keepalive 256;                # 长连接池大小，减少频繁建连开销
+#        keepalive_requests 100000;    # 单个长连接可处理的最大请求数
+#        keepalive_timeout 60s;        # nginx ↔ 后端的空闲连接超时时间，注意区别于http块中的keepalive_timeout（客户端 ↔ nginx）
 #    }
 
 #############该server作用为防恶意解析#####
@@ -419,10 +420,14 @@ http {
 #########反向代理简单配置（需配合upstream的keepalive使用）
 #        location /proxy_url/ {
 #            proxy_pass http://backend_servers;
-#            proxy_http_version 1.1;            # 必须用 HTTP/1.1 才支持 keepalive
-#            proxy_set_header Connection "";     # 清除 Connection: close 头
+#            proxy_http_version 1.1;            # 启用HTTP/1.1以支持长连接
+#            proxy_set_header Connection "";     # 清除Connection头，配合keepalive
 #            proxy_set_header Host \$http_host;
-#            # 当发生错误、超时或收到特定的HTTP错误码时，尝试下一个服务器，而不是直接给客户返回错误
+#            proxy_request_buffering off;       # 流式转发，不缓冲请求体
+#            proxy_socket_keepalive on;         # TCP层keepalive探测，及时发现死连接
+#            proxy_connect_timeout 5s;          # 连接后端超时
+#            proxy_read_timeout 60s;            # 读取后端响应超时
+#            proxy_send_timeout 60s;            # 发送请求到后端超时
 #            proxy_next_upstream error timeout http_500 http_502 http_503 http_504;
 #        }
 
